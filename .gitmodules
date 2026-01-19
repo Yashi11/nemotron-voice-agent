@@ -1,0 +1,3 @@
+[submodule "nvidia-pipecat"]
+	path = nvidia-pipecat
+	url = ../../../ace/voice-agent-examples.git
