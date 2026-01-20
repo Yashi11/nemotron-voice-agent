@@ -43,7 +43,6 @@ export default function usePipecatWebRTC(params: Params): Return {
   const micStreamRef = useRef<MediaStream | null>(null);
   const outputStreamRef = useRef<MediaStream | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
-  // const wsRef = useRef<WebSocket | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
 
   const offerMutation = useMutation({

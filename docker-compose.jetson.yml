@@ -24,7 +24,7 @@ services:
     command:
       - |
         python3 -m vllm.entrypoints.openai.api_server \
-          --model "$${NVIDIA_LLM_MODEL:-nvidia/Nemotron-Mini-4B-Instruct}" \
+          --model "$${NVIDIA_LLM_MODEL:-RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16}" \
           --host 0.0.0.0 \
           --port 8000 \
           --max-model-len 4096 \
@@ -55,12 +55,10 @@ services:
     network_mode: host
     env_file:
       - .env.jetson
-    environment:
-      - ENABLE_SPECULATIVE_SPEECH=false
-      - SYSTEM_PROMPT_SELECTOR=${SYSTEM_PROMPT_SELECTOR:-llama-8b/flowershop}
-      - PROMPT_FILE_PATH=${PROMPT_FILE_PATH:-/app/examples/voice_agent_webrtc/prompt.yaml}
     volumes:
-      - ${PROMPT_FILE_PATH:-./prompt.yaml}:/app/examples/voice_agent_webrtc/prompt.yaml:ro
+      - ./audio_dumps:/app/examples/voice_agent_webrtc/audio_dumps
+      - ./prompt.yaml:/app/examples/voice_agent_webrtc/prompt.yaml:ro
+      - ./ipa.json:/app/examples/voice_agent_webrtc/ipa.json:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:7860/ || exit 1"]

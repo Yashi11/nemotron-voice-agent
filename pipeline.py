@@ -31,8 +31,9 @@ from pipecat.frames.frames import (
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
-from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.frameworks.rtvi import RTVIServerMessageFrame
+from pipecat.services.openai.base_llm import BaseOpenAILLMService
 from pipecat.transports.base_transport import TransportParams
 from pipecat.transports.smallwebrtc.connection import (
     IceServer,
@@ -85,24 +86,15 @@ def _load_prompts() -> dict:
 PROMPTS = _load_prompts()
 
 
-def _resolve_system_prompt(selector: str) -> str:
-    """Resolve prompt selector by traversing nested YAML path."""
-    parts = [segment for segment in selector.split("/") if segment]
-    if len(parts) < 2:
-        raise ValueError("SYSTEM_PROMPT_SELECTOR must be in '<model>/<prompt>' format.")
-
-    entry = PROMPTS
-    traversed: list[str] = []
-    for part in parts:
-        traversed.append(part)
-        if not isinstance(entry, dict) or part not in entry:
-            raise KeyError(f"Prompt path '{'/'.join(traversed)}' not found in prompt catalog.")
-        entry = entry[part]
-
-    if isinstance(entry, dict) and "content" in entry:
-        return entry["content"]
-
-    raise KeyError(f"Prompt entry for selector '{selector}' is missing 'content'.")
+def _resolve_prompt(selector: str) -> list[dict[str, str]]:
+    """Resolve a selector like 'model/prompt' into a list of {role, content} messages."""
+    try:
+        entry = PROMPTS
+        for part in selector.split("/"):
+            entry = entry[part]
+        return [{"role": m["role"], "content": m["content"]} for m in entry["messages"]]
+    except (KeyError, TypeError) as e:
+        raise KeyError(f"Prompt '{selector}' not found or invalid: {e}") from e
 
 
 def _inject_prompt_variables(prompt: str, **variables) -> str:
@@ -161,10 +153,36 @@ async def run_bot(webrtc_connection):
         params=transport_params,
     )
 
+    # None if unset, True if "true", False if "false"
+    enable_thinking = {"true": True, "false": False}.get(os.getenv("ENABLE_THINKING", "").lower())
+
+    # Parse TEMPERATURE with error handling
+    try:
+        temperature = float(os.getenv("TEMPERATURE", "1.0"))
+    except ValueError:
+        logger.warning("Invalid TEMPERATURE, falling back to default 1.0")
+        temperature = 1.0
+
+    # Parse TOP_P with error handling
+    try:
+        top_p = float(os.getenv("TOP_P", "1.0"))
+    except ValueError:
+        logger.warning("Invalid TOP_P, falling back to default 1.0")
+        top_p = 1.0
+
     llm = NvidiaLLMService(
         api_key=os.getenv("NVIDIA_API_KEY"),
         base_url=os.getenv("NVIDIA_LLM_URL", "https://integrate.api.nvidia.com/v1"),
-        model=os.getenv("NVIDIA_LLM_MODEL", "meta/llama-3.1-8b-instruct"),
+        model=os.getenv("NVIDIA_LLM_MODEL", "nvidia/nemotron-3-nano-30b-a3b"),
+        params=BaseOpenAILLMService.InputParams(
+            temperature=temperature,
+            top_p=top_p,
+            **(
+                {"extra": {"extra_body": {"chat_template_kwargs": {"enable_thinking": enable_thinking}}}}
+                if enable_thinking is not None
+                else {}
+            ),
+        ),
     )
 
     # ASR service config - add extended stop_history for multilingual mode
@@ -210,7 +228,7 @@ async def run_bot(webrtc_connection):
     )
 
     # Create audio_dumps directory if it doesn't exist
-    audio_dumps_dir = Path(__file__).parent / "audio_dumps"
+    audio_dumps_dir = Path(os.getenv("AUDIO_DUMP_PATH", str(Path(__file__).parent / "audio_dumps")))
     audio_dumps_dir.mkdir(exist_ok=True)
 
     asr_recorder = AudioRecorder(
@@ -229,28 +247,44 @@ async def run_bot(webrtc_connection):
     stt_transcript_synchronization = UserTranscriptSynchronization()
     tts_transcript_synchronization = BotTranscriptSynchronization()
 
+    def _validated_selector(raw_value: str | None, default: str) -> str:
+        selector = (raw_value or "").strip() or default
+        if "/" not in selector:
+            raise ValueError("SYSTEM_PROMPT_SELECTOR must be in '<model>/<prompt>' format")
+        return selector
+
     if MULTILINGUAL_MODE:
-        prompt_selector = os.getenv(
-            "SYSTEM_PROMPT_SELECTOR", "llama-3_3-nemotron-super-49b-v1_5/multilingual_voice_assistant"
-        ).strip()
+        prompt_selector = _validated_selector(
+            os.getenv("SYSTEM_PROMPT_SELECTOR"),
+            "llama-3.3-nemotron-super-49b-v1.5/multilingual_voice_assistant",
+        )
         lang_codes = ", ".join(tts.list_available_voices().keys())
-        system_prompt = _inject_prompt_variables(_resolve_system_prompt(prompt_selector), lang_codes=lang_codes)
+        messages = _resolve_prompt(prompt_selector)
+        messages = [
+            {"role": msg["role"], "content": _inject_prompt_variables(msg["content"], lang_codes=lang_codes)}
+            for msg in messages
+        ]
         logger.info(f"Loaded multilingual prompt: {prompt_selector} with languages: {lang_codes}")
     else:
-        prompt_selector = os.getenv("SYSTEM_PROMPT_SELECTOR", "llama-3.1-8b-instruct/flowershop").strip()
-        system_prompt = _resolve_system_prompt(prompt_selector)
+        prompt_selector = _validated_selector(
+            os.getenv("SYSTEM_PROMPT_SELECTOR"),
+            "nemotron-3-nano/generic_voice_assistant",
+        )
+        messages = _resolve_prompt(prompt_selector)
         logger.info(f"Loaded prompt: {prompt_selector}")
 
-    messages = [{"role": "system", "content": system_prompt}]
-    context = OpenAILLMContext(messages)
+    # Defensive check to ensure the resolved prompt is not empty
+    if not messages:
+        raise ValueError(f"Resolved system prompt has no messages for selector: {prompt_selector}")
+
+    context = LLMContext(messages)
 
     # Configure speculative speech processing based on environment variable
     enable_speculative_speech = os.getenv("ENABLE_SPECULATIVE_SPEECH", "true").lower() == "true"
-    raw_chat_history = os.getenv("CHAT_HISTORY_LIMIT")
     try:
-        chat_history_limit = int(raw_chat_history) if raw_chat_history is not None else 20
+        chat_history_limit = int(os.getenv("CHAT_HISTORY_LIMIT", "20"))
     except ValueError:
-        logger.warning(f"Invalid CHAT_HISTORY_LIMIT {raw_chat_history!r}, falling back to default 20")
+        logger.warning("Invalid CHAT_HISTORY_LIMIT, falling back to default 20")
         chat_history_limit = 20
 
     if enable_speculative_speech:
@@ -307,7 +341,13 @@ async def run_bot(webrtc_connection):
             await task.queue_frames(
                 [
                     RivaFetchVoicesFrame(),
-                    RTVIServerMessageFrame(data={"type": "system_prompt", "prompt": messages[0]["content"]}),
+                    RTVIServerMessageFrame(
+                        data={
+                            "type": "system_prompt",
+                            "prompts": messages,
+                            "prompt": messages[0]["content"],
+                        }
+                    ),
                 ]
             )
         except Exception as e:

@@ -29,7 +29,7 @@ export function Transcripts(props: Props) {
   const [transcripts, setTranscripts] = useState<AugmentedMessage[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Clear transcripts when a new WebSocket connection is established
+  // Clear transcripts when a new connection is established
   useEffect(() => {
     if (props.dataChannel) {
       console.log("New DataChannel connection detected, clearing old transcripts");

@@ -16,7 +16,6 @@ interface LabeledSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
   onChange: (value: string) => void;
   placeholder?: string;
   dimmed?: boolean;
-  onReselect?: (value: string) => void;
   containerClassName?: string;
 }
 
@@ -27,7 +26,6 @@ export function LabeledSelect({
   onChange,
   placeholder = "Select an option",
   dimmed = false,
-  onReselect,
   containerClassName = "",
   className = "",
   disabled,
@@ -37,15 +35,6 @@ export function LabeledSelect({
   const normalizedOptions: SelectOption[] = options.map((opt) =>
     typeof opt === "string" ? { value: opt, label: opt } : opt
   );
-
-  const handleClick = (e: React.MouseEvent<HTMLSelectElement>) => {
-    if (onReselect) {
-      const target = e.target as HTMLSelectElement;
-      if (target.value && target.value === value) {
-        onReselect(target.value);
-      }
-    }
-  };
 
   return (
     <div className={containerClassName}>
@@ -60,7 +49,6 @@ export function LabeledSelect({
         } ${className}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onClick={handleClick}
         disabled={disabled}
         {...props}
       >

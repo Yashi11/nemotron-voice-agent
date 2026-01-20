@@ -17,9 +17,9 @@ export interface VoiceSelectorRef {
 
 interface VoiceSelectorProps {
   voices: VoicesMap;
-  // selectedVoice: string;
   onVoiceChange: (language: string, voice: string) => void;
   isZeroshotModel?: boolean;
+  initialVoiceId?: string;  // Preferred voice id to select on init (if available)
   activeCustomPromptId?: string;  // ID of active custom prompt (empty = none selected)
   customPromptName?: string;
   uploadedPrompts?: UploadedPrompt[];
@@ -30,9 +30,9 @@ interface VoiceSelectorProps {
 
 export const VoiceSelector = forwardRef<VoiceSelectorRef, VoiceSelectorProps>(function VoiceSelector({
   voices,
-  // selectedVoice,
   onVoiceChange,
   isZeroshotModel = false,
+  initialVoiceId,
   activeCustomPromptId = "",
   customPromptName = "",
   uploadedPrompts = [],
@@ -100,18 +100,40 @@ export const VoiceSelector = forwardRef<VoiceSelectorRef, VoiceSelectorProps>(fu
   const [selectedLanguage, setSelectedLanguage] = useState<string>(Object.keys(voices)[0] || "");
   const [selectedVoice, setSelectedVoice] = useState<[string, string]>([selectedLanguage, voices[selectedLanguage]?.voices[0] || ""]);
 
-  // Initialize when voices arrive from backend - fix stale state by using local variable
+  // Initialize when voices arrive; prefer initialVoiceId if provided and available
   useEffect(() => {
-    const firstLang = Object.keys(voices)[0] || "";
-    const firstVoice = voices[firstLang]?.voices[0] || "";
-    setSelectedLanguage(firstLang);
-    setSelectedVoice([firstLang, firstVoice]);
+    if (isInitializedRef.current) return;
+
+    const entries = Object.entries(voices);
+    if (entries.length === 0) return;
+
+    // Try to find the language containing initialVoiceId
+    let initLang = "";
+    let initVoice = "";
+    if (initialVoiceId) {
+      for (const [lang, data] of entries) {
+        const match = data?.voices?.find((v: string) => v === initialVoiceId);
+        if (match) {
+          initLang = lang;
+          initVoice = match;
+          break;
+        }
+      }
+    }
+
+    // Fallback to first available
+    if (!initLang) {
+      initLang = entries[0][0];
+      initVoice = entries[0][1]?.voices?.[0] || "";
+    }
+
+    setSelectedLanguage(initLang);
+    setSelectedVoice([initLang, initVoice]);
     
-    // Mark as initialized after first voices load
-    if (firstLang && firstVoice) {
+    if (initLang && initVoice) {
       isInitializedRef.current = true;
     }
-  }, [voices]);
+  }, [voices, initialVoiceId]);
 
   // When language changes, update voice to first available for that language
   // Skip if backend already set a valid voice for this language
@@ -221,8 +243,9 @@ export const VoiceSelector = forwardRef<VoiceSelectorRef, VoiceSelectorProps>(fu
             label="Language:"
             options={languageCodes}
             value={selectedLanguage}
-            onChange={(value) => setSelectedLanguage(value)}
-            // onReselect={onVoiceChange}
+            onChange={(value) => {
+              setSelectedLanguage(value);
+            }}
             placeholder="Select a language"
             dimmed={hasActiveCustomPrompt}
             disabled={true}
@@ -231,7 +254,9 @@ export const VoiceSelector = forwardRef<VoiceSelectorRef, VoiceSelectorProps>(fu
             label="Default Voices:"
             options={voices[selectedLanguage]?.voices || []}
             value={selectedVoice[1]}
-            onChange={(value) => setSelectedVoice([selectedLanguage, value])}
+            onChange={(value) => {
+              setSelectedVoice([selectedLanguage, value]);
+            }}
             placeholder="Select a voice"
             dimmed={hasActiveCustomPrompt}
             containerClassName="mb-3"

@@ -17,7 +17,8 @@ import { Header } from "./components/ui/header";
 
 function App() {
   // UI state
-  const [currentPrompt, setCurrentPrompt] = useState<string>("");
+  type RolePrompt = { role: "system" | "user" | "assistant"; content: string };
+  const [currentPrompts, setCurrentPrompts] = useState<RolePrompt[]>([]);
   const [started, setStarted] = useState<boolean>(false);
   const [showConfig, setShowConfig] = useState<boolean>(false);
   const [pendingStart, setPendingStart] = useState<boolean>(false);
@@ -41,6 +42,8 @@ function App() {
   // Track if we've already synced for this connection
   const hasSyncedRef = useRef<boolean>(false);
   const syncInProgressRef = useRef<boolean>(false);
+  // Track if begin_conversation has been sent this session (prevents duplicates)
+  const conversationStartedRef = useRef<boolean>(false);
   
   // Ref to VoiceSelector for backend-triggered updates
   const voiceSelectorRef = useRef<VoiceSelectorRef>(null);
@@ -50,17 +53,51 @@ function App() {
     defaultVoice: "", 
     customPromptId: "" 
   });
+  const currentPromptsRef = useRef<RolePrompt[]>([]);
+  // Base prompts cache - stores prompts before session starts, never includes runtime turns
+  const basePromptsRef = useRef<RolePrompt[]>([]);
+
+  const sanitizePrompts = useCallback(
+    (prompts: any): RolePrompt[] => {
+      if (!Array.isArray(prompts)) return [];
+      return prompts
+        .map((p) => {
+          const role = typeof p?.role === "string" ? p.role : "system";
+          const content = typeof p?.content === "string" ? p.content : "";
+          return { role: role as RolePrompt["role"], content };
+        })
+        .filter(
+          (p) =>
+            ["system", "user", "assistant"].includes(p.role) &&
+            p.content.trim().length > 0
+        );
+    },
+    []
+  );
+
+  const promptsPayload = useCallback(() => {
+    const sanitized = sanitizePrompts(currentPrompts);
+    return sanitized.length ? sanitized : [];
+  }, [currentPrompts, sanitizePrompts]);
+
+  // Ensure the prompt edit panel stays available while we still have cached prompts
+  useEffect(() => {
+    setHasSystemPrompt(currentPrompts.length > 0);
+    currentPromptsRef.current = currentPrompts;
+  }, [currentPrompts]);
+
+  // When session stops, restore from base prompts (excludes any runtime messages like intro)
+  useEffect(() => {
+    if (!started && basePromptsRef.current.length > 0) {
+      setCurrentPrompts(basePromptsRef.current);
+    }
+  }, [started]);
 
   const webRTC = usePipecatWebRTC({
     url: RTC_OFFER_URL,
     rtcConfig: RTC_CONFIG,
     onError: (e) => toast.error(e.message),
   });
-
-
-  useEffect(() => {
-    console.log("Voices By Language: ", voicesByLanguage);
-  }, [voicesByLanguage]);
 
 
   // When connected via Configure, show config panel until Save; hide when save is clicked
@@ -71,7 +108,6 @@ function App() {
     if (webRTC.status !== "connected") {
       setShowConfig(false);
       setStarted(false);
-      setHasSystemPrompt(false);
     }
   }, [webRTC.status, started]);
 
@@ -81,9 +117,10 @@ function App() {
     const ch = webRTC.dataChannel as RTCDataChannel | null;
     if (!ch) return;
     const sendStart = () => {
-      if (currentPrompt.trim()) {
+      const promptData = promptsPayload();
+      if (promptData.length > 0) {
         ch.send(
-          JSON.stringify({ id: "prompt-start", label: "rtvi-ai", type: "client-message", data: { t: "context_reset", d: currentPrompt.trim() } })
+          JSON.stringify({ id: "prompt-start", label: "rtvi-ai", type: "client-message", data: { t: "context_reset", d: promptData } })
         );
       }
       if (selectedVoice.trim()) {
@@ -104,10 +141,9 @@ function App() {
       }
       
       // If no prompts to sync OR prompts were already synced during configure, begin conversation immediately
-      // Check if prompts were already synced by checking hasSyncedRef
       const needsSync = uploadedPrompts.length > 0 && !hasSyncedRef.current;
       if (!needsSync) {
-        ch.send(JSON.stringify({ id: "begin-conversation", label: "rtvi-ai", type: "client-message", data: { t: "begin_conversation" } }));
+        beginConversation(ch);
       }
       
       setStarted(true);
@@ -116,7 +152,7 @@ function App() {
     };
     if (ch.readyState === "open") sendStart();
     else ch.onopen = sendStart;
-  }, [pendingStart, webRTC.status, started, currentPrompt, selectedVoice, uploadedPrompts.length]);
+  }, [pendingStart, webRTC.status, started, promptsPayload, selectedVoice, uploadedPrompts.length]);
 
   // Handle TTS messages from RTVI data channel (ignore transcripts)
   useEffect(() => {
@@ -196,15 +232,32 @@ function App() {
             // No last session state - sync with backend's current state
             if (!selectedVoice && backendVoiceId) {
               setSelectedVoice(backendVoiceId);
+            // Cache backend-provided default voice for subsequent reconnects
+            lastSessionVoiceRef.current = {
+              defaultVoice: backendVoiceId,
+              customPromptId: lastSessionVoiceRef.current.customPromptId,
+            };
             }
             
             if (zeroShotPrompt) {
               // Backend has custom prompt active
               const matchingUploadedPrompt = uploadedPrompts.find(p => p.name === zeroShotPrompt);
               setActiveCustomPromptId(matchingUploadedPrompt ? matchingUploadedPrompt.id : "backend");
+            // Cache custom prompt selection alongside the current voice
+            lastSessionVoiceRef.current = {
+              defaultVoice: lastSessionVoiceRef.current.defaultVoice || backendVoiceId,
+              customPromptId: matchingUploadedPrompt ? matchingUploadedPrompt.id : "backend",
+            };
             } else {
               // No custom prompt active
               setActiveCustomPromptId("");
+            // If we learned the backend voice, keep it cached even without custom prompt
+            if (backendVoiceId) {
+              lastSessionVoiceRef.current = {
+                defaultVoice: backendVoiceId,
+                customPromptId: "",
+              };
+            }
             }
           }
         } else if (payload?.type === "tts_update_settings") {
@@ -216,32 +269,54 @@ function App() {
             voiceSelectorRef.current?.setVoiceFromBackend(newLanguage, newVoiceId);
           }
         }
-        else if (payload?.type === "system_prompt" && typeof payload.prompt === "string") {
-          setCurrentPrompt(payload.prompt);
-          setHasSystemPrompt(true);
+        else if (payload?.type === "system_prompt") {
+          // Only accept backend prompts if we don't have cached base prompts
+          // basePromptsRef stores the pristine prompts before any session starts
+          if (basePromptsRef.current.length === 0) {
+            const promptsArray = Array.isArray(payload.prompts) ? payload.prompts : [];
+            const fallbackPrompt = typeof payload.prompt === "string" ? payload.prompt : "";
+            const parsed = sanitizePrompts(
+              promptsArray.length > 0 ? promptsArray : [{ role: "system", content: fallbackPrompt }]
+            );
+            basePromptsRef.current = parsed;
+            setCurrentPrompts(parsed);
+            setHasSystemPrompt(parsed.length > 0);
+          }
         }
       } catch {}
     };
     ch.addEventListener("message", onMessage);
     return () => ch.removeEventListener("message", onMessage);
-  }, [webRTC.status, selectedVoice, uploadedPrompts]);
+  }, [webRTC.status, selectedVoice, uploadedPrompts, sanitizePrompts]);
 
-  // const voices = useMemo(() => Object.values(voicesByLanguage).flatMap((v) => v.voices || []), [voicesByLanguage]);
-
-  // Reset sync flag when disconnected
+  // Reset sync flags when disconnected
   useEffect(() => {
     if (webRTC.status !== "connected") {
-      console.log("Resetting sync flag because status is:", webRTC.status);
+      console.log("Resetting sync flags because status is:", webRTC.status);
       hasSyncedRef.current = false;
       syncInProgressRef.current = false;
+      conversationStartedRef.current = false;
     }
-  }, [webRTC.status, webRTC]);
+  }, [webRTC.status]);
+
+  // Helper to send begin_conversation exactly once per session
+  const beginConversation = useCallback((ch: RTCDataChannel) => {
+    if (conversationStartedRef.current) return;
+    if (ch.readyState !== "open") return;
+    conversationStartedRef.current = true;
+    ch.send(JSON.stringify({ 
+      id: "begin-conversation", 
+      label: "rtvi-ai", 
+      type: "client-message", 
+      data: { t: "begin_conversation" } 
+    }));
+  }, []);
 
   const handleVoiceChange = useCallback(
     (language: string, voice: string) => {
-      // setSelectedVoice(v);
       const ch = webRTC.status === "connected" ? webRTC.dataChannel : null;
-      if (ch && language && voice) {
+      if (ch && ch.readyState === "open" && language && voice) {
+        setSelectedVoice(voice);
         // Selecting default voice will automatically deselect custom prompts on backend
         setActiveCustomPromptId("");  // Clear UI selection immediately for responsiveness
         
@@ -267,11 +342,24 @@ function App() {
             } 
           })
         );
-        toast.success(`Switched to default voice: ${voice}`);
+        toast.success(`Switched voice: ${voice}`);
+      } else {
+        console.warn("Voice change ignored; data channel not open or missing language/voice.");
       }
     },
     [webRTC.status, webRTC]
   );
+
+  const handlePromptChange = useCallback((index: number, content: string) => {
+    setCurrentPrompts((prev) => {
+      if (index < 0 || index >= prev.length) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], content };
+      // Also update basePromptsRef so user edits persist across stop/start
+      basePromptsRef.current = next;
+      return next;
+    });
+  }, []);
 
 
   const handleFileUpload = useCallback(async (file: File, isReSync: boolean = false, existingPromptId?: string) => {
@@ -491,14 +579,8 @@ function App() {
       // Begin conversation after re-sync completes
       if (started) {
         const ch = (webRTC as any).dataChannel as RTCDataChannel | null;
-        if (ch && ch.readyState === "open") {
-          console.log("Triggering conversation start after re-sync");
-          ch.send(JSON.stringify({ 
-            id: "begin-conversation-post-sync", 
-            label: "rtvi-ai", 
-            type: "client-message", 
-            data: { t: "begin_conversation" } 
-          }));
+        if (ch) {
+          beginConversation(ch);
         }
       }
     }, 2000); // Wait 2 seconds for backend to be ready
@@ -569,22 +651,29 @@ function App() {
             <>
               {!started && showConfig && hasSystemPrompt && (
                 <div className="mt-4">
-                  <div className="text-sm text-gray-600 mb-2">Edit Prompt:</div>
-                  <div className="h-80">
-                    <PromptInput
-                      defaultValue={currentPrompt}
-                      onChange={(p) => setCurrentPrompt(p)}
-                      disabled={false}
-                    />
+                  <div className="text-sm text-gray-600 mb-2">Edit Prompts:</div>
+                  <div className="space-y-4 max-h-80 overflow-y-auto">
+                    {currentPrompts.map((p, idx) => (
+                      <div key={`${p.role}-${idx}`} className="h-60">
+                        <div className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                          {p.role} prompt
+                        </div>
+                        <PromptInput
+                          defaultValue={p.content}
+                          onChange={(val) => handlePromptChange(idx, val)}
+                          disabled={false}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
               <VoiceSelector 
                 ref={voiceSelectorRef}
                 voices={voicesByLanguage} 
-                // selectedVoice={selectedVoice} 
                 onVoiceChange={handleVoiceChange}
                 isZeroshotModel={isZeroshotModel}
+                initialVoiceId={lastSessionVoiceRef.current.defaultVoice}
                 activeCustomPromptId={activeCustomPromptId}
                 customPromptName={customPromptName}
                 uploadedPrompts={uploadedPrompts}
@@ -617,15 +706,15 @@ function App() {
                 // If config is open, require Save first
                 if (showConfig) return;
                 const ch = (webRTC as any).dataChannel as RTCDataChannel | null;
-                if (hasSystemPrompt && ch && currentPrompt.trim()) {
-                  ch.send(JSON.stringify({ id: "prompt-start", label: "rtvi-ai", type: "client-message", data: { t: "context_reset", d: currentPrompt.trim() } }));
+                const promptData = promptsPayload();
+                if (hasSystemPrompt && ch && promptData.length > 0) {
+                  ch.send(JSON.stringify({ id: "prompt-start", label: "rtvi-ai", type: "client-message", data: { t: "context_reset", d: promptData } }));
                 }
                 
                 // If no prompts to sync OR prompts were already synced during configure, begin conversation immediately
-                // Check if prompts were already synced by checking hasSyncedRef
                 const needsSync = uploadedPrompts.length > 0 && !hasSyncedRef.current;
                 if (ch && !needsSync) {
-                  ch.send(JSON.stringify({ id: "begin-conversation", label: "rtvi-ai", type: "client-message", data: { t: "begin_conversation" } }));
+                  beginConversation(ch);
                 }
                 
                 setStarted(true);
@@ -680,8 +769,9 @@ function App() {
               className="bg-nvidia px-4 py-2 rounded-lg text-white ml-3"
               onClick={() => {
                 const ch = (webRTC as any).dataChannel as RTCDataChannel | null;
-                if (hasSystemPrompt && ch && (currentPrompt || "").trim()) {
-                  ch.send(JSON.stringify({ id: "prompt-save", label: "rtvi-ai", type: "client-message", data: { t: "context_reset", d: (currentPrompt || "").trim() } }));
+                const promptData = promptsPayload();
+                if (hasSystemPrompt && ch && promptData.length > 0) {
+                  ch.send(JSON.stringify({ id: "prompt-save", label: "rtvi-ai", type: "client-message", data: { t: "context_reset", d: promptData } }));
                 }
                 setShowConfig(false);
                 toast.success("Configuration saved");
