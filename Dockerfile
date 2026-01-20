@@ -26,11 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # App directory setup
 WORKDIR /app
 
-# App files
-COPY . ./examples/voice_agent_webrtc/
-
-# Example app directory
-WORKDIR /app/examples/voice_agent_webrtc
+# Copy project files
+COPY pyproject.toml uv.lock ./
+COPY src ./src
+COPY config ./config
+COPY nvidia-pipecat ./nvidia-pipecat
 
 # Dependencies
 RUN uv venv && . .venv/bin/activate && uv sync --frozen
@@ -39,4 +39,4 @@ RUN uv venv && . .venv/bin/activate && uv sync --frozen
 EXPOSE 7860
 
 # Start command
-CMD ["uv", "run", "pipeline.py"]
+CMD ["uv", "run", "src/pipeline.py"]

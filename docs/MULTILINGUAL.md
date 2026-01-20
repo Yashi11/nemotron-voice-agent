@@ -56,34 +56,53 @@ Language: es-US Text: Hola! Que tipo de flores necesita? MetaData: initial conta
 
 ---
 
-## Enabling Multilingual Mode
+## Deploying with Multilingual Mode
 
-### Environment Variable Configuration
+Follow these steps to deploy the multilingual voice agent:
 
-Set the environment variables for multilingual mode:
+### Step 1: Copy the Environment Configuration
+
+Copy the template environment file to create your configuration:
 
 ```bash
-export ENABLE_MULTILINGUAL=true
-export RIVA_ASR_MODEL=parakeet-rnnt-1.1b-unified-ml-cs-universal-multi-asr-streaming
-export SYSTEM_PROMPT_SELECTOR=llama-3.3-nemotron-super-49b-v1.5/multilingual_voice_assistant
-export NVIDIA_LLM_MODEL=nvidia/llama-3.3-nemotron-super-49b-v1.5
+cp config/env.example .env
 ```
 
-### Deployment Configuration
+### Step 2: Update .env for Multilingual Mode
 
-For Docker Compose deployments:
+Edit the `.env` file and update the following settings:
 
-1. **Set the container configuration**
+1. **Enable multilingual mode:**
    ```bash
-   export NVIDIA_LLM_IMAGE=nvcr.io/nim/nvidia/llama-3.3-nemotron-super-49b-v1.5:1.15.4
-   export RIVA_ASR_IMAGE=nvcr.io/nim/nvidia/parakeet-1-1b-rnnt-multilingual:1.4.0
-   export RIVA_ASR_TAGS=mode=str
+   ENABLE_MULTILINGUAL=true
    ```
 
-2. **Deploy with Docker Compose**
+2. **Configure multilingual ASR:**
    ```bash
-   docker compose up
+   RIVA_ASR_IMAGE=nvcr.io/nim/nvidia/parakeet-1-1b-rnnt-multilingual:1.4.0
+   RIVA_ASR_MODEL=parakeet-rnnt-1.1b-unified-ml-cs-universal-multi-asr-streaming
+   RIVA_ASR_NIM_TAGS=mode=str
    ```
+
+3. **Configure LLM for multilingual (uncomment OPTION 2 block):**
+   ```bash
+   NVIDIA_LLM_IMAGE=nvcr.io/nim/nvidia/llama-3.3-nemotron-super-49b-v1.5:1.15.4
+   NVIDIA_LLM_MODEL=nvidia/llama-3.3-nemotron-super-49b-v1.5
+   TEMPERATURE=0
+   TOP_P=1.0
+   NIM_ENABLE_KV_CACHE_REUSE=1
+   SYSTEM_PROMPT_SELECTOR=llama-3.3-nemotron-super-49b-v1.5/multilingual_voice_assistant
+   ```
+
+   **Note:** Comment out the default OPTION 1 (Nemotron-3-Nano) configuration.
+
+### Step 3: Deploy with Docker Compose
+
+Start the multilingual voice agent:
+
+```bash
+docker compose up -d
+```
 
 ---
 

@@ -57,7 +57,7 @@ from nvidia_pipecat.services.riva_speech import RivaASRService, RivaTTSService
 
 load_dotenv(override=True)
 
-PROMPT_FILE = Path(os.getenv("PROMPT_FILE_PATH", str(Path(__file__).parent / "prompt.yaml")))
+PROMPT_FILE = Path(os.getenv("PROMPT_FILE_PATH", str(Path(__file__).parent.parent / "config" / "prompt.yaml")))
 MULTILINGUAL_MODE = os.getenv("ENABLE_MULTILINGUAL", "false").lower() == "true"
 
 
@@ -200,7 +200,7 @@ async def run_bot(webrtc_connection):
     stt = RivaASRService(**stt_config)
 
     # Load IPA dictionary with error handling
-    ipa_file = Path(__file__).parent / "ipa.json"
+    ipa_file = os.getenv("TTS_IPA_FILE_PATH", Path(__file__).parent.parent / "config" / "ipa.json")
     try:
         with open(ipa_file, encoding="utf-8") as f:
             ipa_dict = json.load(f)
@@ -228,7 +228,7 @@ async def run_bot(webrtc_connection):
     )
 
     # Create audio_dumps directory if it doesn't exist
-    audio_dumps_dir = Path(os.getenv("AUDIO_DUMP_PATH", str(Path(__file__).parent / "audio_dumps")))
+    audio_dumps_dir = Path(os.getenv("AUDIO_DUMP_PATH", str(Path(__file__).parent.parent / "audio_dumps")))
     audio_dumps_dir.mkdir(exist_ok=True)
 
     asr_recorder = AudioRecorder(

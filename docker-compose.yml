@@ -1,4 +1,4 @@
-name: voice-agents-webrtc
+name: nemotron-voice-agent
 
 services:
   riva-tts-magpie:
@@ -52,7 +52,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 10
-      start_period: 1200s # Longer startup for TensorRT engine compilation on first run
+      start_period: 3000s # Longer startup for TensorRT engine compilation on first run
     deploy:
       resources:
         reservations:
@@ -99,15 +99,15 @@ services:
         max-file: "5"
 
   python-app:
+    image: nvstaging/blueprint/nemotron-voice-agent:${IMAGE_VERSION:-dev}
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "7860:7860"
     volumes:
-      - ./audio_dumps:/app/examples/voice_agent_webrtc/audio_dumps
-      - ./prompt.yaml:/app/examples/voice_agent_webrtc/prompt.yaml:ro
-      - ./ipa.json:/app/examples/voice_agent_webrtc/ipa.json:ro
+      - ./audio_dumps:/app/audio_dumps
+      - ./config/:/app/config/
     env_file:
       - .env
     environment:
@@ -139,6 +139,7 @@ services:
         max-file: "5"
 
   ui-app:
+    image: nvstaging/blueprint/nemotron-voice-agent-ui:${IMAGE_VERSION:-dev}
     build:
       context: ./webrtc_ui
       dockerfile: Dockerfile

@@ -1,4 +1,4 @@
-name: voice-agent-webrtc-jetson
+name: nemotron-voice-agent-jetson
 
 volumes:
   nim_cache:
@@ -13,7 +13,7 @@ services:
     image: nvcr.io/nvidia/vllm:25.10-py3
     container_name: llm-nvidia-jetson
     env_file:
-      - .env.jetson
+      - .env
     ports:
       - "9000:8000"
     volumes:
@@ -49,16 +49,16 @@ services:
 
   python-app:
     build:
-      context: ./
+      context: .
       dockerfile: Dockerfile
+    image: nvstaging/blueprint/nemotron-voice-agent:${IMAGE_VERSION:-dev}
     container_name: voice-agent-webrtc-jetson
     network_mode: host
     env_file:
-      - .env.jetson
+      - .env
     volumes:
-      - ./audio_dumps:/app/examples/voice_agent_webrtc/audio_dumps
-      - ./prompt.yaml:/app/examples/voice_agent_webrtc/prompt.yaml:ro
-      - ./ipa.json:/app/examples/voice_agent_webrtc/ipa.json:ro
+      - ./audio_dumps:/app/audio_dumps
+      - ./config:/app/config
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:7860/ || exit 1"]
@@ -74,8 +74,8 @@ services:
     build:
       context: ./webrtc_ui
       dockerfile: Dockerfile
+    image: nvstaging/blueprint/nemotron-voice-agent-ui:${IMAGE_VERSION:-dev}
     container_name: webrtc-ui-jetson
     ports:
       - "8081:8000"
     restart: unless-stopped
-

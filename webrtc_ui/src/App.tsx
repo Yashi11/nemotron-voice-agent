@@ -151,7 +151,7 @@ function App() {
       setPendingStart(false);
     };
     if (ch.readyState === "open") sendStart();
-    else ch.onopen = sendStart;
+    else ch.addEventListener("open", sendStart, { once: true });
   }, [pendingStart, webRTC.status, started, promptsPayload, selectedVoice, uploadedPrompts.length]);
 
   // Handle TTS messages from RTVI data channel (ignore transcripts)
