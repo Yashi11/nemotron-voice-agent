@@ -13,32 +13,34 @@ This guide covers deploying the NVIDIA Voice Agent on Jetson Thor using Docker C
 ## Project Structure
 
 ```
-examples/voice_agent_webrtc/
+./
 ├── docker-compose.jetson.yml   # Jetson-specific deployment
-└── env.jetson.example          # Template for .env.jetson
+└── config
+    └── env.jetson.example          # Template for .env.jetson
 ```
 > **Note:** This deployment uses vLLM for LLM inference instead of NVIDIA NIM. NIMs use TensorRT-LLM which provides optimized, pre-compiled inference engines for specific GPU architectures. Since Jetson Thor NIMs are not yet available, vLLM serves as a flexible alternative that can load HuggingFace models directly. Once Jetson Thor NIMs are released, they can be swapped in for improved inference performance.
 
-## Step 1: Clone Project
-
-On your Jetson Thor device:
+## Step 1: Clone and Navigate
 
 ```bash
-git clone https://github.com/NVIDIA/voice-agent-examples.git
-cd voice-agent-examples
+git clone git@github.com:NVIDIA-AI-Blueprints/nemotron-voice-agent.git
+cd nemotron-voice-agent
 ```
 
-## Step 2: Navigate to Example Folder
+### Step 2: Configure Environment
+
+Copy the example environment file to the root directory:
 
 ```bash
-cd examples/voice_agent_webrtc
+cp config/env.jetson.example .env
 ```
 
-## Step 3: Configure Environment Variables
+Update the `.env` file with your API keys:
 
 ```bash
-cp env.jetson.example .env.jetson
-nano .env.jetson
+# Required
+NVIDIA_API_KEY=nvapi-xxxxxxxxxxxxxxxxxxxxx
+HF_TOKEN=xxxxxxx
 ```
 
 ## Step 4: Deploy Riva ASR/TTS
@@ -102,8 +104,8 @@ Available models:
 To switch:
 
 ```bash
-# Update NVIDIA_LLM_MODEL in .env.jetson
-nano .env.jetson
+# Update NVIDIA_LLM_MODEL in .env
+nano .env
 
 # Restart all services (no rebuild needed for model changes)
 sudo docker compose -f docker-compose.jetson.yml down
