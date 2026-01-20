@@ -16,7 +16,7 @@ This guide covers deploying the NVIDIA Voice Agent on Jetson Thor using Docker C
 ./
 ├── docker-compose.jetson.yml   # Jetson-specific deployment
 └── config
-    └── env.jetson.example          # Template for .env.jetson
+    └── env.jetson.example          # Template for .env
 ```
 > **Note:** This deployment uses vLLM for LLM inference instead of NVIDIA NIM. NIMs use TensorRT-LLM which provides optimized, pre-compiled inference engines for specific GPU architectures. Since Jetson Thor NIMs are not yet available, vLLM serves as a flexible alternative that can load HuggingFace models directly. Once Jetson Thor NIMs are released, they can be swapped in for improved inference performance.
 
