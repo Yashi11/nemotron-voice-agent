@@ -1,4 +1,4 @@
-name: voice-agents-webrtc
+name: nemotron-voice-agent
 
 services:
   riva-tts-magpie:
@@ -105,9 +105,8 @@ services:
     ports:
       - "7860:7860"
     volumes:
-      - ./audio_dumps:/app/examples/voice_agent_webrtc/audio_dumps
-      - ./prompt.yaml:/app/examples/voice_agent_webrtc/prompt.yaml:ro
-      - ./ipa.json:/app/examples/voice_agent_webrtc/ipa.json:ro
+      - ./audio_dumps:/app/audio_dumps
+      - ./config/:/app/config/
     env_file:
       - .env
     environment:

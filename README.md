@@ -19,7 +19,7 @@ In this example, we showcase how to build a voice assistant pipeline using WebRT
 3. Copy and configure the environment file:
 
    ```bash
-   cp env.example .env  # and add your credentials
+   cp config/env.example .env  # and add your credentials
    ```
 
 4. Setup API keys in .env file:
@@ -93,15 +93,15 @@ export NGC_API_KEY=nvapi-... # <insert your key>
 docker login nvcr.io
 ```
 
-From the examples/voice_agent_webrtc directory, run below commands:
+From the repository root directory, run below commands:
 
 ```bash
-docker compose up --build -d
+docker compose -f deploy/docker-compose.yml up --build -d
 ```
 
 This will start all the required services. You should see output similar to the following:
 
-![Docker Compose Logs](./images/docker-compose-logs.png)
+![Docker Compose Logs](./docs/images/docker-compose-logs.png)
 
 Docker deployment might take 30-45 minutes first time. Once all services are up and running, visit `http://<machine-ip>:9000/` in your browser to start interacting with the application. See the next sections for detailed instructions on interacting with the app.
 
@@ -121,7 +121,7 @@ uv venv
 source .venv/bin/activate
 uv sync
 
-uv run pipeline.py
+uv run src/pipeline.py
 ```
 
 Then run the UI from [`../webrtc_ui/README.md`](../webrtc_ui/README.md).
@@ -130,7 +130,7 @@ visit `http://localhost:5173/` in your browser to start interacting with the app
 
 ## Start interacting with the application
 
-![UI Screenshot](./images/ui_webrtc.png)
+![UI Screenshot](./docs/images/ui_webrtc.png)
 
 Note: To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<machine-ip>:9000` (for docker method), `http://localhost:5173/` (for python method) to the list, and restart Chrome.
 
@@ -156,12 +156,12 @@ Note: To enable microphone access in Chrome, go to `chrome://flags/`, enable "In
 
   ### Switching system prompts
 
-  Set `SYSTEM_PROMPT_SELECTOR` (e.g., in `.env`) to the desired entry from `prompt.yaml` based on use-case. Use `/` as the path delimiter, for example `llama-3.1-8b-instruct/flowershop` or `llama-3.1-8b-instruct/generic_voice_assistant`.
+  Set `SYSTEM_PROMPT_SELECTOR` (e.g., in `.env`) to the desired entry from `config/prompt.yaml` based on use-case. Use `/` as the path delimiter, for example `llama-3.1-8b-instruct/flowershop` or `llama-3.1-8b-instruct/generic_voice_assistant`.
 
 #### Dynamically let LLM change TTS emotions
 
 - Set `SYSTEM_PROMPT_SELECTOR`="llama-8b/tts_emotion_tags" in .env file
-- While creating context aggregator in `pipeline.py` restrict `chat_history_limit` to 3:
+- While creating context aggregator in `src/pipeline.py` restrict `chat_history_limit` to 3:
   ```python
   context_aggregator = create_nvidia_context_aggregator(chat_history_limit=3)
   ```
@@ -189,7 +189,7 @@ Note: To enable microphone access in Chrome, go to `chrome://flags/`, enable "In
 
   - Check deployment hardware requirements on [NIM Documentation](https://docs.nvidia.com/nim/large-language-models/latest/supported-models.html#llama-33-70b-instruct)
   - Below steps assume 2xH100 for Llama 3.3-70B model and we will need atleast 300 GB filesystem memory.
-  - In your `docker-compose.yml` file, find the `nvidia-llm` service section.
+  - In your `deploy/docker-compose.yml` file, find the `nvidia-llm` service section.
   - Change the NIM image to 70B model: `nvcr.io/nim/meta/llama-3.3-70b-instruct:latest`
   - Update the `device_ids` to allocate at least two GPUs (for example, `['2', '3']`).
   - Update the environment variable under python-app service to `NVIDIA_LLM_MODEL=meta/llama-3.3-70b-instruct`
@@ -201,7 +201,7 @@ Note: To enable microphone access in Chrome, go to `chrome://flags/`, enable "In
 
   1. **Update Docker Compose Configuration**
 
-  Modify the `riva-tts-magpie` service in your docker-compose file with the following configuration:
+  Modify the `riva-tts-magpie` service in your `deploy/docker-compose.yml` file with the following configuration:
 
   ```yaml
     riva-tts-magpie:
@@ -260,7 +260,7 @@ Note: To enable microphone access in Chrome, go to `chrome://flags/`, enable "In
   To use a custom voice with zero-shot learning:
 
   - Add your audio prompt file to the workspace
-  - Mount the audio file into your container by adding a volume in your `docker-compose.yml` under the `python-app` service:
+  - Mount the audio file into your container by adding a volume in your `deploy/docker-compose.yml` under the `python-app` service:
     ```yaml
     services:
       python-app:
