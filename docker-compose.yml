@@ -52,7 +52,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 10
-      start_period: 1200s # Longer startup for TensorRT engine compilation on first run
+      start_period: 3000s # Longer startup for TensorRT engine compilation on first run
     deploy:
       resources:
         reservations:
@@ -99,6 +99,7 @@ services:
         max-file: "5"
 
   python-app:
+    image: nvstaging/blueprint/nemotron-voice-agent:${IMAGE_VERSION:-dev}
     build:
       context: .
       dockerfile: Dockerfile
@@ -138,6 +139,7 @@ services:
         max-file: "5"
 
   ui-app:
+    image: nvstaging/blueprint/nemotron-voice-agent-ui:${IMAGE_VERSION:-dev}
     build:
       context: ./webrtc_ui
       dockerfile: Dockerfile
