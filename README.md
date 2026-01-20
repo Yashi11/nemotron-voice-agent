@@ -38,6 +38,12 @@ git clone git@github.com:NVIDIA-AI-Blueprints/nemotron-voice-agent.git
 cd nemotron-voice-agent
 ```
 
+Initialize and update the git submodules:
+
+```bash
+git submodule update --init
+```
+
 ### Step 2: Configure Environment
 
 Copy the example environment file to the root directory:

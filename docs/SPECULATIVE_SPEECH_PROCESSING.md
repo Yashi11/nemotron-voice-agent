@@ -112,27 +112,17 @@ Speculative speech processing is enabled through a simple environment variable c
 
 The feature is controlled by the `ENABLE_SPECULATIVE_SPEECH` environment variable in the shared examples. The application automatically switches processors based on this flag—no code edits are needed.
 
-**For Docker Compose deployments:**
+**Configuration Steps:**
 
-Set the environment variable in your `docker-compose.yml` under the `python-app` service:
-
-```yaml
-environment:
-  - ENABLE_SPECULATIVE_SPEECH=${ENABLE_SPECULATIVE_SPEECH:-false}
-```
-
-**For local runs:**
-
-Export the environment variable before launching the application:
+1. Copy the `env.example` template to create your `.env` file (if not already done)
+2. Update the `ENABLE_SPECULATIVE_SPEECH` variable in your `.env` file:
 
 ```bash
 # Enable speculative speech processing
-export ENABLE_SPECULATIVE_SPEECH=true
-python bot.py
+ENABLE_SPECULATIVE_SPEECH=true
 
-# Disable speculative speech processing
-export ENABLE_SPECULATIVE_SPEECH=false
-python bot.py
+# Or disable speculative speech processing
+ENABLE_SPECULATIVE_SPEECH=false
 ```
 
 ### How It Works
