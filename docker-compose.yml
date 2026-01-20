@@ -99,7 +99,7 @@ services:
         max-file: "5"
 
   python-app:
-    image: nvstaging/blueprint/nemotron-voice-agent:${IMAGE_VERSION:-dev}
+    image: nvcr.io/nvstaging/blueprint/nemotron-voice-agent:${IMAGE_VERSION:-dev}
     build:
       context: .
       dockerfile: Dockerfile
@@ -139,7 +139,7 @@ services:
         max-file: "5"
 
   ui-app:
-    image: nvstaging/blueprint/nemotron-voice-agent-ui:${IMAGE_VERSION:-dev}
+    image: nvcr.io/nvstaging/blueprint/nemotron-voice-agent-ui:${IMAGE_VERSION:-dev}
     build:
       context: ./webrtc_ui
       dockerfile: Dockerfile
