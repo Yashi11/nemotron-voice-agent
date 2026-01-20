@@ -86,7 +86,7 @@ docker compose -f docker-compose.yml up --build -d
 - Open your browser and navigate to `http://<machine-ip>:9000/`
 
 
-### Optional: Deploy Coturn Server for Remote Access
+### Step 6: [Optional] Deploy Coturn Server for Remote Access
 
 If you need to access the application from remote locations or deploy on cloud platforms, you will need to configure a TURN server:
 
@@ -132,8 +132,18 @@ For more information, see [WebRTC TURN Server Documentation](https://webrtc.org/
 docker compose -f docker-compose.yml up --build -d
 ```
 
-## Start interacting with the application
+### Step 7: Start interacting with the application
 
 ![UI Screenshot](./docs/images/ui_webrtc.png)
 
 Note: To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<machine-ip>:9000` to the list, and restart Chrome.
+
+## Documentation
+
+- [Multilingual Support](docs/MULTILINGUAL.md) - Guide for building voice agents with multilingual capabilities
+- [Jetson Thor Deployment](docs/JETSON_THOR.md) - Deployment guide for NVIDIA Jetson Thor edge platform
+- [Customization Guide](docs/CUSTOMIZATION_GUIDE.md) - Configuration options for models, prompts, and deployment settings
+- [NVIDIA Pipecat](docs/NVIDIA_PIPECAT.md) - Overview of NVIDIA Pipecat services and processors for voice AI pipelines
+- [Best Practices](docs/BEST_PRACTICES.md) - Production deployment strategies and performance optimization guidelines
+- [Speculative Speech Processing](docs/SPECULATIVE_SPEECH_PROCESSING.md) - Advanced speech processing techniques for reduced latency
+- [WebRTC UI](webrtc_ui/README.md) - React-based WebRTC UI for voice agent interactions with microphone access
