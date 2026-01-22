@@ -305,6 +305,29 @@ docker compose up
 
 ---
 
+## Switching to WebSocket Transport
+
+By default, the Nemotron Voice Agent uses WebRTC for real-time communication. You can switch to WebSocket transport for different deployment scenarios or client requirements.
+
+Update your `.env` file to enable WebSocket transport:
+
+```bash
+# In .env file
+TRANSPORT=WEBSOCKET
+```
+
+Deploy with WebSocket
+
+```bash
+# Restart services to apply transport change
+docker compose down
+docker compose up
+```
+
+The system automatically loads the appropriate pipeline and UI based on the `TRANSPORT` setting. After starting the services, access the web interface through your browser at `http://your-server-ip:9000`.
+
+---
+
 ## Advanced Pipeline Customizations
 
 ### Speculative Speech Processing
