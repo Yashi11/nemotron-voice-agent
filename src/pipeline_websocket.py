@@ -28,6 +28,7 @@ from nvidia_pipecat.processors.nvidia_context_aggregator import (
 )
 from nvidia_pipecat.services.nvidia_llm import NvidiaLLMService
 from nvidia_pipecat.services.riva_speech import RivaASRService, RivaTTSService
+from nvidia_pipecat.utils.logging import setup_default_logging
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import LLMMessagesUpdateFrame
 from pipecat.pipeline.pipeline import Pipeline
@@ -42,6 +43,8 @@ from pipecat.transports.websocket.fastapi import (
 )
 
 load_dotenv(override=True)
+
+setup_default_logging(level="DEBUG", exclude_warning=True)
 
 PROMPT_FILE = Path(os.getenv("PROMPT_FILE_PATH", str(Path(__file__).parent.parent / "config" / "prompt.yaml")))
 MULTILINGUAL_MODE = os.getenv("ENABLE_MULTILINGUAL", "false").lower() == "true"
@@ -310,7 +313,8 @@ async def websocket_endpoint(websocket: WebSocket, stream_id: str):
     logger.info(f"WebSocket connection established from {websocket.client}")
 
     try:
-        await run_bot(websocket, stream_id)
+        with logger.contextualize(stream_id=stream_id):
+            await run_bot(websocket, stream_id)
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: {websocket.client}")
     except Exception as e:
