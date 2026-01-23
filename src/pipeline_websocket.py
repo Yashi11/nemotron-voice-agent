@@ -333,13 +333,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="WebSocket Voice Agent Pipeline")
     parser.add_argument("--host", default="0.0.0.0", help="Host for HTTP server (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=7860, help="Port for HTTP server (default: 7860)")
-    parser.add_argument("--verbose", "-v", action="count")
     args = parser.parse_args()
-
-    logger.remove(0)
-    if args.verbose:
-        logger.add(sys.stderr, level="TRACE")
-    else:
-        logger.add(sys.stderr, level="DEBUG")
 
     uvicorn.run(app, host=args.host, port=args.port)
