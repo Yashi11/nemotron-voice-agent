@@ -403,13 +403,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="WebRTC demo")
     parser.add_argument("--host", default="0.0.0.0", help="Host for HTTP server (default: localhost)")
     parser.add_argument("--port", type=int, default=7860, help="Port for HTTP server (default: 7860)")
-    parser.add_argument("--verbose", "-v", action="count")
+    parser.add_argument("--workers", type=int, default=1, help="Number of workers for HTTP server (default: 1)")
     args = parser.parse_args()
 
-    logger.remove(0)
-    if args.verbose:
-        logger.add(sys.stderr, level="TRACE")
-    else:
-        logger.add(sys.stderr, level="DEBUG")
-
-    uvicorn.run(app, host=args.host, port=args.port)
+    uvicorn.run(app, host=args.host, port=args.port, workers=args.workers)
