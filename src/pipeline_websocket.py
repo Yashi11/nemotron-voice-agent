@@ -109,6 +109,13 @@ async def run_bot(websocket: WebSocket, stream_id: str):
         websocket: The FastAPI WebSocket connection for audio streaming
         stream_id: The ID of the stream
     """
+    # Parse AUDIO_OUT_10MS_CHUNKS with error handling
+    try:
+        audio_out_10ms_chunks = int(os.getenv("AUDIO_OUT_10MS_CHUNKS", "10"))
+    except ValueError:
+        logger.warning("Invalid AUDIO_OUT_10MS_CHUNKS, falling back to default 10")
+        audio_out_10ms_chunks = 10
+    
     # Create FastAPI WebSocket transport
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
@@ -118,7 +125,7 @@ async def run_bot(websocket: WebSocket, stream_id: str):
             add_wav_header=True,
             audio_in_sample_rate=16000,
             audio_out_sample_rate=16000,
-            audio_out_10ms_chunks=10,
+            audio_out_10ms_chunks=audio_out_10ms_chunks,
             serializer=ProtobufFrameSerializer(),
             vad_analyzer=SileroVADAnalyzer() if VAD_PROFILE == VADProfile.SILERO else None,
         ),
