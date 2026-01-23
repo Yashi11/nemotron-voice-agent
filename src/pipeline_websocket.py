@@ -1,60 +1,50 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD 2-Clause License
 
-"""Voice Agent WebRTC Pipeline.
+"""Voice Agent WebSocket Pipeline.
 
-This module sets up a real-time speech-to-speech pipeline using WebRTC,
+This module sets up a real-time speech-to-speech pipeline using FastAPI WebSocket,
 enabling interactive voice agents with dynamic UI features like system prompt
 editing and TTS voice switching in real time.
 """
 
 import argparse
-import asyncio
+import contextlib
 import json
 import os
 import sys
-import uuid
 from enum import Enum
 from pathlib import Path
 
 import uvicorn
 import yaml
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
-from nvidia_pipecat.frames.riva import RivaFetchVoicesFrame
-from nvidia_pipecat.processors.audio_util import AudioRecorder
 from nvidia_pipecat.processors.nvidia_context_aggregator import (
     NvidiaTTSResponseCacher,
     create_nvidia_context_aggregator,
 )
-from nvidia_pipecat.processors.nvidia_rtvi import NvidiaRTVIInput, NvidiaRTVIObserver
-from nvidia_pipecat.processors.transcript_synchronization import (
-    BotTranscriptSynchronization,
-    UserTranscriptSynchronization,
-)
 from nvidia_pipecat.services.nvidia_llm import NvidiaLLMService
 from nvidia_pipecat.services.riva_speech import RivaASRService, RivaTTSService
+from nvidia_pipecat.utils.logging import setup_default_logging
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.frames.frames import (
-    InputAudioRawFrame,
-    TTSAudioRawFrame,
-)
+from pipecat.frames.frames import LLMMessagesUpdateFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
-from pipecat.processors.frameworks.rtvi import RTVIServerMessageFrame
+from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.services.openai.base_llm import BaseOpenAILLMService
-from pipecat.transports.base_transport import TransportParams
-from pipecat.transports.smallwebrtc.connection import (
-    IceServer,
-    SmallWebRTCConnection,
+from pipecat.transports.websocket.fastapi import (
+    FastAPIWebsocketParams,
+    FastAPIWebsocketTransport,
 )
-from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
 load_dotenv(override=True)
+
+setup_default_logging(level="DEBUG", exclude_warning=True)
 
 PROMPT_FILE = Path(os.getenv("PROMPT_FILE_PATH", str(Path(__file__).parent.parent / "config" / "prompt.yaml")))
 MULTILINGUAL_MODE = os.getenv("ENABLE_MULTILINGUAL", "false").lower() == "true"
@@ -114,50 +104,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Store connections by pc_id
-pcs_map: dict[str, SmallWebRTCConnection] = {}
 
-
-ice_servers = (
-    [
-        IceServer(
-            urls=os.getenv("TURN_SERVER_URL", ""),
-            username=os.getenv("TURN_USERNAME", ""),
-            credential=os.getenv("TURN_PASSWORD", ""),
-        )
-    ]
-    if os.getenv("TURN_SERVER_URL")
-    else []
-)
-
-
-async def run_bot(webrtc_connection):
-    """Run the voice agent bot with WebRTC connection and WebSocket.
+async def run_bot(websocket: WebSocket, stream_id: str):
+    """Run the voice agent bot with WebSocket connection.
 
     Args:
-        webrtc_connection: The WebRTC connection for audio streaming
+        websocket: The FastAPI WebSocket connection for audio streaming
+        stream_id: The ID of the stream
     """
-    stream_id = uuid.uuid4()
-    
     # Parse AUDIO_OUT_10MS_CHUNKS with error handling
     try:
-        audio_out_10ms_chunks = int(os.getenv("AUDIO_OUT_10MS_CHUNKS", "5"))
+        audio_out_10ms_chunks = int(os.getenv("AUDIO_OUT_10MS_CHUNKS", "10"))
     except ValueError:
-        logger.warning("Invalid AUDIO_OUT_10MS_CHUNKS, falling back to default 5")
-        audio_out_10ms_chunks = 5
+        logger.warning("Invalid AUDIO_OUT_10MS_CHUNKS, falling back to default 10")
+        audio_out_10ms_chunks = 10
     
-    transport_params = TransportParams(
-        audio_in_enabled=True,
-        audio_in_sample_rate=16000,
-        audio_out_sample_rate=22050,
-        audio_out_enabled=True,
-        audio_out_10ms_chunks=audio_out_10ms_chunks,
-        vad_analyzer=SileroVADAnalyzer() if VAD_PROFILE == VADProfile.SILERO else None,
-    )
-
-    transport = SmallWebRTCTransport(
-        webrtc_connection=webrtc_connection,
-        params=transport_params,
+    # Create FastAPI WebSocket transport
+    transport = FastAPIWebsocketTransport(
+        websocket=websocket,
+        params=FastAPIWebsocketParams(
+            audio_in_enabled=True,
+            audio_out_enabled=True,
+            add_wav_header=True,
+            audio_in_sample_rate=16000,
+            audio_out_sample_rate=16000,
+            audio_out_10ms_chunks=audio_out_10ms_chunks,
+            serializer=ProtobufFrameSerializer(),
+            vad_analyzer=SileroVADAnalyzer() if VAD_PROFILE == VADProfile.SILERO else None,
+        ),
     )
 
     # None if unset, True if "true", False if "false"
@@ -234,26 +208,6 @@ async def run_bot(webrtc_connection):
         custom_dictionary=ipa_dict,
     )
 
-    # Create audio_dumps directory if it doesn't exist
-    audio_dumps_dir = Path(os.getenv("AUDIO_DUMP_PATH", str(Path(__file__).parent.parent / "audio_dumps")))
-    audio_dumps_dir.mkdir(exist_ok=True)
-
-    asr_recorder = AudioRecorder(
-        output_file=str(audio_dumps_dir / f"asr_recording_{stream_id}.wav"),
-        params=transport_params,
-        frame_type=InputAudioRawFrame,
-    )
-
-    tts_recorder = AudioRecorder(
-        output_file=str(audio_dumps_dir / f"tts_recording_{stream_id}.wav"),
-        params=transport_params,
-        frame_type=TTSAudioRawFrame,
-    )
-
-    # Used to synchronize the user and bot transcripts in the UI
-    stt_transcript_synchronization = UserTranscriptSynchronization()
-    tts_transcript_synchronization = BotTranscriptSynchronization()
-
     def _validated_selector(raw_value: str | None, default: str) -> str:
         selector = (raw_value or "").strip() or default
         if "/" not in selector:
@@ -305,26 +259,15 @@ async def run_bot(webrtc_connection):
         )
         tts_response_cacher = None
 
-    # Create NVIDIA RTVI input processor with application-specific message handlers
-    rtvi_input = NvidiaRTVIInput(
-        transport=transport,
-        context=context,
-    )
-
     pipeline = Pipeline(
         [
-            transport.input(),  # WebRTC input from client
-            rtvi_input,  # NVIDIA RTVI input processor with Client-specific message handlers
-            asr_recorder,
+            transport.input(),  # WebSocket input from client
             stt,  # Speech-To-Text
-            stt_transcript_synchronization,
             context_aggregator.user(),
             llm,  # LLM
             tts,  # Text-To-Speech
-            tts_recorder,
             *([tts_response_cacher] if tts_response_cacher else []),
-            tts_transcript_synchronization,
-            transport.output(),  # WebRTC output to client
+            transport.output(),  # WebSocket output to client
             context_aggregator.assistant(),
         ]
     )
@@ -338,78 +281,58 @@ async def run_bot(webrtc_connection):
             send_initial_empty_metrics=True,
             start_metadata={"stream_id": stream_id},
         ),
-        observers=[NvidiaRTVIObserver(rtvi_input)],
     )
 
-    @rtvi_input.event_handler("on_client_ready")
-    async def on_client_ready(rtvi_input):
+    @transport.event_handler("on_client_connected")
+    async def on_client_connected(transport, client):
         try:
-            await rtvi_input.set_bot_ready()
+            # Kick off the conversation.
+            messages.append({"role": "system", "content": "Please introduce yourself to the user."})
             await task.queue_frames(
                 [
-                    RivaFetchVoicesFrame(),
-                    RTVIServerMessageFrame(
-                        data={
-                            "type": "system_prompt",
-                            "prompts": messages,
-                            "prompt": messages[0]["content"],
-                        }
-                    ),
+                    LLMMessagesUpdateFrame(messages=messages, run_llm=True),
                 ]
             )
         except Exception as e:
-            logger.error(f"Error on client ready: {e}")
-            await rtvi_input.send_error(str(e))
+            logger.error(f"Error on client connected: {e}")
 
     runner = PipelineRunner(handle_sigint=False)
 
     await runner.run(task)
 
 
-@app.post("/offer")
-async def offer(request: Request):
-    """Offer endpoint for handling voice agent connections.
+@app.websocket("/ws/{stream_id}")
+async def websocket_endpoint(websocket: WebSocket, stream_id: str):
+    """WebSocket endpoint for voice agent connections.
 
     Args:
-        request: The request to handle
+        websocket: The WebSocket connection
+        stream_id: The ID of the stream
     """
-    request = await request.json()
-    pc_id = request.get("pc_id")
+    await websocket.accept()
+    logger.info(f"WebSocket connection established from {websocket.client}")
 
-    if pc_id and pc_id in pcs_map:
-        pipecat_connection = pcs_map[pc_id]
-        logger.info(f"Reusing existing connection for pc_id: {pc_id}")
-        await pipecat_connection.renegotiate(sdp=request["sdp"], type=request["type"])
-    else:
-        pipecat_connection = SmallWebRTCConnection(ice_servers)
-        await pipecat_connection.initialize(sdp=request["sdp"], type=request["type"])
+    try:
+        with logger.contextualize(stream_id=stream_id):
+            await run_bot(websocket, stream_id)
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected: {websocket.client}")
+    except Exception as e:
+        logger.error(f"Error in WebSocket connection: {e}")
+        with contextlib.suppress(BaseException):
+            await websocket.close()
 
-        @pipecat_connection.event_handler("closed")
-        async def handle_disconnected(webrtc_connection: SmallWebRTCConnection):
-            pc_id = webrtc_connection.pc_id
 
-            # Remove from connections map
-            pcs_map.pop(pc_id, None)
-
-        asyncio.create_task(run_bot(pipecat_connection))
-
-    answer = pipecat_connection.get_answer()
-    pcs_map[answer["pc_id"]] = pipecat_connection
-
-    return answer
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="WebRTC demo")
-    parser.add_argument("--host", default="0.0.0.0", help="Host for HTTP server (default: localhost)")
+    parser = argparse.ArgumentParser(description="WebSocket Voice Agent Pipeline")
+    parser.add_argument("--host", default="0.0.0.0", help="Host for HTTP server (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=7860, help="Port for HTTP server (default: 7860)")
-    parser.add_argument("--verbose", "-v", action="count")
     args = parser.parse_args()
-
-    logger.remove(0)
-    if args.verbose:
-        logger.add(sys.stderr, level="TRACE")
-    else:
-        logger.add(sys.stderr, level="DEBUG")
 
     uvicorn.run(app, host=args.host, port=args.port)

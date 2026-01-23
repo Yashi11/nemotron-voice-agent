@@ -305,6 +305,29 @@ docker compose up
 
 ---
 
+## Switching to WebSocket Transport
+
+By default, the Nemotron Voice Agent uses WebRTC for real-time communication. You can switch to WebSocket transport for different deployment scenarios or client requirements.
+
+Update your `.env` file to enable WebSocket transport:
+
+```bash
+# In .env file
+TRANSPORT=WEBSOCKET
+```
+
+Deploy with WebSocket
+
+```bash
+# Restart services to apply transport change
+docker compose down
+docker compose up
+```
+
+The system automatically loads the appropriate pipeline and UI based on the `TRANSPORT` setting. After starting the services, access the web interface through your browser at `http://your-server-ip:9000`.
+
+---
+
 ## Advanced Pipeline Customizations
 
 ### Speculative Speech Processing
@@ -346,6 +369,21 @@ AUDIO_DUMP_PATH=./audio_dumps
 ```
 
 Audio files are saved to `./audio_dumps/` directory for debugging ASR and TTS quality issues.
+
+### Audio Output Buffering
+
+Control audio output latency and stability by adjusting the buffer size:
+
+```bash
+# In .env file
+AUDIO_OUT_10MS_CHUNKS=5  # Number of 10ms chunks to buffer
+```
+
+**Configuration Guidelines**:
+- **Default WebRTC**: 5 chunks (50ms buffer) - optimized for low latency
+- **Default WebSocket**: 10 chunks (100ms buffer) - more stable for network variations
+- **High Concurrency**: 10-40 chunks (100-400ms buffer) - prevents audio glitches under load
+
 
 ---
 

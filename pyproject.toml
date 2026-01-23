@@ -1,7 +1,7 @@
 [project]
-name = "voice-agent-webrtc"
+name = "nemotron-voice-agent"
 version = "0.1.0"
-description = "Voice Agent WebRTC example"
+description = "Voice Agent Example"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -24,3 +24,31 @@ explicit = true
 dev = [
     "ruff>=0.11.13",
 ]
+
+[tool.ruff]
+line-length = 120
+
+###############################################################################
+# Linting Rules
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # docstring checks
+    "D"
+]
+
+ignore = ["SIM108"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

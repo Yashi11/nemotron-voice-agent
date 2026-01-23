@@ -54,7 +54,13 @@ For optimizing latency, first we need to measure e2e and component wise latency.
   - Minimize audio buffer sizes while maintaining quality
   - Implement jitter buffers for network variations
 - **Scaling Audio Output for Concurrency:**  
-  When scaling to multiple concurrent audio streams using either FastAPI WebSocket transport or WebRTC transport, consider increasing the output audio chunk size using the `audio_out_10ms_chunks` parameter up to 400ms to reduce audio glitches and enable smoother playback.
+  When scaling to multiple concurrent audio streams using either FastAPI WebSocket transport or WebRTC transport, consider increasing the output audio chunk size using the `AUDIO_OUT_10MS_CHUNKS` parameter up to 400ms to reduce audio glitches and enable smoother playback.
+  
+  **Configuration in `.env`:**
+  ```bash
+  # Number of 10ms chunks to buffer (default: 10)
+  AUDIO_OUT_10MS_CHUNKS=10
+  ```
 
 ### 2.2 ASR (Automatic Speech Recognition) Latency
 
