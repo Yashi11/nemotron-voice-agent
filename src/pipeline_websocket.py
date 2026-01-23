@@ -310,7 +310,7 @@ async def websocket_endpoint(websocket: WebSocket, stream_id: str):
         stream_id: The ID of the stream
     """
     await websocket.accept()
-    logger.info(f"WebSocket connection established from {websocket.client}")
+    logger.info(f"Accepted WebSocket connection for stream ID {stream_id}")
 
     try:
         with logger.contextualize(stream_id=stream_id):
@@ -333,6 +333,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="WebSocket Voice Agent Pipeline")
     parser.add_argument("--host", default="0.0.0.0", help="Host for HTTP server (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=7860, help="Port for HTTP server (default: 7860)")
+    parser.add_argument("--workers", type=int, default=1, help="Number of workers for HTTP server (default: 1)")
     args = parser.parse_args()
 
-    uvicorn.run(app, host=args.host, port=args.port)
+    uvicorn.run(app, host=args.host, port=args.port, workers=args.workers)
