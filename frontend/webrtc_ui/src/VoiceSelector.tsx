@@ -43,10 +43,10 @@ export const VoiceSelector = forwardRef<VoiceSelectorRef, VoiceSelectorProps>(fu
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isInitializedRef = useRef<boolean>(false);  // Track if first initialization is done
   const onVoiceChangeRef = useRef(onVoiceChange);  // Stable ref to avoid effect re-triggers
-  
+
   // Track the last value set by backend - used to prevent sending it back
   const lastBackendSetRef = useRef<{ language: string; voice: string } | null>(null);
-  
+
   // Keep callback ref updated
   useEffect(() => {
     onVoiceChangeRef.current = onVoiceChange;
@@ -129,7 +129,7 @@ export const VoiceSelector = forwardRef<VoiceSelectorRef, VoiceSelectorProps>(fu
 
     setSelectedLanguage(initLang);
     setSelectedVoice([initLang, initVoice]);
-    
+
     if (initLang && initVoice) {
       isInitializedRef.current = true;
     }
@@ -139,12 +139,12 @@ export const VoiceSelector = forwardRef<VoiceSelectorRef, VoiceSelectorProps>(fu
   // Skip if backend already set a valid voice for this language
   useEffect(() => {
     if (!isInitializedRef.current) return;
-    
+
     // If backend set a voice, don't override it
     if (lastBackendSetRef.current && lastBackendSetRef.current.language === selectedLanguage) {
       return;
     }
-    
+
     const voicesForLang = voices[selectedLanguage]?.voices || [];
     if (voicesForLang.length > 0 && !voicesForLang.includes(selectedVoice[1])) {
       setSelectedVoice([selectedLanguage, voicesForLang[0]]);
@@ -155,7 +155,7 @@ export const VoiceSelector = forwardRef<VoiceSelectorRef, VoiceSelectorProps>(fu
   useEffect(() => {
     // Skip if not yet initialized (prevents firing on initial mount)
     if (!isInitializedRef.current) return;
-    
+
     // Check if this matches what backend just set - if so, don't send it back
     if (lastBackendSetRef.current &&
         lastBackendSetRef.current.language === selectedLanguage &&
@@ -164,13 +164,13 @@ export const VoiceSelector = forwardRef<VoiceSelectorRef, VoiceSelectorProps>(fu
       lastBackendSetRef.current = null;
       return;
     }
-    
+
     // User-initiated change - send to backend
     if (selectedLanguage && selectedVoice[1]) {
       onVoiceChangeRef.current(selectedLanguage, selectedVoice[1]);
     }
   }, [selectedLanguage, selectedVoice]);  // Using ref for callback - no onVoiceChange in deps
-  
+
   // Check if we have any custom prompts available
   const hasBackendPrompt = customPromptName !== "";
   const hasAnyCustomPrompts = isZeroshotModel && (hasBackendPrompt || uploadedPrompts.length > 0);

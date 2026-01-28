@@ -12,7 +12,6 @@ import argparse
 import asyncio
 import json
 import os
-import sys
 import uuid
 from enum import Enum
 from pathlib import Path
@@ -138,14 +137,14 @@ async def run_bot(webrtc_connection):
         webrtc_connection: The WebRTC connection for audio streaming
     """
     stream_id = uuid.uuid4()
-    
+
     # Parse AUDIO_OUT_10MS_CHUNKS with error handling
     try:
         audio_out_10ms_chunks = int(os.getenv("AUDIO_OUT_10MS_CHUNKS", "5"))
     except ValueError:
         logger.warning("Invalid AUDIO_OUT_10MS_CHUNKS, falling back to default 5")
         audio_out_10ms_chunks = 5
-    
+
     transport_params = TransportParams(
         audio_in_enabled=True,
         audio_in_sample_rate=16000,

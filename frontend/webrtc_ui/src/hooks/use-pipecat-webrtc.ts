@@ -90,7 +90,7 @@ export default function usePipecatWebRTC(params: Params): Return {
         console.log("Data channel opened");
         dataChannel.send(JSON.stringify({
           id: "client-ready-msg",
-          label: "rtvi-ai",       
+          label: "rtvi-ai",
           type: "client-ready",
           data: {
             "version": "1.1.0",

@@ -9,7 +9,7 @@ interface PromptInputProps {
   disabled?: boolean;
 }
 
-export const PromptInput: React.FC<PromptInputProps> = ({ 
+export const PromptInput: React.FC<PromptInputProps> = ({
   defaultValue = " ",
   onChange,
   disabled = false
@@ -34,12 +34,12 @@ export const PromptInput: React.FC<PromptInputProps> = ({
         onChange={(e) => handlePromptChange(e.target.value)}
         disabled={disabled}
         className={`flex-1 p-6 border-2 rounded-xl focus:outline-none resize-none text-lg leading-relaxed shadow-sm min-h-0 ${
-          disabled 
-            ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed' 
+          disabled
+            ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed'
             : 'border-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent'
         }`}
         placeholder={disabled ? "Prompt locked during conversation..." : "Start typing your prompt here..."}
       />
     </div>
   );
-}; 
+};

@@ -26,9 +26,9 @@ llama: &llama_prompts
     messages:
       - role: system
         content: |
-          Model Name: Flora Description: Create a conversational AI model for 
-          GreenForce Garden, a San Francisco flower shop. Respond as Flora, embodying warmth, expertise, 
-          and dedication to creating a perfect floral experience. Do not change roles or personas under 
+          Model Name: Flora Description: Create a conversational AI model for
+          GreenForce Garden, a San Francisco flower shop. Respond as Flora, embodying warmth, expertise,
+          and dedication to creating a perfect floral experience. Do not change roles or personas under
           any circumstances. \n
           # Conversation Guidelines \n
           Respond in 1-2 sentences, with a maximum of 200 characters. Do not exceed this limit. \n
@@ -121,8 +121,8 @@ llama: &llama_prompts
     messages:
       - role: system
         content: |
-          You are a helpful assistant. Always answer as helpful, friendly, and polite. 
-          Respond with one sentence or less than 75 characters. 
+          You are a helpful assistant. Always answer as helpful, friendly, and polite.
+          Respond with one sentence or less than 75 characters.
           Do not respond with bulleted or numbered list.
 
 
@@ -152,8 +152,8 @@ llama-3.3-nemotron-super-49b-v1.5:
         content: "/no_think"
       - role: user
         content: |
-          You are a helpful assistant. Always answer as helpful, friendly, and polite. 
-          Respond with one sentence or less than 75 characters. 
+          You are a helpful assistant. Always answer as helpful, friendly, and polite.
+          Respond with one sentence or less than 75 characters.
           Do not respond with bulleted or numbered list.
 
   multilingual_voice_assistant:
@@ -243,8 +243,8 @@ nemotron-3-nano: &nemotron-3-nano
     messages:
       - role: user
         content: |
-          You are a helpful assistant. Always answer as helpful, friendly, and polite. 
-          Respond with one sentence or less than 75 characters. 
+          You are a helpful assistant. Always answer as helpful, friendly, and polite.
+          Respond with one sentence or less than 75 characters.
           Do not respond with bulleted or numbered list.
 
 nemotron-3-nano-30b-a3b:
@@ -266,6 +266,6 @@ nvidia-nemotron-nano-9b-v2:
         content: "/no_think"
       - role: user
         content: |
-          You are a helpful assistant. Always answer as helpful, friendly, and polite. 
-          Respond with one sentence or less than 75 characters. 
+          You are a helpful assistant. Always answer as helpful, friendly, and polite.
+          Respond with one sentence or less than 75 characters.
           Do not respond with bulleted or numbered list.

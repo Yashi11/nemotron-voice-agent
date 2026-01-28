@@ -42,7 +42,7 @@ For optimizing latency, first we need to measure e2e and component wise latency.
 
 **Voice Activity Detection (VAD):**
 - **Contribution**: 200-500ms (end of speech detection)
-- **Optimization**: 
+- **Optimization**:
   - Use streaming VAD with shorter silence thresholds
   - Explore shorter EOU detection with Riva ASR and open-source smart turn detection models
   - Implement adaptive VAD sensitivity based on environment noise
@@ -53,9 +53,9 @@ For optimizing latency, first we need to measure e2e and component wise latency.
   - Use lower latency audio codecs (Opus at 20ms frames)
   - Minimize audio buffer sizes while maintaining quality
   - Implement jitter buffers for network variations
-- **Scaling Audio Output for Concurrency:**  
+- **Scaling Audio Output for Concurrency:**
   When scaling to multiple concurrent audio streams using either FastAPI WebSocket transport or WebRTC transport, consider increasing the output audio chunk size using the `AUDIO_OUT_10MS_CHUNKS` parameter up to 400ms to reduce audio glitches and enable smoother playback.
-  
+
   **Configuration in `.env`:**
   ```bash
   # Number of 10ms chunks to buffer (default: 10)
@@ -137,7 +137,7 @@ For optimizing latency, first we need to measure e2e and component wise latency.
 ```python
 # Don't overwhelm with options
 # Bad:
-"You can check balance, transfer funds, pay bills, view history, 
+"You can check balance, transfer funds, pay bills, view history,
 update profile, set alerts, or lock your card. What would you like?"
 
 # Good:
@@ -196,7 +196,7 @@ update profile, set alerts, or lock your card. What would you like?"
 - Use inverse text normalization (ITN) for proper formatting
 - Make sure user audio quality is good
 - Avoid resampling if possible
-- Riva ASR models are robust to noise, skip noise processing 
+- Riva ASR models are robust to noise, skip noise processing
 - Base critical decisions on final transcripts only
 - Finetune ASR model on domain data if needed
 

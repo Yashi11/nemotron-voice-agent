@@ -1,0 +1,68 @@
+# You can override the included template(s) by including variable overrides
+# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
+# Secret Detection customization: https://docs.gitlab.com/ee/user/application_security/secret_detection/pipeline/#customization
+# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
+# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
+# Note that environment variables can be set in several places
+# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_DEPTH: 0
+
+stages:
+  - lint
+  - test
+  - build
+
+# Install dependencies
+.install_uv_template: &install_uv
+  before_script:
+    - uv --version
+    - uv sync --dev
+
+# Docker login to NVIDIA Container Registry
+.docker_login_template: &docker_login
+  before_script:
+    - docker --version
+    - echo "$NGC_API_KEY" | docker login nvcr.io -u '$oauthtoken' --password-stdin
+
+format-check:
+  stage: lint
+  tags:
+    - shell
+  <<: *install_uv
+  script:
+    - uv run ruff format --check .
+  allow_failure: false
+
+lint-check:
+  stage: lint
+  tags:
+    - shell
+  <<: *install_uv
+  script:
+    - uv run ruff check .
+  allow_failure: false
+
+build-python-app:
+  stage: build
+  tags:
+    - shell
+  <<: *docker_login
+  variables:
+    IMAGE_NAME: nemotron-voice-agent/python-app
+    IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+  script:
+    - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f Dockerfile .
+
+build-ui:
+  stage: build
+  tags:
+    - shell
+  <<: *docker_login
+  variables:
+    IMAGE_NAME: nemotron-voice-agent/ui
+    IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+  script:
+    - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f frontend/Dockerfile frontend/
