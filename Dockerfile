@@ -11,6 +11,7 @@ LABEL version="1.0"
 
 # Environment setup
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app:$PYTHONPATH
 
 # System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
