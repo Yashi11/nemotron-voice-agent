@@ -60,7 +60,7 @@ nvidia-llm:
 
 The Nemotron Voice Agent supports multiple LLM models with different capabilities and resource requirements. Configure your desired model by editing the `.env` file.
 
-### Local LLM Deployment 
+### Local LLM Deployment
 1. **Copy the example configuration**:
    ```bash
    cp config/env.example .env

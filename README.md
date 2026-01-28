@@ -1,7 +1,6 @@
 # Nemotron Voice Agent
 
-The Nemotron Voice Agent is a real-time conversational AI system that demonstrates how to build 
-sophisticated conversational AI applications using NVIDIA's cutting-edge AI models and the Pipecat framework. This developer blueprint presents an cascaded voice pipeline combining automatic speech recognition (ASR), large language model (LLM) intelligence, and text-to-speech (TTS) generation to deliver fluid, human-like voice interactions.
+The Nemotron Voice Agent is a real-time conversational AI system that demonstrates how to build sophisticated conversational AI applications using NVIDIA's cutting-edge AI models and the Pipecat framework. This developer blueprint presents an cascaded voice pipeline combining automatic speech recognition (ASR), large language model (LLM) intelligence, and text-to-speech (TTS) generation to deliver fluid, human-like voice interactions.
 
 ## Key Components
 

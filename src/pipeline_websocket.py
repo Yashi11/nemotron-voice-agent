@@ -12,7 +12,6 @@ import argparse
 import contextlib
 import json
 import os
-import sys
 from enum import Enum
 from pathlib import Path
 
@@ -118,7 +117,7 @@ async def run_bot(websocket: WebSocket, stream_id: str):
     except ValueError:
         logger.warning("Invalid AUDIO_OUT_10MS_CHUNKS, falling back to default 10")
         audio_out_10ms_chunks = 10
-    
+
     # Create FastAPI WebSocket transport
     transport = FastAPIWebsocketTransport(
         websocket=websocket,

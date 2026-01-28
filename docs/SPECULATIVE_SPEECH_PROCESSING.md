@@ -138,7 +138,7 @@ The implementation dynamically switches between two configurations:
 **With Speculative Speech Enabled (`ENABLE_SPECULATIVE_SPEECH=true`):**
 ```python
 context_aggregator = create_nvidia_context_aggregator(
-    context, 
+    context,
     send_interims=True,
     chat_history_limit=20
 )

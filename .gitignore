@@ -8,6 +8,7 @@ __pycache__/
 .env.jetson
 *.wav
 venv/
+.venv/
 riva_quickstart_*
 
 # Ignore any local models.

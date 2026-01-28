@@ -43,8 +43,8 @@ export function LabeledSelect({
         className={`w-full border rounded p-2 text-sm transition-all ${
           dimmed ? "opacity-50" : "opacity-100"
         } ${
-          disabled 
-            ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200" 
+          disabled
+            ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
             : "bg-white cursor-pointer border-gray-300 hover:border-gray-400"
         } ${className}`}
         value={value}
