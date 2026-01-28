@@ -406,4 +406,4 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=1, help="Number of workers for HTTP server (default: 1)")
     args = parser.parse_args()
 
-    uvicorn.run(app, host=args.host, port=args.port, workers=args.workers)
+    uvicorn.run("src.pipeline:app", host=args.host, port=args.port, workers=args.workers)
