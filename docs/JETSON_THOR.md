@@ -4,7 +4,7 @@ This guide covers deploying the NVIDIA Voice Agent on Jetson Thor using Docker C
 
 ## Prerequisites
 
-- **Jetson Thor** flashed with **JetPack 7.1** via [NVIDIA SDK Manager](https://developer.nvidia.com/sdk-manager) (with CUDA, CUDA-X, TensorRT, and NVIDIA Container Runtime components installed)
+- **Jetson Thor** flashed with **JetPack 7.0** via [NVIDIA SDK Manager](https://developer.nvidia.com/sdk-manager) (with CUDA, CUDA-X, TensorRT, and NVIDIA Container Runtime components installed)
 - [NGC CLI](https://org.ngc.nvidia.com/setup/installers/cli) installed and configured
 - [Docker Engine](https://docs.docker.com/engine/install/ubuntu/) and [Docker Compose](https://docs.docker.com/compose/install/linux/)
 - [HuggingFace API token](https://huggingface.co/docs/hub/en/security-tokens) for downloading LLM models
@@ -47,36 +47,29 @@ HF_TOKEN=xxxxxxx
 
 Riva provides the speech recognition (ASR) and text-to-speech (TTS) capabilities.
 
+### Prerequisites
+
+Ensure you meet the Riva prerequisites before proceeding:
+https://docs.nvidia.com/deeplearning/riva/user-guide/docs/quick-start-guide.html#prerequisites
+
 ### Download and Initialize Riva
 
-> **Note:** Riva for Jetson Thor is available through NVIDIA's Early Access (EA) program.
-> Contact your NVIDIA representative to request access to the `ea-riva` NGC organization:
-> https://registry.ngc.nvidia.com/orgs/ea-riva/teams/edge/containers/riva-speech
-
-Once you have access, configure NGC CLI with your API key and select `ea-riva` org:
+Configure NGC CLI with your API key:
 
 ```bash
 ngc config set
 ```
 
-Then download and initialize Riva:
+Download Riva using the Quick Start scripts:
 
 ```bash
-ngc registry resource download-version ea-riva/edge/riva_quickstart_arm64:1.3-thor-speech-tegra-thor
-cd riva_quickstart_arm64_v1.3-thor-speech-tegra-thor
+ngc registry resource download-version nvidia/riva/riva_quickstart_arm64:2.24.0
+cd riva_quickstart_arm64_v2.24.0
 bash riva_init.sh
 bash riva_start.sh
 ```
 
 > **Note:** Riva initialization may take 30-60 minutes on first run.
-
-> **Important:** If the Riva container fails to start (shows "Created" but not "Running"), you may need to fix the GPU runtime flag in `riva_start.sh`:
-> ```bash
-> # Change --gpus flag to --runtime=nvidia (line ~104 in riva_start.sh)
-> sed -i "s/--gpus '\"'\$gpus_to_use'\"'/--runtime=nvidia/" riva_start.sh
-> bash riva_start.sh
-> ```
-> This is required because Jetson uses `--runtime=nvidia` instead of `--gpus` for GPU access.
 
 ## Step 5: Start LLM Service and Voice Agent Application
 
