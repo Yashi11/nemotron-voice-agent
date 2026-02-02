@@ -176,6 +176,12 @@ async def run_bot(webrtc_connection):
         logger.warning("Invalid TOP_P, falling back to default 1.0")
         top_p = 1.0
 
+    try:
+        max_tokens = int(os.getenv("MAX_TOKENS", "2048"))
+    except ValueError:
+        logger.warning("Invalid MAX_TOKENS, falling back to default 2048")
+        max_tokens = 2048
+
     llm = NvidiaLLMService(
         api_key=os.getenv("NVIDIA_API_KEY"),
         base_url=os.getenv("NVIDIA_LLM_URL", "https://integrate.api.nvidia.com/v1"),
@@ -183,6 +189,7 @@ async def run_bot(webrtc_connection):
         params=BaseOpenAILLMService.InputParams(
             temperature=temperature,
             top_p=top_p,
+            max_tokens=max_tokens,
             **(
                 {"extra": {"extra_body": {"chat_template_kwargs": {"enable_thinking": enable_thinking}}}}
                 if enable_thinking is not None
