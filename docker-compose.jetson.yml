@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 name: nemotron-voice-agent-jetson
 
 volumes:
@@ -72,8 +75,8 @@ services:
 
   ui-app:
     build:
-      context: ./webrtc_ui
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     image: nvcr.io/nvstaging/blueprint/nemotron-voice-agent-ui:${IMAGE_VERSION:-dev}
     container_name: webrtc-ui-jetson
     ports:

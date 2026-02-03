@@ -27,7 +27,7 @@ This application requires **2 NVIDIA GPUs** by default:
 - **GPU 0**: ASR (Automatic Speech Recognition) and TTS (Text-to-Speech) models
 - **GPU 1**: LLM (Large Language Model) inference
 
-**Note:** GPU requirements may vary depending on your chosen LLM model and available GPU memory. For smaller models or high-memory GPUs, you may be able to run all services on a single GPU by modifying the Docker Compose configuration. Check `Single GPU Device Deployment` section in [Customization Guide](./docs/CUSTOMIZATION_GUIDE.md) for more details.
+**Note:** GPU requirements may vary depending on your chosen LLM model and available GPU memory.
 
 
 ### Step 1: Clone and Navigate

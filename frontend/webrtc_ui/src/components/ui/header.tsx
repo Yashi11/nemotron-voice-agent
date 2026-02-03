@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 export const Header = () => {
     return (
         <header className="border-b-1 border-gray-200 p-6 flex items-center">

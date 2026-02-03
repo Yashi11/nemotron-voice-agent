@@ -73,9 +73,9 @@ bash riva_start.sh
 
 ## Step 5: Start LLM Service and Voice Agent Application
 
-```bash
-cd /home/nvidia/voice-agent-examples/examples/voice_agent_webrtc
+Start services from the root directory
 
+```bash
 sudo docker compose -f docker-compose.jetson.yml up -d
 ```
 
