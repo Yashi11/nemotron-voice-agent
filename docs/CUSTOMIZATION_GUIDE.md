@@ -4,55 +4,11 @@ This guide provides detailed instructions for customizing the Nemotron Voice Age
 
 ## Table of Contents
 
-1. [Single GPU Device Deployment](#single-gpu-device-deployment)
-2. [Switching LLM Models](#switching-llm-models)
-3. [Switching System Prompts](#switching-system-prompts)
-4. [Configuring TTS Voices](#configuring-tts-voices)
-5. [Enabling Zero-shot TTS](#enabling-zero-shot-tts)
-6. [Advanced Pipeline Customizations](#advanced-pipeline-customizations)
-
----
-
-## Single GPU Device Deployment
-
-The default `docker-compose.yml` configuration uses a multi-GPU setup with ASR and TTS on one GPU device and LLM on another GPU device. For deploying on single GPU, we need to consider following things
-
-- **Memory Requirements**: Ensure your GPU has sufficient VRAM for all three models, 80+ GB VRAM recommended
-- **Performance**: Single GPU deployment may have slightly higher latency due to resource sharing
-- **Model Selection**: Consider using smaller models like `Llama-3.1-8b-Instruct` for single GPU setups
-- **LLM KV Cache**: By default NVIDIA LLM NIMs, utilize 90% of GPU VRAM with KV caching enabled. Disable or reduce KV Cache memory usage using `NIM_KVCACHE_PERCENT` and `NIM_ENABLE_KV_CACHE_REUSE` environment variables in `nvidia-llm` service. Check [NIM Documentation](https://docs.nvidia.com/nim/large-language-models/latest/kv-cache-reuse.html).
-
-To deploy all services on a single GPU device, edit `docker-compose.yml` to set all services to use the same GPU:
-
-```yaml
-# Change device_ids to ['0'] for all services
-riva-tts-magpie:
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            device_ids: ['0']  # Single GPU
-            capabilities: [gpu]
-
-riva-asr-parakeet:
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            device_ids: ['0']  # Single GPU
-            capabilities: [gpu]
-
-nvidia-llm:
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            device_ids: ['0']  # Single GPU
-            capabilities: [gpu]
-```
+1. [Switching LLM Models](#switching-llm-models)
+2. [Switching System Prompts](#switching-system-prompts)
+3. [Configuring TTS Voices](#configuring-tts-voices)
+4. [Enabling Zero-shot TTS](#enabling-zero-shot-tts)
+5. [Advanced Pipeline Customizations](#advanced-pipeline-customizations)
 
 ---
 

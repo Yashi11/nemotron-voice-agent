@@ -65,4 +65,4 @@ build-ui:
     IMAGE_NAME: nemotron-voice-agent/ui
     IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
   script:
-    - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f frontend/Dockerfile frontend/
+    - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f frontend/Dockerfile .

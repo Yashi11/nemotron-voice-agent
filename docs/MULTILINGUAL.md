@@ -94,6 +94,11 @@ Edit the `.env` file and update the following settings:
    SYSTEM_PROMPT_SELECTOR=llama-3.3-nemotron-super-49b-v1.5/multilingual_voice_assistant
    ```
 
+   **Important:** Make sure to uncomment the multilingual system prompt selector:
+   ```bash
+   SYSTEM_PROMPT_SELECTOR=llama-3.3-nemotron-super-49b-v1.5/multilingual_voice_assistant
+   ```
+
    **Note:** Comment out the default OPTION 1 (Nemotron-3-Nano) configuration.
 
 ### Step 3: Deploy with Docker Compose

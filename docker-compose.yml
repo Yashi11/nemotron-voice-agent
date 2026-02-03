@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 name: nemotron-voice-agent
 
 services:
@@ -152,22 +155,20 @@ services:
   ui-app:
     image: nvcr.io/nvstaging/blueprint/nemotron-voice-agent-ui:${IMAGE_VERSION:-dev}
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
       - "9000:8000"
     env_file:
       - .env
-    command: >
-      sh -c "
-      if [ \"$${TRANSPORT:-WEBRTC}\" = \"WEBSOCKET\" ]; then
-        echo \"Starting WebSocket UI server...\"
-        python -m http.server 8000 --directory websocket_static
-      else
-        echo \"Starting WebRTC UI server...\"
-        python -m http.server 8000 --directory webrtc_static
-      fi
-      "
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000', timeout=5).read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
     depends_on:
       python-app:
         condition: service_healthy
