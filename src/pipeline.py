@@ -240,21 +240,47 @@ async def run_bot(webrtc_connection):
         custom_dictionary=ipa_dict,
     )
 
-    # Create audio_dumps directory if it doesn't exist
-    audio_dumps_dir = Path(os.getenv("AUDIO_DUMP_PATH", str(Path(__file__).parent.parent / "audio_dumps")))
-    audio_dumps_dir.mkdir(exist_ok=True)
+    # Audio dump configuration - controlled via environment variables
+    enable_asr_audio_dump = os.getenv("ENABLE_ASR_AUDIO_DUMP", "false").lower() == "true"
+    enable_tts_audio_dump = os.getenv("ENABLE_TTS_AUDIO_DUMP", "false").lower() == "true"
 
-    asr_recorder = AudioRecorder(
-        output_file=str(audio_dumps_dir / f"asr_recording_{stream_id}.wav"),
-        params=transport_params,
-        frame_type=InputAudioRawFrame,
-    )
+    asr_recorder = None
+    tts_recorder = None
 
-    tts_recorder = AudioRecorder(
-        output_file=str(audio_dumps_dir / f"tts_recording_{stream_id}.wav"),
-        params=transport_params,
-        frame_type=TTSAudioRawFrame,
-    )
+    if enable_asr_audio_dump or enable_tts_audio_dump:
+        audio_dumps_dir = Path(os.getenv("AUDIO_DUMP_PATH", str(Path(__file__).parent.parent / "audio_dumps")))
+        try:
+            audio_dumps_dir.mkdir(exist_ok=True)
+            # Test write permissions by creating a temp file
+            test_file = audio_dumps_dir / ".write_test"
+            test_file.touch()
+            test_file.unlink()
+        except PermissionError:
+            logger.error(
+                f"Permission denied for audio dump directory: {audio_dumps_dir}. "
+                "This can happen if the folder was previously created by Docker with different permissions. "
+                "To fix: remove the folder and recreate it with proper permissions, "
+                "or run: sudo chown -R $(id -u):$(id -g) " + str(audio_dumps_dir)
+            )
+            raise PermissionError(
+                f"Cannot write to audio dump directory: {audio_dumps_dir}. See logs for resolution steps."
+            ) from None
+
+        if enable_asr_audio_dump:
+            asr_recorder = AudioRecorder(
+                output_file=str(audio_dumps_dir / f"asr_recording_{stream_id}.wav"),
+                params=transport_params,
+                frame_type=InputAudioRawFrame,
+            )
+            logger.info(f"ASR audio dump enabled: {audio_dumps_dir / f'asr_recording_{stream_id}.wav'}")
+
+        if enable_tts_audio_dump:
+            tts_recorder = AudioRecorder(
+                output_file=str(audio_dumps_dir / f"tts_recording_{stream_id}.wav"),
+                params=transport_params,
+                frame_type=TTSAudioRawFrame,
+            )
+            logger.info(f"TTS audio dump enabled: {audio_dumps_dir / f'tts_recording_{stream_id}.wav'}")
 
     # Used to synchronize the user and bot transcripts in the UI
     stt_transcript_synchronization = UserTranscriptSynchronization()
@@ -321,13 +347,13 @@ async def run_bot(webrtc_connection):
         [
             transport.input(),  # WebRTC input from client
             rtvi_input,  # NVIDIA RTVI input processor with Client-specific message handlers
-            asr_recorder,
+            *([asr_recorder] if asr_recorder else []),
             stt,  # Speech-To-Text
             stt_transcript_synchronization,
             context_aggregator.user(),
             llm,  # LLM
             tts,  # Text-To-Speech
-            tts_recorder,
+            *([tts_recorder] if tts_recorder else []),
             *([tts_response_cacher] if tts_response_cacher else []),
             tts_transcript_synchronization,
             transport.output(),  # WebRTC output to client
