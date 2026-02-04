@@ -95,7 +95,7 @@ Emotion: <Happy|Calm|Neutral|Sad|Angry|Fearful> Text: <response>
 - LLM outputs emotion tags parsed by the pipeline
 - TTS voice changes based on emotion context
 - Supported emotions: Happy, Calm, Neutral, Sad, Angry, Fearful
-- **Requirements**: Only works with Magpie Multilingual TTS model
+- **Requirements**: Supported only with the Magpie Multilingual TTS model in English (en-US)
 - **Configuration**: Set `CHAT_HISTORY_LIMIT=3` for best results
 
 #### Multilingual Voice Assistant
@@ -317,14 +317,32 @@ CHAT_HISTORY_LIMIT=20  # Number of conversation turns to retain
 
 ### Audio Debugging
 
-Enable audio dumps for analysis:
+Capture raw audio streams for debugging ASR/TTS quality issues or reproducing problems.
 
 ```bash
 # In .env file
+ENABLE_ASR_AUDIO_DUMP=false  # Save input audio (disabled by default)
+ENABLE_TTS_AUDIO_DUMP=false  # Save output audio (disabled by default)
 AUDIO_DUMP_PATH=./audio_dumps
 ```
 
-Audio files are saved to `./audio_dumps/` directory for debugging ASR and TTS quality issues.
+Audio files are saved as WAV format with stream ID in filename for easy correlation.
+
+**Fixing Permission Issues:**
+
+If Docker creates the folder with different permissions, you can fix this in one of two ways:
+
+- Pre-create the folder before starting Docker:
+  ```bash
+  mkdir -p ./audio_dumps
+  ```
+
+- Fix permissions after Docker created the folder:
+  ```bash
+  sudo chown -R $(id -u):$(id -g) ./audio_dumps
+  ```
+
+**Note**: Keep audio dumps disabled in production to avoid disk space issues.
 
 ### Audio Output Buffering
 
