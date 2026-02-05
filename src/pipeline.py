@@ -250,7 +250,7 @@ async def run_bot(webrtc_connection):
     if enable_asr_audio_dump or enable_tts_audio_dump:
         audio_dumps_dir = Path(os.getenv("AUDIO_DUMP_PATH", str(Path(__file__).parent.parent / "audio_dumps")))
         try:
-            audio_dumps_dir.mkdir(exist_ok=True)
+            audio_dumps_dir.mkdir(parents=True, exist_ok=True)
             # Test write permissions by creating a temp file
             test_file = audio_dumps_dir / ".write_test"
             test_file.touch()
@@ -269,7 +269,6 @@ async def run_bot(webrtc_connection):
         if enable_asr_audio_dump:
             asr_recorder = AudioRecorder(
                 output_file=str(audio_dumps_dir / f"asr_recording_{stream_id}.wav"),
-                params=transport_params,
                 frame_type=InputAudioRawFrame,
             )
             logger.info(f"ASR audio dump enabled: {audio_dumps_dir / f'asr_recording_{stream_id}.wav'}")
@@ -277,7 +276,6 @@ async def run_bot(webrtc_connection):
         if enable_tts_audio_dump:
             tts_recorder = AudioRecorder(
                 output_file=str(audio_dumps_dir / f"tts_recording_{stream_id}.wav"),
-                params=transport_params,
                 frame_type=TTSAudioRawFrame,
             )
             logger.info(f"TTS audio dump enabled: {audio_dumps_dir / f'tts_recording_{stream_id}.wav'}")
