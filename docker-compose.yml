@@ -70,7 +70,7 @@ services:
         max-file: "5"
 
   nvidia-llm:
-    image: ${NVIDIA_LLM_IMAGE:-nvcr.io/nim/nvidia/nemotron-3-nano:1.5.1-variant}
+    image: ${NVIDIA_LLM_IMAGE:-nvcr.io/nim/nvidia/nemotron-3-nano:1.7.0-variant}
     env_file:
       - .env
     user: "0:0"

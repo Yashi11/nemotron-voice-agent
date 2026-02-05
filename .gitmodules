@@ -1,3 +1,3 @@
 [submodule "nvidia-pipecat"]
 	path = nvidia-pipecat
-	url = ssh://git@gitlab-master.nvidia.com:12051/ace/voice-agent-examples
+	url = https://gitlab-master.nvidia.com/ace/voice-agent-examples.git
