@@ -206,6 +206,7 @@ async def run_bot(webrtc_connection):
         "sample_rate": 16000,
         "generate_interruptions": VAD_PROFILE == VADProfile.RIVA,
         "model": os.getenv("RIVA_ASR_MODEL", "parakeet-1.1b-en-US-asr-streaming-silero-vad-sortformer"),
+        "function_id": os.getenv("RIVA_ASR_FUNCTION_ID", "1598d209-5e27-4d3c-8079-4751568b1081"),
     }
     if MULTILINGUAL_MODE:
         stt_config.update(stop_history=900, stop_history_eou=900)
