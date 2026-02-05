@@ -143,6 +143,14 @@ docker compose -f docker-compose.yml up --build -d
 
 Note: To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<machine-ip>:9000` to the list, and restart Chrome.
 
+## Agent Skills
+
+This repository includes AI agent skills for deployment assistance. Install them for your coding agent with:
+
+```bash
+npx skills add .
+```
+
 ## Documentation
 
 - [Multilingual Support](docs/MULTILINGUAL.md) - Guide for building voice agents with multilingual capabilities
