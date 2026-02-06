@@ -194,7 +194,7 @@ The supported languages are en-US, de-DE, fr-FR, es-US, es-ES. You can also add 
 
 ## Configuring TTS Settings
 
-The Text-to-Speech (TTS) system supports multiple voices and languages through the NVIDIA Magpie TTS models.
+The Text-to-Speech (TTS) system supports multiple voices and languages through the [NVIDIA Magpie TTS model](https://build.nvidia.com/nvidia/magpie-tts-multilingual/modelcard).
 
 ### Default Multilingual TTS Voice
 
@@ -245,19 +245,19 @@ You can customize word pronunciation using International Phonetic Alphabet (IPA)
 
 The pipeline automatically applies IPA corrections to TTS output.
 
-### Riva Text Filter
+### Adding Text Filters
 
-The Riva text filter removes special characters that Magpie TTS might fail to process. The cleaning rules live in `nvidia-pipecat/src/nvidia_pipecat/utils/riva_text_filter.py`, so update that file if you need any use-case-specific or language-specific handling.
+Apply text filters to remove special characters that can cause Magpie TTS failures.
 
 ```bash
 # In `.env`
 ENABLE_RIVA_TEXT_FILTER=true  # Default: true
 ```
 
-**Important:**
+Consider the following when adding text filters:
 
-- The filter only runs when `RIVA_TTS_LANGUAGE=en-US`; it is skipped automatically for other languages.
-- Magpie TTS can fail without the filter when it encounters special character combinations. We provide English defaults, but edit/create your own filter if you need rules for other locales.
+- The filter runs only for `RIVA_TTS_LANGUAGE=en-US` and is skipped for other languages.
+- To add custom rules, edit `nvidia-pipecat/src/nvidia_pipecat/utils/riva_text_filter.py`.
 
 ---
 
@@ -347,11 +347,9 @@ The system automatically loads the appropriate pipeline and UI based on the `TRA
 
 ## Enabling OpenTelemetry Tracing
 
-OpenTelemetry tracing provides comprehensive observability for your voice agent pipeline, allowing you to monitor performance, debug issues, and analyze conversation flows. Below steps will showcase how to enable tracing with [Phoenix](https://arize.com/docs/phoenix/self-hosting).
+OpenTelemetry tracing provides comprehensive observability for your voice agent pipeline, allowing you to monitor performance, debug issues, and analyze conversation flows. The following steps show how to enable tracing with [Phoenix](https://arize.com/docs/phoenix/self-hosting).
 
-1. Add Phoenix service to your `docker-compose.yml` file:
-
-    Add the following service definition to your `docker-compose.yml`:
+1. Add the Phoenix service to the `docker-compose.yml` file as follows.
 
     ```yaml
     phoenix:
@@ -362,7 +360,7 @@ OpenTelemetry tracing provides comprehensive observability for your voice agent 
       restart: unless-stopped
     ```
 
-2. Edit your `.env` file and enable tracing:
+2. Edit the `.env` file and enable tracing as follows.
 
     ```bash
     # In .env file
@@ -378,31 +376,31 @@ OpenTelemetry tracing provides comprehensive observability for your voice agent 
       - For **gRPC** (port 4317): Use `host:port` format (e.g., `phoenix:4317` or `localhost:4317`)
       - For **HTTP** (port 4318 or custom): Use `http://host:port` format (e.g., `http://phoenix:4318`)
 
-3. Deploy the services:
+3. Deploy the services.
 
     ```bash
     docker compose up -d
     ```
 
-4. Open Phoenix Dashboard:
+4. Open the Phoenix UI dashboard on your browser.
 
     ```text
     http://localhost:6006
     ```
 
-    For remote access, use:
+    For remote access, use the following URL, replacing `your-server-ip` with your server's public IP address.
 
     ```text
     http://your-server-ip:6006
     ```
 
-5. You should see the Phoenix UI dashboard where you can:
-    - View distributed traces from your voice agent pipeline
-    - Analyze conversation flows and latency
-    - Monitor ASR, LLM, and TTS performance
-    - Debug issues with detailed span information
+Throught the Phoenix UI dashboard, you can:
+- View distributed traces from your voice agent pipeline.
+- Analyze conversation flows and latency.
+- Monitor ASR, LLM, and TTS performance.
+- Debug issues with detailed span information.
 
-For alternative tracing backends, refer to the [OpenTelemetry Tracing with Pipecat](https://github.com/pipecat-ai/pipecat-examples/tree/main/open-telemetry) documentation. Note that using different backends may require minor modifications to `src/pipeline.py`.
+For alternative tracing backends, refer to the [OpenTelemetry Tracing with Pipecat](https://github.com/pipecat-ai/pipecat-examples/tree/main/open-telemetry) documentation. Note that using different backends might require minor modifications to the `src/pipeline.py` file.
 
 ---
 
