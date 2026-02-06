@@ -35,6 +35,7 @@ from nvidia_pipecat.processors.transcript_synchronization import (
 )
 from nvidia_pipecat.services.nvidia_llm import NvidiaLLMService
 from nvidia_pipecat.services.riva_speech import RivaASRService, RivaTTSService
+from nvidia_pipecat.utils.riva_text_filter import RivaTextFilter
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import (
     InputAudioRawFrame,
@@ -228,6 +229,13 @@ async def run_bot(webrtc_connection):
         logger.error(f"Error loading IPA dictionary: {e}")
         raise
 
+    # Riva text filter only enabled when ENABLE_RIVA_TEXT_FILTER=true AND language is en-US
+    enable_riva_text_filter = (
+        os.getenv("ENABLE_RIVA_TEXT_FILTER", "true").lower() == "true"
+        and os.getenv("RIVA_TTS_LANGUAGE", "en-US") == "en-US"
+        and os.getenv("ENABLE_MULTILINGUAL", "false").lower() == "false"
+    )
+
     tts = RivaTTSService(
         server=os.getenv("RIVA_TTS_URL", "grpc.nvcf.nvidia.com:443"),
         api_key=os.getenv("NVIDIA_API_KEY"),
@@ -239,6 +247,7 @@ async def run_bot(webrtc_connection):
             Path(os.getenv("ZERO_SHOT_AUDIO_PROMPT")) if os.getenv("ZERO_SHOT_AUDIO_PROMPT") else None
         ),
         custom_dictionary=ipa_dict,
+        text_filters=[RivaTextFilter()] if enable_riva_text_filter else [],
     )
 
     # Audio dump configuration - controlled via environment variables

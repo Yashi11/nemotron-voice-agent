@@ -6,7 +6,7 @@ This guide provides detailed instructions on configuring the Nemotron Voice Agen
 
 1. [Switching LLM Models](#switching-llm-models)
 2. [Switching System Prompts](#switching-system-prompts)
-3. [Configuring TTS Voices](#configuring-tts-voices)
+3. [Configuring TTS Settings](#configuring-tts-settings)
 4. [Enabling Zero-shot TTS](#enabling-zero-shot-tts)
 5. [Choosing a Transport Method](#choosing-a-transport-method)
 6. [Advanced Pipeline Customizations](#advanced-pipeline-customizations)
@@ -191,7 +191,7 @@ The supported languages are en-US, de-DE, fr-FR, es-US, es-ES. You can also add 
 
 ---
 
-## Configuring TTS Voices
+## Configuring TTS Settings
 
 The Text-to-Speech (TTS) system supports multiple voices and languages through the NVIDIA Magpie TTS models.
 
@@ -243,6 +243,20 @@ You can customize word pronunciation using International Phonetic Alphabet (IPA)
     ```
 
 The pipeline automatically applies IPA corrections to TTS output.
+
+### Riva Text Filter
+
+The Riva text filter removes special characters that Magpie TTS might fail to process. The cleaning rules live in `nvidia-pipecat/src/nvidia_pipecat/utils/riva_text_filter.py`, so update that file if you need any use-case-specific or language-specific handling.
+
+```bash
+# In `.env`
+ENABLE_RIVA_TEXT_FILTER=true  # Default: true
+```
+
+**Important:**
+
+- The filter only runs when `RIVA_TTS_LANGUAGE=en-US`; it is skipped automatically for other languages.
+- Magpie TTS can fail without the filter when it encounters special character combinations. We provide English defaults, but edit/create your own filter if you need rules for other locales.
 
 ---
 
