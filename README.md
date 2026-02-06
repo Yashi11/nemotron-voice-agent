@@ -1,147 +1,77 @@
 # Nemotron Voice Agent
 
-The Nemotron Voice Agent is a real-time conversational AI system that demonstrates how to build sophisticated conversational AI applications using NVIDIA's cutting-edge AI models and the Pipecat framework. This developer blueprint presents an cascaded voice pipeline combining automatic speech recognition (ASR), large language model (LLM) intelligence, and text-to-speech (TTS) generation to deliver fluid, human-like voice interactions.
+The Nemotron Voice Agent is a real-time conversational AI system that demonstrates how to build sophisticated voice AI applications using NVIDIA's cutting-edge models and the Pipecat framework. This developer blueprint combines automatic speech recognition (ASR), large language model (LLM) intelligence, and text-to-speech (TTS) to deliver fluid, human-like voice interactions.
+
+---
 
 ## Key Components
 
-- **NVIDIA Riva ASR & TTS**: High-performance streaming speech recognition (Parakeet CTC 1.1B) paired with multilingual text-to-speech synthesis (Magpie Multilingual)
-- **NVIDIA Nemotron LLMs**: State-of-the-art LLM models engineered for real-time conversational usecases
-- **Pipeline Orchestration**: Built on top of the Pipecat framework with WebRTC transport, enabling low-latency real-time voice communication and speculative speech processing capabilities
+The following are the key components in this blueprint:
 
-This blueprint demonstrates production-ready voice AI functionality, spanning real-time speech processing to sophisticated dialogue management, with full support for containerized deployment at scale.
+- **NVIDIA Nemotron Speech ASR & TTS**: High-performance streaming speech recognition (Parakeet CTC 1.1B) paired with multilingual text-to-speech synthesis (Magpie Multilingual).
+- **NVIDIA Nemotron LLMs**: State-of-the-art LLM models engineered for real-time conversational use cases.
+- **Pipeline Orchestration**: Built on top of the Pipecat framework with WebRTC transport, enabling low-latency real-time voice communication and speculative speech processing capabilities.
 
-## QuickStart Guide
+---
 
-### Prerequisites
+## Requirements
 
-Before you begin, ensure you have the following:
+Check the following requirements before you begin.
 
-- Access to NVIDIA NGC with valid credentials. See [NGC Getting Started Guide](https://docs.nvidia.com/ngc/ngc-overview/index.html#registering-activating-ngc-account)
-- NVIDIA GPU (Ampere, Hopper, Ada, or later architecture). See [Support Matrix](https://docs.nvidia.com/nim/riva/asr/latest/support-matrix.html#hardware)
-- Docker with NVIDIA GPU support installed. See [NIM documentation](https://docs.nvidia.com/nim/riva/asr/latest/getting-started.html#prerequisites)
-- **Required API Keys:** : `NVIDIA_API_KEY` - Required for accessing NIM ASR, TTS, and LLM models and docker images. Get yours at [build.nvidia.com](https://build.nvidia.com/)
+### Hardware Requirements
 
-### GPU Requirements
+This blueprint requires **2 NVIDIA GPUs** (Ampere, Hopper, Ada, or later).
+- **GPU 0**: For running NVIDIA Nemotron Speech ASR (Automatic Speech Recognition) and TTS (Text-to-Speech) models.
+- **GPU 1**: For running NVIDIA LLM NIM.
 
-This application requires **2 NVIDIA GPUs** by default:
-- **GPU 0**: ASR (Automatic Speech Recognition) and TTS (Text-to-Speech) models
-- **GPU 1**: LLM (Large Language Model) inference
+GPU requirements may vary depending on your chosen LLM model and available GPU memory.
 
-**Note:** GPU requirements may vary depending on your chosen LLM model and available GPU memory.
+### Software Requirements
 
+- **NVIDIA NGC**: Valid credentials for NVIDIA NGC. See the [NGC Getting Started Guide](https://docs.nvidia.com/ngc/ngc-overview/index.html#registering-activating-ngc-account).
+- **NVIDIA API Key**: Required for NVIDIA NIM models and NGC container images. Get yours at [build.nvidia.com](https://build.nvidia.com/).
+- **Docker**: With NVIDIA GPU support installed.
+- **NVIDIA NIM**: Required for running NVIDIA NIM models. See the [NVIDIA NIM Getting Started Guide](https://docs.nvidia.com/nim/riva/asr/latest/getting-started.html#prerequisites).
 
-### Step 1: Clone and Navigate
+---
 
-```bash
-git clone git@github.com:NVIDIA-AI-Blueprints/nemotron-voice-agent.git
-cd nemotron-voice-agent
-```
+## Quick Start
 
-Initialize and update the git submodules:
+Start the application following these steps.
 
-```bash
-git submodule update --init
-```
+1. Clone the repository and navigate to the root directory and copy the example environment file [.env.example](config/env.example) to the root directory.
 
-### Step 2: Configure Environment
+    ```bash
+    git clone git@github.com:NVIDIA-AI-Blueprints/nemotron-voice-agent.git
+    cd nemotron-voice-agent
+    git submodule update --init
+    cp config/env.example .env
+    ```
 
-Copy the example environment file to the root directory:
+2. Open the `.env` file and edit the environment variable `NVIDIA_API_KEY` in line 13 with your NVIDIA API key.
 
-```bash
-cp config/env.example .env
-```
+    ```bash
+    NVIDIA_API_KEY=<your-nvidia-api-key>
+    ```
 
-Update the `.env` file with your API keys:
+3. Login to NVIDIA NGC Docker Registry.
 
-```bash
-# Required
-NVIDIA_API_KEY=nvapi-xxxxxxxxxxxxxxxxxxxxx
-```
+    ```bash
+    export NGC_API_KEY=<your-nvidia-api-key>
+    docker login nvcr.io
+    ```
 
-### Step 3: Docker login to nvcr.io
+4. Deploy the application.
 
-Login to NVIDIA NGC Docker Registry:
+    ```bash
+    docker compose up -d
+    ```
 
-```bash
-export NGC_API_KEY=nvapi-...
-docker login nvcr.io
-```
-### Step 4: Deploy the Application
+5. Access the application at `http://<machine-ip>:9000/`
 
-Download docker images and start all services:
+For detailed setup instructions, proceed to [Getting Started Guide](docs/01-getting-started.md).
 
-```bash
-docker compose -f docker-compose.yml up -d
-```
-
-**Note:** First-time deployment may take 30-45 minutes as Docker builds images and downloads models.
-
-**Alternative: Build from Source**
-
-If you have made local changes to the codebase, use the build option instead:
-
-```bash
-docker compose -f docker-compose.yml up --build -d
-```
-
-
-### Step 5: Access the Application
-
-- Wait for all services to be healthy (check with `docker compose ps`)
-- Open your browser and navigate to `http://<machine-ip>:9000/`
-
-
-### Step 6: [Optional] Deploy Coturn Server for Remote Access
-
-If you need to access the application from remote locations or deploy on cloud platforms, you will need to configure a TURN server:
-
-1. Deploy the Coturn server (replace `<HOST_IP_EXTERNAL>` with your public IP):
-
-```bash
-docker run -d --network=host instrumentisto/coturn -n --verbose --log-file=stdout \
-  --external-ip=<HOST_IP_EXTERNAL> --listening-ip=0.0.0.0 --lt-cred-mech --fingerprint \
-  --user=admin:admin --no-multicast-peers --realm=tokkio.realm.org \
-  --min-port=51000 --max-port=52000
-```
-
-2. Update `.env` with Turn server configuration:
-
-```bash
-# ----------------------------------------------------------------------------
-# TURN SERVER CREDENTIALS
-# ----------------------------------------------------------------------------
-
-TURN_SERVER_URL=turn:<HOST_IP_EXTERNAL>:3478
-TURN_USERNAME=admin
-TURN_PASSWORD=admin
-```
-
-3. Update `webrtc_ui/src/config.ts` with the same configuration:
-
-```typescript
-export const RTC_CONFIG: ConstructorParameters<typeof RTCPeerConnection>[0] = {
-    iceServers: [
-      {
-        urls: "turn:<HOST_IP_EXTERNAL>:3478",
-        username: "admin",
-        credential: "admin",
-      },
-    ],
-  };
-```
-
-For more information, see [WebRTC TURN Server Documentation](https://webrtc.org/getting-started/turn-server).
-
-4. Restart the Docker Compose services:
-```bash
-docker compose -f docker-compose.yml up --build -d
-```
-
-### Step 7: Start interacting with the application
-
-![UI Screenshot](./docs/images/ui_webrtc.png)
-
-Note: To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<machine-ip>:9000` to the list, and restart Chrome.
+---
 
 ## Agent Skills
 
@@ -151,12 +81,24 @@ This repository includes AI agent skills for deployment assistance. Install them
 npx skills add .
 ```
 
+---
+
 ## Documentation
 
-- [Multilingual Support](docs/MULTILINGUAL.md) - Guide for building voice agents with multilingual capabilities
-- [Jetson Thor Deployment](docs/JETSON_THOR.md) - Deployment guide for NVIDIA Jetson Thor edge platform
-- [Customization Guide](docs/CUSTOMIZATION_GUIDE.md) - Configuration options for models, prompts, and deployment settings
-- [NVIDIA Pipecat](docs/NVIDIA_PIPECAT.md) - Overview of NVIDIA Pipecat services and processors for voice AI pipelines
-- [Best Practices](docs/BEST_PRACTICES.md) - Production deployment strategies and performance optimization guidelines
-- [Speculative Speech Processing](docs/SPECULATIVE_SPEECH_PROCESSING.md) - Advanced speech processing techniques for reduced latency
-- [WebRTC UI](webrtc_ui/README.md) - React-based WebRTC UI for voice agent interactions with microphone access
+| Type | Guide | Description |
+|------|-------|-------------|
+| Tutorial | [Getting Started](docs/01-getting-started.md) | Full deployment guide with prerequisites, GPU setup, and step-by-step instructions |
+| How-to | [Configuration Guide](docs/02-configuration-guide.md) | Configuration guide on the `.env` file depending on various use cases |
+| How-to | [Multilingual Support](docs/03-multilingual.md) | Enable multi-language conversations with automatic language detection |
+| How-to | [Jetson Thor Deployment](docs/04-jetson-thor.md) | Edge deployment guide for NVIDIA Jetson Thor platform |
+| Explanation | [Speculative Speech Processing](docs/05-speculative-speech-processing.md) | Reduce latency with interim transcript processing |
+| Explanation | [Best Practices](docs/06-best-practices.md) | Production deployment, latency optimization, and UX design guidelines |
+| Reference | [NVIDIA Pipecat](docs/07-nvidia-pipecat.md) | Overview of Pipecat services and processors for voice AI pipelines |
+
+## License
+
+TBD
+
+## Disclaimer
+
+TBD
