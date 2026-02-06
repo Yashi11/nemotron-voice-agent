@@ -394,7 +394,7 @@ OpenTelemetry tracing provides comprehensive observability for your voice agent 
     http://your-server-ip:6006
     ```
 
-Throught the Phoenix UI dashboard, you can:
+Through the Phoenix UI dashboard, you can:
 - View distributed traces from your voice agent pipeline.
 - Analyze conversation flows and latency.
 - Monitor ASR, LLM, and TTS performance.
