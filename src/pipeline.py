@@ -36,6 +36,8 @@ from nvidia_pipecat.processors.transcript_synchronization import (
 from nvidia_pipecat.services.nvidia_llm import NvidiaLLMService
 from nvidia_pipecat.services.riva_speech import RivaASRService, RivaTTSService
 from nvidia_pipecat.utils.riva_text_filter import RivaTextFilter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as OTLPSpanExporterGRPC
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as OTLPSpanExporterHTTP
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import (
     InputAudioRawFrame,
@@ -53,11 +55,35 @@ from pipecat.transports.smallwebrtc.connection import (
     SmallWebRTCConnection,
 )
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
+from pipecat.utils.tracing.setup import setup_tracing
 
 load_dotenv(override=True)
 
 PROMPT_FILE = Path(os.getenv("PROMPT_FILE_PATH", str(Path(__file__).parent.parent / "config" / "prompt.yaml")))
 MULTILINGUAL_MODE = os.getenv("ENABLE_MULTILINGUAL", "false").lower() == "true"
+
+IS_TRACING_ENABLED = os.getenv("ENABLE_TRACING", "").lower() == "true"
+
+# Initialize tracing if enabled
+if IS_TRACING_ENABLED:
+    # Get the endpoint URL
+    endpoint_url = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+
+    # Determine which exporter to use based on the endpoint URL
+    if endpoint_url.startswith("http://") or endpoint_url.startswith("https://"):
+        # HTTP exporter - use full URL with protocol
+        otlp_exporter = OTLPSpanExporterHTTP(endpoint=endpoint_url)
+    else:
+        # gRPC exporter - endpoint should be host:port format (no protocol prefix)
+        otlp_exporter = OTLPSpanExporterGRPC(endpoint=endpoint_url, insecure=True)
+
+    # Set up tracing with the exporter
+    setup_tracing(
+        service_name="nemotron-voice-agent",
+        exporter=otlp_exporter,
+        console_export=os.getenv("OTEL_CONSOLE_EXPORT", "").lower() == "true",
+    )
+    logger.info("OpenTelemetry tracing initialized")
 
 
 class VADProfile(Enum):
@@ -379,6 +405,7 @@ async def run_bot(webrtc_connection):
             start_metadata={"stream_id": stream_id},
         ),
         observers=[NvidiaRTVIObserver(rtvi_input)],
+        enable_tracing=IS_TRACING_ENABLED,
     )
 
     @rtvi_input.event_handler("on_client_ready")

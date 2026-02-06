@@ -9,7 +9,8 @@ This guide provides detailed instructions on configuring the Nemotron Voice Agen
 3. [Configuring TTS Settings](#configuring-tts-settings)
 4. [Enabling Zero-shot TTS](#enabling-zero-shot-tts)
 5. [Choosing a Transport Method](#choosing-a-transport-method)
-6. [Advanced Pipeline Customizations](#advanced-pipeline-customizations)
+6. [Enabling OpenTelemetry Tracing](#enabling-opentelemetry-tracing)
+7. [Advanced Pipeline Customizations](#advanced-pipeline-customizations)
 
 ---
 
@@ -341,6 +342,67 @@ docker compose up
 ```
 
 The system automatically loads the appropriate pipeline and UI based on the `TRANSPORT` setting. After starting the services, access the web interface through your browser at `http://your-server-ip:9000`.
+
+---
+
+## Enabling OpenTelemetry Tracing
+
+OpenTelemetry tracing provides comprehensive observability for your voice agent pipeline, allowing you to monitor performance, debug issues, and analyze conversation flows. Below steps will showcase how to enable tracing with [Phoenix](https://arize.com/docs/phoenix/self-hosting).
+
+1. Add Phoenix service to your `docker-compose.yml` file:
+
+    Add the following service definition to your `docker-compose.yml`:
+
+    ```yaml
+    phoenix:
+      image: arizephoenix/phoenix:latest
+      ports:
+        - "6006:6006"  # UI and OTLP HTTP collector
+        - "4317:4317"  # OTLP gRPC collector
+      restart: unless-stopped
+    ```
+
+2. Edit your `.env` file and enable tracing:
+
+    ```bash
+    # In .env file
+    ENABLE_TRACING=true
+    OTEL_CONSOLE_EXPORT=false  # Set to true for console output (useful for debugging)
+    OTEL_EXPORTER_OTLP_ENDPOINT=phoenix:4317  # Phoenix OTLP endpoint (gRPC on port 4317)
+    ```
+
+    **Configuration Options**:
+    - `ENABLE_TRACING`: Set to `true` to enable OpenTelemetry tracing
+    - `OTEL_CONSOLE_EXPORT`: Set to `true` to also export traces to console (useful for local debugging)
+    - `OTEL_EXPORTER_OTLP_ENDPOINT`: The OTLP endpoint URL for trace export.
+      - For **gRPC** (port 4317): Use `host:port` format (e.g., `phoenix:4317` or `localhost:4317`)
+      - For **HTTP** (port 4318 or custom): Use `http://host:port` format (e.g., `http://phoenix:4318`)
+
+3. Deploy the services:
+
+    ```bash
+    docker compose up -d
+    ```
+
+4. Open Phoenix Dashboard:
+
+    ```text
+    http://localhost:6006
+    ```
+
+    For remote access, use:
+
+    ```text
+    http://your-server-ip:6006
+    ```
+
+5. You should see the Phoenix UI dashboard where you can:
+    - View distributed traces from your voice agent pipeline
+    - Analyze conversation flows and latency
+    - Monitor ASR, LLM, and TTS performance
+    - Debug issues with detailed span information
+
+For alternative tracing backends, refer to the [OpenTelemetry Tracing with Pipecat](https://github.com/pipecat-ai/pipecat-examples/tree/main/open-telemetry) documentation. Note that using different backends may require minor modifications to `src/pipeline.py`.
 
 ---
 
