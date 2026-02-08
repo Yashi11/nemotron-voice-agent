@@ -10,7 +10,7 @@ This guide provides detailed instructions on configuring the Nemotron Voice Agen
 4. [Enabling Zero-shot TTS](#enabling-zero-shot-tts)
 5. [Choosing a Transport Method](#choosing-a-transport-method)
 6. [Enabling OpenTelemetry Tracing](#enabling-opentelemetry-tracing)
-7. [Advanced Pipeline Customizations](#advanced-pipeline-customizations)
+7. [Advanced Configuration Settings](#advanced-configuration-settings)
 
 ---
 
@@ -257,7 +257,7 @@ ENABLE_RIVA_TEXT_FILTER=true  # Default: true
 Consider the following when adding text filters:
 
 - The filter runs only for `RIVA_TTS_LANGUAGE=en-US` and is skipped for other languages.
-- To add custom rules, edit `nvidia-pipecat/src/nvidia_pipecat/utils/riva_text_filter.py`.
+- To create custom filters for your use case or language, extend the `BaseTextFilter` class from [pipecat-ai](https://github.com/pipecat-ai/pipecat/blob/v0.0.98/src/pipecat/utils/text/base_text_filter.py).
 
 ---
 
@@ -400,7 +400,7 @@ Through the Phoenix UI dashboard, you can:
 - Monitor ASR, LLM, and TTS performance.
 - Debug issues with detailed span information.
 
-For alternative tracing backends, refer to the [OpenTelemetry Tracing with Pipecat](https://github.com/pipecat-ai/pipecat-examples/tree/main/open-telemetry) documentation. Note that using different backends might require minor modifications to the `src/pipeline.py` file.
+**Note:** The current implementation in `src/pipeline.py` supports OTLP exporters (HTTP and gRPC). For alternative tracing backends, refer to the [OpenTelemetry Tracing with Pipecat](https://github.com/pipecat-ai/pipecat-examples/tree/main/open-telemetry) documentation.
 
 ---
 
