@@ -12,8 +12,8 @@ Local deployment with self-hosted NIM containers on x86 workstations/servers.
 
 | Service | Image | GPU | Port |
 |---------|-------|-----|------|
-| riva-tts-magpie | `magpie-tts-multilingual:1.6.0` | 0 | 50151 |
-| riva-asr-parakeet | `parakeet-1-1b-ctc-en-us:1.4.0` | 0 | 50152 |
+| tts-service | `magpie-tts-multilingual:1.6.0` | 0 | 50151 |
+| asr-service | `parakeet-1-1b-ctc-en-us:1.4.0` | 0 | 50152 |
 | nvidia-llm | `nemotron-3-nano:1.5.1-variant` | 1 | 18000 |
 | python-app | custom | - | 7860 |
 | ui-app | custom | - | 9000 |
@@ -40,16 +40,16 @@ Then choose ONE of:
 
 No additional changes needed. Default configuration uses:
 - `NVIDIA_LLM_MODEL=nvidia/nemotron-3-nano`
-- `RIVA_ASR_IMAGE=nvcr.io/nim/nvidia/parakeet-1-1b-ctc-en-us:1.4.0`
+- `ASR_DOCKER_IMAGE=nvcr.io/nim/nvidia/parakeet-1-1b-ctc-en-us:1.4.0`
 
 ### Option B: Multilingual
 
 Add to `.env`:
 ```bash
 ENABLE_MULTILINGUAL=true
-RIVA_ASR_IMAGE=nvcr.io/nim/nvidia/parakeet-1-1b-rnnt-multilingual:1.4.0
-RIVA_ASR_MODEL=parakeet-rnnt-1.1b-unified-ml-cs-universal-multi-asr-streaming
-RIVA_ASR_NIM_TAGS=mode=str
+ASR_DOCKER_IMAGE=nvcr.io/nim/nvidia/parakeet-1-1b-rnnt-multilingual:1.4.0
+ASR_MODEL_NAME=parakeet-rnnt-1.1b-unified-ml-cs-universal-multi-asr-streaming
+ASR_NIM_TAGS=mode=str
 NVIDIA_LLM_IMAGE=nvcr.io/nim/nvidia/llama-3.3-nemotron-super-49b-v1.5:1.15.4
 NVIDIA_LLM_MODEL=nvidia/llama-3.3-nemotron-super-49b-v1.5
 SYSTEM_PROMPT_SELECTOR=llama-3.3-nemotron-super-49b-v1.5/multilingual_voice_assistant

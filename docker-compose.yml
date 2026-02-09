@@ -4,14 +4,14 @@
 name: nemotron-voice-agent
 
 services:
-  riva-tts-magpie:
-    image: ${RIVA_TTS_IMAGE:-nvcr.io/nim/nvidia/magpie-tts-multilingual:1.6.0}
+  tts-service:
+    image: ${TTS_DOCKER_IMAGE:-nvcr.io/nim/nvidia/magpie-tts-multilingual:1.6.0}
     user: "0:0"
     environment:
       - NGC_API_KEY=${NVIDIA_API_KEY}
       - NIM_HTTP_API_PORT=9000
       - NIM_GRPC_API_PORT=50051
-      - NIM_TAGS_SELECTOR=${RIVA_TTS_NIM_TAGS:-name=magpie-tts-multilingual,batch_size=32}
+      - NIM_TAGS_SELECTOR=${TTS_NIM_TAGS:-name=magpie-tts-multilingual,batch_size=32}
     ports:
       - "50151:50051"
     healthcheck:
@@ -37,14 +37,14 @@ services:
         max-size: "50m"
         max-file: "5"
 
-  riva-asr-parakeet:
-    image: ${RIVA_ASR_IMAGE:-nvcr.io/nim/nvidia/parakeet-1-1b-ctc-en-us:1.4.0}
+  asr-service:
+    image: ${ASR_DOCKER_IMAGE:-nvcr.io/nim/nvidia/parakeet-1-1b-ctc-en-us:1.4.0}
     user: "0:0"
     environment:
       - NGC_API_KEY=${NVIDIA_API_KEY}
       - NIM_HTTP_API_PORT=9001
       - NIM_GRPC_API_PORT=50052
-      - NIM_TAGS_SELECTOR=${RIVA_ASR_NIM_TAGS:-mode=str,vad=silero}
+      - NIM_TAGS_SELECTOR=${ASR_NIM_TAGS:-mode=str,vad=silero}
     ports:
       - "50152:50052"
     volumes:
@@ -126,14 +126,14 @@ services:
       - .env
     environment:
       # Docker services endpoints
-      - RIVA_ASR_URL=${RIVA_ASR_URL:-riva-asr-parakeet:50052}
-      - RIVA_TTS_URL=${RIVA_TTS_URL:-riva-tts-magpie:50051}
+      - ASR_SERVER_URL=${ASR_SERVER_URL:-asr-service:50052}
+      - TTS_SERVER_URL=${TTS_SERVER_URL:-tts-service:50051}
       - NVIDIA_LLM_URL=${NVIDIA_LLM_URL:-http://nvidia-llm:8000/v1}
 
     depends_on:
-      riva-tts-magpie:
+      tts-service:
         condition: service_healthy
-      riva-asr-parakeet:
+      asr-service:
         condition: service_healthy
       nvidia-llm:
         condition: service_healthy

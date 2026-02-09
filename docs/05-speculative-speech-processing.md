@@ -16,7 +16,7 @@ ENABLE_SPECULATIVE_SPEECH=true
 ENABLE_SPECULATIVE_SPEECH=false
 ```
 
-**Note:** This feature only works with Riva ASR.
+**Note:** This feature only works with Nemotron Speech ASR.
 
 ---
 
@@ -63,7 +63,7 @@ When speculative speech is enabled, the agent's pipeline includes the TTS respon
 ```python
 pipeline = Pipeline([
     transport.input(),
-    stt,                                    # RivaASRService
+    stt,                                    # NemotronASRService
     context_aggregator.user(),              # Filters interim transcripts
     llm,
     tts,
@@ -95,10 +95,10 @@ When developing components that work with speculative speech processing, follow 
 
 ## Technical Foundation
 
-This implementation builds on NVIDIA Riva ASR's Two-Pass End of Utterance mechanism:
+This implementation builds on NVIDIA Nemotron Speech ASR's Two-Pass End of Utterance mechanism:
 
 - Real-time interim transcript generation with stability metrics
 - Hypothesis refinement as more audio is processed
 - Clear signaling of final transcripts
 
-For more details, see the [NVIDIA Riva ASR documentation](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/asr/asr-overview.html#two-pass-end-of-utterance).
+For more details, see the [NVIDIA Nemotron Speech ASR documentation](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/asr/asr-overview.html#two-pass-end-of-utterance).

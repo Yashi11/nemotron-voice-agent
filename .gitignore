@@ -33,7 +33,8 @@ docs/build/
 
 *.log
 nim_cache/
-riva_cache/
+asr_cache/
+tts_cache/
 llm_cache/
 audio_dumps/
 

@@ -47,7 +47,7 @@ For optimizing latency, first we need to measure e2e and component wise latency.
 - **Contribution**: 200-500ms (end of speech detection)
 - **Optimization**:
   - Use streaming VAD with shorter silence thresholds.
-  - Explore shorter EOU detection with Riva ASR and open-source smart turn detection models.
+  - Explore shorter EOU detection with Nemotron Speech ASR and open-source smart turn detection models.
   - Implement adaptive VAD sensitivity based on environment noise.
 
 **Audio Buffering:**
@@ -68,9 +68,9 @@ For optimizing latency, first we need to measure e2e and component wise latency.
 ### ASR (Automatic Speech Recognition) Latency
 
 **Model Processing:**
-- **Contribution**: 50-100 ms for Riva ASR
+- **Contribution**: 50-100 ms for Nemotron Speech ASR
 - **Optimization**:
-  - Deploy Riva ASR NIM locally.
+  - Deploy Nemotron Speech ASR NIM locally.
   - Utilize latest GPU hardware and optimized models.
   - Maintain consistent latency performance when handling multiple concurrent requests.
   - Use streaming ASR with interim results for early processing.
@@ -97,7 +97,7 @@ For optimizing latency, first we need to measure e2e and component wise latency.
 - **Contribution**: 150-300ms for first audio chunk
 - **Optimization**:
   - **Streaming TTS**: Start playback before full synthesis.
-  - **Local Riva TTS**: Achieve 150-200ms with TRT optimized Magpie model.
+  - **Local Nemotron Speech TTS**: Achieve 150-200ms with TRT optimized Magpie model.
   - **Chunked Generation**: Process sentences as they are generated.
   - **Batch Size**: Increase the Magpie model batch size (e.g., to 64) to boost throughput for high-volume or concurrent workloads.
 
@@ -199,7 +199,7 @@ update profile, set alerts, or lock your card. What would you like?"
 - Use inverse text normalization (ITN) for proper formatting.
 - Ensure user audio quality is good.
 - Avoid resampling if possible.
-- Skip noise processing since Riva ASR models are robust to noise.
+- Skip noise processing since Nemotron Speech ASR models are robust to noise.
 - Base critical decisions on final transcripts only.
 - Fine-tune ASR model on domain data if needed.
 
