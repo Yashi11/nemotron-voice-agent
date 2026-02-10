@@ -260,6 +260,7 @@ async def run_bot(webrtc_connection):
         os.getenv("ENABLE_TTS_TEXT_FILTER", "true").lower() == "true"
         and os.getenv("TTS_LANGUAGE", "en-US") == "en-US"
         and os.getenv("ENABLE_MULTILINGUAL", "false").lower() == "false"
+        and os.getenv("SYSTEM_PROMPT_SELECTOR", "").lower() != "llama/tts_emotion_tags"
     )
 
     tts = NemotronTTSService(
