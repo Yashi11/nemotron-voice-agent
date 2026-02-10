@@ -80,6 +80,7 @@ Follow these steps to deploy the Nemotron Voice Agent in multilingual mode.
     ASR_DOCKER_IMAGE=nvcr.io/nim/nvidia/parakeet-1-1b-rnnt-multilingual:1.4.0
     ASR_MODEL_NAME=parakeet-rnnt-1.1b-unified-ml-cs-universal-multi-asr-streaming
     ASR_NIM_TAGS=mode=str
+    ASR_CLOUD_FUNCTION_ID=71203149-d3b7-4460-8231-1be2543a1fca #if using nvcf endpoint
     ```
 
     **Note:** These values replace the default `parakeet-1-1b-ctc-en-us` configuration. Comment out or remove the existing ASR settings before adding these.
