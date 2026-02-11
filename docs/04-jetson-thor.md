@@ -60,9 +60,9 @@ The configuration files for this deployment are the following.
     - `ENABLE_SPECULATIVE_SPEECH=false` — Disabled for resource optimization.
     - `WORKERS=1` — Single worker to reduce memory usage.
 
-4. Deploy Riva ASR/TTS. Riva provides the speech recognition (ASR) and text-to-speech (TTS) capabilities.
+4. Deploy Nemotron Speech ASR and TTS models.
 
-    a. Ensure you meet the [Riva prerequisites](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/quick-start-guide.html#prerequisites) before proceeding.
+    a. Ensure you meet the [prerequisites](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/quick-start-guide.html#prerequisites) before proceeding.
 
     b. Configure NGC CLI with your API key:
 
@@ -70,7 +70,7 @@ The configuration files for this deployment are the following.
         ngc config set
         ```
 
-    c. Download and start Riva using the Quick Start scripts:
+    c. Download and deploy Nemotron Speech ASR and TTS using the Quick Start scripts:
 
         ```bash
         ngc registry resource download-version nvidia/riva/riva_quickstart_arm64:2.24.0
@@ -79,7 +79,7 @@ The configuration files for this deployment are the following.
         bash riva_start.sh
         ```
 
-        > **Note:** Riva initialization may take 30-60 minutes on first run.
+        > **Note:** Initialization may take 30-60 minutes on first run.
 
 5. Start LLM Service and Voice Agent Application. Start services from the root directory:
 

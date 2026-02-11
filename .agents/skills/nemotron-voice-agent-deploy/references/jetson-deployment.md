@@ -1,6 +1,6 @@
 # Jetson Thor Deployment
 
-Edge deployment using vLLM (not NIM) + Riva ASR/TTS.
+Edge deployment using vLLM (not NIM) + Nemotron Speech ASR and TTS.
 
 > vLLM used because Jetson Thor NIMs not yet available. Swap to NIMs when released.
 
@@ -27,7 +27,7 @@ Edge deployment using vLLM (not NIM) + Riva ASR/TTS.
 
 ## Deployment
 
-### 1. Deploy Riva ASR/TTS
+### 1. Deploy Nemotron Speech ASR and TTS models
 
 ```bash
 ngc config set  # Configure NGC CLI with your API key

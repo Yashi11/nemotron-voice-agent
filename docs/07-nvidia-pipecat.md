@@ -12,9 +12,8 @@ Here, we give a brief overview of the processors available in the [nvidia-pipeca
 
 | **Pipecat Service** | **Description** |
 | --- | --- |
-| RivaASRService | This service provides streaming speech recognition using NVIDIA's [Riva ASR models](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/asr/asr-overview.html). It supports real-time transcription with interim results and interruption handling. |
-| RivaTTSService | This service provides high-quality speech synthesis using NVIDIA's [Riva TTS models](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/tts/tts-overview.html). It supports multiple voices, languages, and custom dictionaries for pronunciation. |
-| RivaNMTService | This service can be used for text translation between different languages. It uses [NVIDIA Riva Neural Machine Translation](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/tutorials/nmt-python-basics.html) APIs. |
+| NemotronASRService | This service provides streaming speech recognition using NVIDIA's [Nemotron Speech ASR models](https://docs.nvidia.com/nim/riva/asr/latest/overview.html). It supports real-time transcription with interim results and interruption handling. |
+| NemotronTTSService | This service provides high-quality speech synthesis using NVIDIA's [Nemotron Speech TTS models](https://docs.nvidia.com/nim/riva/tts/latest/overview.html). It supports multiple voices, languages, and custom dictionaries for pronunciation. |
 
 
 ### LLM, RAG and NAT Services
@@ -43,4 +42,4 @@ Here, we give a brief overview of the processors available in the [nvidia-pipeca
 | UserTranscriptSynchronization | Synchronizes user speech transcripts with the received speech. |
 | BotTranscriptSynchronization | Synchronizes bot speech transcripts with audio bot speech playback (TTS playback). |
 | NvidiaRTVIInput | This processor extends the base RTVIProcessor to handle WebRTC UI client messages such as context resets, voice changes, and audio uploads. |
-| NvidiaRTVIOutput | This processor forwards transcript frames and Riva configuration frames (voice lists, TTS settings, system prompts) to the WebRTC UI client as server messages. |
+| NvidiaRTVIOutput | This processor forwards transcript frames and Nemotron Speech ASR and TTS configuration frames (voice lists, TTS settings, system prompts) to the WebRTC UI client as server messages. |

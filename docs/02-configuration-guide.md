@@ -6,10 +6,11 @@ This guide provides detailed instructions on configuring the Nemotron Voice Agen
 
 1. [Switching LLM Models](#switching-llm-models)
 2. [Switching System Prompts](#switching-system-prompts)
-3. [Configuring TTS Voices](#configuring-tts-voices)
+3. [Configuring TTS Settings](#configuring-tts-settings)
 4. [Enabling Zero-shot TTS](#enabling-zero-shot-tts)
 5. [Choosing a Transport Method](#choosing-a-transport-method)
-6. [Advanced Pipeline Customizations](#advanced-pipeline-customizations)
+6. [Enabling OpenTelemetry Tracing](#enabling-opentelemetry-tracing)
+7. [Advanced Configuration Settings](#advanced-configuration-settings)
 
 ---
 
@@ -191,19 +192,19 @@ The supported languages are en-US, de-DE, fr-FR, es-US, es-ES. You can also add 
 
 ---
 
-## Configuring TTS Voices
+## Configuring TTS Settings
 
-The Text-to-Speech (TTS) system supports multiple voices and languages through the NVIDIA Magpie TTS models.
+The Text-to-Speech (TTS) system supports multiple voices and languages through the [NVIDIA Magpie TTS model](https://build.nvidia.com/nvidia/magpie-tts-multilingual/modelcard).
 
 ### Default Multilingual TTS Voice
 
 ```bash
 # In .env file
-RIVA_TTS_IMAGE=nvcr.io/nim/nvidia/magpie-tts-multilingual:1.6.0
-RIVA_TTS_VOICE_ID=Magpie-Multilingual.EN-US.Aria
-RIVA_TTS_MODEL=magpie_tts_ensemble-Magpie-Multilingual
-RIVA_TTS_LANGUAGE=en-US
-RIVA_TTS_NIM_TAGS=name=magpie-tts-multilingual,batch_size=32
+TTS_DOCKER_IMAGE=nvcr.io/nim/nvidia/magpie-tts-multilingual:1.6.0
+TTS_VOICE_ID=Magpie-Multilingual.EN-US.Aria
+TTS_MODEL_NAME=magpie_tts_ensemble-Magpie-Multilingual
+TTS_LANGUAGE=en-US
+TTS_NIM_TAGS=name=magpie-tts-multilingual,batch_size=32
 ```
 
 The voice ID format of the Magpie Multilingual TTS model is `Model.Language.VoiceName`.
@@ -216,11 +217,11 @@ The voice ID format of the Magpie Multilingual TTS model is `Model.Language.Voic
 
     ```bash
     # In .env file
-    RIVA_TTS_URL=grpc.nvcf.nvidia.com:443
+    TTS_SERVER_URL=grpc.nvcf.nvidia.com:443
     NVIDIA_API_KEY=your_api_key_here
     ```
 
-2. Comment out the `riva-tts-magpie` service in [docker-compose.yml](../docker-compose.yml) when using cloud endpoints.
+2. Comment out the `tts-service` service in [docker-compose.yml](../docker-compose.yml) when using cloud endpoints.
 
 ### Pronunciation Correction
 
@@ -243,6 +244,20 @@ You can customize word pronunciation using International Phonetic Alphabet (IPA)
     ```
 
 The pipeline automatically applies IPA corrections to TTS output.
+
+### Adding Text Filters
+
+Apply text filters to remove special characters that can cause Magpie TTS failures.
+
+```bash
+# In `.env`
+ENABLE_TTS_TEXT_FILTER=true  # Default: true
+```
+
+Consider the following when adding text filters:
+
+- The filter runs only for `TTS_LANGUAGE=en-US` and is skipped for other languages.
+- To create custom filters for your use case or language, extend the `BaseTextFilter` class from [pipecat-ai](https://github.com/pipecat-ai/pipecat/blob/v0.0.98/src/pipecat/utils/text/base_text_filter.py).
 
 ---
 
@@ -270,16 +285,16 @@ Zero-shot TTS allows you to clone any voice using a short audio sample (5+ secon
 
     ```bash
     # Comment out standard TTS configuration
-    #RIVA_TTS_IMAGE=nvcr.io/nim/nvidia/magpie-tts-multilingual:1.6.0
-    #RIVA_TTS_VOICE_ID=Magpie-Multilingual.EN-US.Aria
-    #RIVA_TTS_MODEL=magpie_tts_ensemble-Magpie-Multilingual
-    #RIVA_TTS_NIM_TAGS=name=magpie-tts-multilingual,batch_size=32
+    #TTS_DOCKER_IMAGE=nvcr.io/nim/nvidia/magpie-tts-multilingual:1.6.0
+    #TTS_VOICE_ID=Magpie-Multilingual.EN-US.Aria
+    #TTS_MODEL_NAME=magpie_tts_ensemble-Magpie-Multilingual
+    #TTS_NIM_TAGS=name=magpie-tts-multilingual,batch_size=32
 
     # Enable Zero-shot TTS
-    RIVA_TTS_IMAGE=<ZEROSHOT_NIM_MICROSERVICE_IMAGE> # Use your version
-    RIVA_TTS_VOICE_ID=Magpie-ZeroShot.Female-1
-    RIVA_TTS_MODEL=magpie_tts_ensemble-Magpie-ZeroShot
-    RIVA_TTS_NIM_TAGS=name=magpie-tts-zeroshot,batch_size=32
+    TTS_DOCKER_IMAGE=<ZEROSHOT_NIM_MICROSERVICE_IMAGE> # Use your version
+    TTS_VOICE_ID=Magpie-ZeroShot.Female-1
+    TTS_MODEL_NAME=magpie_tts_ensemble-Magpie-ZeroShot
+    TTS_NIM_TAGS=name=magpie-tts-zeroshot,batch_size=32
     ZERO_SHOT_AUDIO_PROMPT=audio_prompts/custom_voice.wav
     ```
 
@@ -330,6 +345,65 @@ The system automatically loads the appropriate pipeline and UI based on the `TRA
 
 ---
 
+## Enabling OpenTelemetry Tracing
+
+OpenTelemetry tracing provides comprehensive observability for your voice agent pipeline, allowing you to monitor performance, debug issues, and analyze conversation flows. The following steps show how to enable tracing with [Phoenix](https://arize.com/docs/phoenix/self-hosting).
+
+1. Add the Phoenix service to the `docker-compose.yml` file as follows.
+
+    ```yaml
+    phoenix:
+      image: arizephoenix/phoenix:latest
+      ports:
+        - "6006:6006"  # UI and OTLP HTTP collector
+        - "4317:4317"  # OTLP gRPC collector
+      restart: unless-stopped
+    ```
+
+2. Edit the `.env` file and enable tracing as follows.
+
+    ```bash
+    # In .env file
+    ENABLE_TRACING=true
+    OTEL_CONSOLE_EXPORT=false  # Set to true for console output (useful for debugging)
+    OTEL_EXPORTER_OTLP_ENDPOINT=phoenix:4317  # Phoenix OTLP endpoint (gRPC on port 4317)
+    ```
+
+    **Configuration Options**:
+    - `ENABLE_TRACING`: Set to `true` to enable OpenTelemetry tracing
+    - `OTEL_CONSOLE_EXPORT`: Set to `true` to also export traces to console (useful for local debugging)
+    - `OTEL_EXPORTER_OTLP_ENDPOINT`: The OTLP endpoint URL for trace export.
+      - For **gRPC** (port 4317): Use `host:port` format (e.g., `phoenix:4317` or `localhost:4317`)
+      - For **HTTP** (port 4318 or custom): Use `http://host:port` format (e.g., `http://phoenix:4318`)
+
+3. Deploy the services.
+
+    ```bash
+    docker compose up -d
+    ```
+
+4. Open the Phoenix UI dashboard on your browser.
+
+    ```text
+    http://localhost:6006
+    ```
+
+    For remote access, use the following URL, replacing `your-server-ip` with your server's public IP address.
+
+    ```text
+    http://your-server-ip:6006
+    ```
+
+Through the Phoenix UI dashboard, you can:
+- View distributed traces from your voice agent pipeline.
+- Analyze conversation flows and latency.
+- Monitor ASR, LLM, and TTS performance.
+- Debug issues with detailed span information.
+
+**Note:** The current implementation in `src/pipeline.py` supports OTLP exporters (HTTP and gRPC). For alternative tracing backends, refer to the [OpenTelemetry Tracing with Pipecat](https://github.com/pipecat-ai/pipecat-examples/tree/main/open-telemetry) documentation.
+
+---
+
 ## Advanced Configuration Settings
 
 You can set advanced pipeline configurations to optimize the performance and user experience of the Nemotron Voice Agent.
@@ -345,7 +419,7 @@ To enable speculative speech processing, set the `ENABLE_SPECULATIVE_SPEECH` env
 ENABLE_SPECULATIVE_SPEECH=true  # Default: true
 ```
 
-This feature only works with the NVIDIA Riva ASR NIM microservice. Refer to the [Speculative Speech Processing docs](./05-speculative-speech-processing.md) for details.
+This feature only works with the NVIDIA Nemotron Speech ASR NIM microservice. Refer to the [Speculative Speech Processing docs](./05-speculative-speech-processing.md) for details.
 
 ### Chat History Limit
 

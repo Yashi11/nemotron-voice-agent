@@ -26,7 +26,7 @@ from nvidia_pipecat.processors.nvidia_context_aggregator import (
     create_nvidia_context_aggregator,
 )
 from nvidia_pipecat.services.nvidia_llm import NvidiaLLMService
-from nvidia_pipecat.services.riva_speech import RivaASRService, RivaTTSService
+from nvidia_pipecat.services.riva_speech import NemotronASRService, NemotronTTSService
 from nvidia_pipecat.utils.logging import setup_default_logging
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import LLMMessagesUpdateFrame
@@ -53,10 +53,10 @@ class VADProfile(Enum):
     """VAD Profile options."""
 
     SILERO = "Silero"  # Transport Silero VAD analyzer
-    RIVA = "Riva"  # Riva ASR VAD
+    ASR = "ASR"  # ASR VAD
 
 
-VAD_PROFILE = VADProfile(os.getenv("VAD_PROFILE", VADProfile.RIVA))
+VAD_PROFILE = VADProfile(os.getenv("VAD_PROFILE", VADProfile.ASR))
 
 
 def _load_prompts() -> dict:
@@ -174,17 +174,17 @@ async def run_bot(websocket: WebSocket, stream_id: str):
 
     # ASR service config - add extended stop_history for multilingual mode
     stt_config = {
-        "server": os.getenv("RIVA_ASR_URL", "grpc.nvcf.nvidia.com:443"),
+        "server": os.getenv("ASR_SERVER_URL", "grpc.nvcf.nvidia.com:443"),
         "api_key": os.getenv("NVIDIA_API_KEY"),
-        "language": os.getenv("RIVA_ASR_LANGUAGE", "en-US"),
+        "language": os.getenv("ASR_LANGUAGE", "en-US"),
         "sample_rate": 16000,
-        "generate_interruptions": VAD_PROFILE == VADProfile.RIVA,
-        "model": os.getenv("RIVA_ASR_MODEL", "parakeet-1.1b-en-US-asr-streaming-silero-vad-sortformer"),
+        "generate_interruptions": VAD_PROFILE == VADProfile.ASR,
+        "model": os.getenv("ASR_MODEL_NAME", "parakeet-1.1b-en-US-asr-streaming-silero-vad-sortformer"),
     }
     if MULTILINGUAL_MODE:
         stt_config.update(stop_history=900, stop_history_eou=900)
 
-    stt = RivaASRService(**stt_config)
+    stt = NemotronASRService(**stt_config)
 
     # Load IPA dictionary with error handling
     ipa_file = os.getenv("TTS_IPA_FILE_PATH", Path(__file__).parent.parent / "config" / "ipa.json")
@@ -201,12 +201,12 @@ async def run_bot(websocket: WebSocket, stream_id: str):
         logger.error(f"Error loading IPA dictionary: {e}")
         raise
 
-    tts = RivaTTSService(
-        server=os.getenv("RIVA_TTS_URL", "grpc.nvcf.nvidia.com:443"),
+    tts = NemotronTTSService(
+        server=os.getenv("TTS_SERVER_URL", "grpc.nvcf.nvidia.com:443"),
         api_key=os.getenv("NVIDIA_API_KEY"),
-        voice_id=os.getenv("RIVA_TTS_VOICE_ID", "Magpie-Multilingual.EN-US.Aria"),
-        model=os.getenv("RIVA_TTS_MODEL", "magpie_tts_ensemble-Magpie-Multilingual"),
-        language=os.getenv("RIVA_TTS_LANGUAGE", "en-US"),
+        voice_id=os.getenv("TTS_VOICE_ID", "Magpie-Multilingual.EN-US.Aria"),
+        model=os.getenv("TTS_MODEL_NAME", "magpie_tts_ensemble-Magpie-Multilingual"),
+        language=os.getenv("TTS_LANGUAGE", "en-US"),
         sample_rate=22050,
         zero_shot_audio_prompt_file=(
             Path(os.getenv("ZERO_SHOT_AUDIO_PROMPT")) if os.getenv("ZERO_SHOT_AUDIO_PROMPT") else None

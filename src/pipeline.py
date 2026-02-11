@@ -34,7 +34,10 @@ from nvidia_pipecat.processors.transcript_synchronization import (
     UserTranscriptSynchronization,
 )
 from nvidia_pipecat.services.nvidia_llm import NvidiaLLMService
-from nvidia_pipecat.services.riva_speech import RivaASRService, RivaTTSService
+from nvidia_pipecat.services.riva_speech import NemotronASRService, NemotronTTSService
+from nvidia_pipecat.utils.riva_text_filter import RivaTextFilter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as OTLPSpanExporterGRPC
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as OTLPSpanExporterHTTP
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import (
     InputAudioRawFrame,
@@ -52,21 +55,45 @@ from pipecat.transports.smallwebrtc.connection import (
     SmallWebRTCConnection,
 )
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
+from pipecat.utils.tracing.setup import setup_tracing
 
 load_dotenv(override=True)
 
 PROMPT_FILE = Path(os.getenv("PROMPT_FILE_PATH", str(Path(__file__).parent.parent / "config" / "prompt.yaml")))
 MULTILINGUAL_MODE = os.getenv("ENABLE_MULTILINGUAL", "false").lower() == "true"
 
+IS_TRACING_ENABLED = os.getenv("ENABLE_TRACING", "").lower() == "true"
+
+# Initialize tracing if enabled
+if IS_TRACING_ENABLED:
+    # Get the endpoint URL
+    endpoint_url = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+
+    # Determine which exporter to use based on the endpoint URL
+    if endpoint_url.startswith("http://") or endpoint_url.startswith("https://"):
+        # HTTP exporter - use full URL with protocol
+        otlp_exporter = OTLPSpanExporterHTTP(endpoint=endpoint_url)
+    else:
+        # gRPC exporter - endpoint should be host:port format (no protocol prefix)
+        otlp_exporter = OTLPSpanExporterGRPC(endpoint=endpoint_url, insecure=True)
+
+    # Set up tracing with the exporter
+    setup_tracing(
+        service_name="nemotron-voice-agent",
+        exporter=otlp_exporter,
+        console_export=os.getenv("OTEL_CONSOLE_EXPORT", "").lower() == "true",
+    )
+    logger.info("OpenTelemetry tracing initialized")
+
 
 class VADProfile(Enum):
     """VAD Profile options."""
 
     SILERO = "Silero"  # Transport Silero VAD analyzer
-    RIVA = "Riva"  # Riva ASR VAD
+    ASR = "ASR"  # ASR VAD
 
 
-VAD_PROFILE = VADProfile(os.getenv("VAD_PROFILE", VADProfile.RIVA))
+VAD_PROFILE = VADProfile(os.getenv("VAD_PROFILE", VADProfile.ASR))
 
 
 def _load_prompts() -> dict:
@@ -200,18 +227,18 @@ async def run_bot(webrtc_connection):
 
     # ASR service config - add extended stop_history for multilingual mode
     stt_config = {
-        "server": os.getenv("RIVA_ASR_URL", "grpc.nvcf.nvidia.com:443"),
+        "server": os.getenv("ASR_SERVER_URL", "grpc.nvcf.nvidia.com:443"),
         "api_key": os.getenv("NVIDIA_API_KEY"),
-        "language": os.getenv("RIVA_ASR_LANGUAGE", "en-US"),
+        "language": os.getenv("ASR_LANGUAGE", "en-US"),
         "sample_rate": 16000,
-        "generate_interruptions": VAD_PROFILE == VADProfile.RIVA,
-        "model": os.getenv("RIVA_ASR_MODEL", "parakeet-1.1b-en-US-asr-streaming-silero-vad-sortformer"),
-        "function_id": os.getenv("RIVA_ASR_FUNCTION_ID", "1598d209-5e27-4d3c-8079-4751568b1081"),
+        "generate_interruptions": VAD_PROFILE == VADProfile.ASR,
+        "model": os.getenv("ASR_MODEL_NAME", "parakeet-1.1b-en-US-asr-streaming-silero-vad-sortformer"),
+        "function_id": os.getenv("ASR_CLOUD_FUNCTION_ID", "1598d209-5e27-4d3c-8079-4751568b1081"),
     }
     if MULTILINGUAL_MODE:
         stt_config.update(stop_history=900, stop_history_eou=900)
 
-    stt = RivaASRService(**stt_config)
+    stt = NemotronASRService(**stt_config)
 
     # Load IPA dictionary with error handling
     ipa_file = os.getenv("TTS_IPA_FILE_PATH", Path(__file__).parent.parent / "config" / "ipa.json")
@@ -228,17 +255,26 @@ async def run_bot(webrtc_connection):
         logger.error(f"Error loading IPA dictionary: {e}")
         raise
 
-    tts = RivaTTSService(
-        server=os.getenv("RIVA_TTS_URL", "grpc.nvcf.nvidia.com:443"),
+    # TTS text filter only enabled when ENABLE_TTS_TEXT_FILTER=true AND language is en-US
+    enable_riva_text_filter = (
+        os.getenv("ENABLE_TTS_TEXT_FILTER", "true").lower() == "true"
+        and os.getenv("TTS_LANGUAGE", "en-US") == "en-US"
+        and os.getenv("ENABLE_MULTILINGUAL", "false").lower() == "false"
+        and os.getenv("SYSTEM_PROMPT_SELECTOR", "").lower() != "llama/tts_emotion_tags"
+    )
+
+    tts = NemotronTTSService(
+        server=os.getenv("TTS_SERVER_URL", "grpc.nvcf.nvidia.com:443"),
         api_key=os.getenv("NVIDIA_API_KEY"),
-        voice_id=os.getenv("RIVA_TTS_VOICE_ID", "Magpie-Multilingual.EN-US.Aria"),
-        model=os.getenv("RIVA_TTS_MODEL", "magpie_tts_ensemble-Magpie-Multilingual"),
-        language=os.getenv("RIVA_TTS_LANGUAGE", "en-US"),
+        voice_id=os.getenv("TTS_VOICE_ID", "Magpie-Multilingual.EN-US.Aria"),
+        model=os.getenv("TTS_MODEL_NAME", "magpie_tts_ensemble-Magpie-Multilingual"),
+        language=os.getenv("TTS_LANGUAGE", "en-US"),
         sample_rate=22050,
         zero_shot_audio_prompt_file=(
             Path(os.getenv("ZERO_SHOT_AUDIO_PROMPT")) if os.getenv("ZERO_SHOT_AUDIO_PROMPT") else None
         ),
         custom_dictionary=ipa_dict,
+        text_filters=[RivaTextFilter()] if enable_riva_text_filter else [],
     )
 
     # Audio dump configuration - controlled via environment variables
@@ -370,6 +406,7 @@ async def run_bot(webrtc_connection):
             start_metadata={"stream_id": stream_id},
         ),
         observers=[NvidiaRTVIObserver(rtvi_input)],
+        enable_tracing=IS_TRACING_ENABLED,
     )
 
     @rtvi_input.event_handler("on_client_ready")
