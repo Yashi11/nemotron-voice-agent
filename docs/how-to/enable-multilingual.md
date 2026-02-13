@@ -1,22 +1,18 @@
-# Multilingual Voice Agent
+# Enable Multilingual Voice Agent
 
 This guide explains how to enable multilingual support in the Nemotron Voice Agent. When enabled, the agent detects the user's language and responds in the same language. Unsupported languages fall back to English.
 
 The following components enable multilingual conversations.
 
----
-
 ## Key Components
 
-This guide uses the following key components to build the multilingual voice agent.
+This guide uses the following key components to build the multilingual voice agent:
 
 | Component | Description | Documentation |
 |-----------|-------------|---------------|
 | **NVIDIA Parakeet RNNT ASR** | Transcribes speech in multiple languages | [Parakeet ASR](https://build.nvidia.com/nvidia/parakeet-1_1b-rnnt-multilingual-asr) |
 | **NVIDIA Magpie TTS** | Synthesizes speech in multiple languages | [Magpie TTS](https://build.nvidia.com/nvidia/magpie-tts-multilingual) |
 | **NVIDIA Llama Nemotron LLM** | Generates multilingual responses with structured language output | [Llama Nemotron](https://build.nvidia.com/nvidia/llama-3_3-nemotron-super-49b-v1_5) |
-
----
 
 ## How Multilingual Support Works
 
@@ -26,7 +22,7 @@ These are achieved with the following implementations.
 
 ### LLM Response Format
 
-The multilingual system uses a structured output format defined in [config/prompt.yaml](../config/prompt.yaml) to coordinate language detection and TTS routing.
+The multilingual system uses a structured output format defined in [config/prompt.yaml](../../config/prompt.yaml) to coordinate language detection and TTS routing.
 
 ```
 Language: <LangCode> Text: <DirectResponse> MetaData: <AdditionalInfo>
@@ -34,11 +30,11 @@ Language: <LangCode> Text: <DirectResponse> MetaData: <AdditionalInfo>
 
 | Field | Description |
 |-------|-------------|
-| `Language` | Detected language code (e.g., `en-US`, `de-DE`, `fr-FR`) |
+| `Language` | Detected language code (for example, `en-US`, `de-DE`, `fr-FR`) |
 | `Text` | The spoken response content—this is what the user hears |
 | `MetaData` | Additional context not meant to be spoken (optional) |
 
-The following are some example responses.
+The following are some example responses:
 
 ```
 Language: en-US Text: How can I help you today? MetaData: greeting
@@ -55,8 +51,6 @@ The agent uses these language detection rules.
 - **Supported Languages Only**: Responses use only languages supported by the TTS model.
 - **Graceful Fallback**: Unsupported languages default to `en-US` with English response.
 
----
-
 ## Deploying the Agent in Multilingual Mode
 
 Follow these steps to deploy the Nemotron Voice Agent in multilingual mode.
@@ -67,11 +61,13 @@ Follow these steps to deploy the Nemotron Voice Agent in multilingual mode.
     cp config/env.example .env
     ```
 
-2. Edit the [.env](../config/env.example) file and enable multilingual mode.
+2. Edit the [.env](../../config/env.example) file and enable multilingual mode.
 
     ```bash
     ENABLE_MULTILINGUAL=true
     ```
+
+    **Tip:** Set `CHAT_HISTORY_LIMIT` to `3`-`5` in the `.env` file for better language detection accuracy.
 
 3. Configure multilingual ASR by replacing the default ASR settings with the following values.
 
@@ -85,7 +81,7 @@ Follow these steps to deploy the Nemotron Voice Agent in multilingual mode.
 
     **Note:** These values replace the default `parakeet-1-1b-ctc-en-us` configuration. Comment out or remove the existing ASR settings before adding these.
 
-4. Configure the LLM for multilingual by uncommenting OPTION 2 in the [.env](../config/env.example) file and commenting out OPTION 1.
+4. Configure the LLM for multilingual by uncommenting OPTION 2 in the [.env](../../config/env.example) file and commenting out OPTION 1.
 
     ```bash
     # Comment out OPTION 1 (Nemotron-3-Nano) and uncomment OPTION 2:
@@ -104,8 +100,6 @@ Follow these steps to deploy the Nemotron Voice Agent in multilingual mode.
     ```bash
     docker compose up -d
     ```
-
----
 
 ## Testing the Multilingual Agent
 
@@ -134,7 +128,7 @@ The multilingual agent supports the following language codes by default.
 | Spanish (US) | `es-US` |
 | Spanish (Spain) | `es-ES` |
 
-You can customize the supported languages by editing the `multilingual_voice_assistant` prompt in [config/prompt.yaml](../config/prompt.yaml).
+You can customize the supported languages by editing the `lang_codes` variable in the `multilingual_voice_assistant` prompt in [config/prompt.yaml](../../config/prompt.yaml).
 
 ### Testing Language Switching
 
@@ -146,11 +140,9 @@ To test mid-conversation language switching:
 
 The agent detects language per message, so you can switch languages at any point in the conversation.
 
----
-
 ## Troubleshooting
 
-You can troubleshoot common issues with the multilingual agent by referring to the following table.
+You can troubleshoot common issues with the multilingual agent by referring to the following table:
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
