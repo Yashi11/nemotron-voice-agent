@@ -6,7 +6,7 @@ This guide covers deploying the Nemotron Voice Agent on Jetson Thor using Docker
 
 ## Prerequisites
 
-- **Jetson Thor** flashed with **JetPack 7.0** via [NVIDIA SDK Manager](https://developer.nvidia.com/sdk-manager) (with CUDA, CUDA-X, TensorRT, and NVIDIA Container Runtime components installed)
+- **Jetson Thor** flashed with **JetPack 7.0** using [NVIDIA SDK Manager](https://developer.nvidia.com/sdk-manager) (with CUDA, CUDA-X, TensorRT, and NVIDIA Container Runtime components installed)
 - [NGC CLI](https://org.ngc.nvidia.com/setup/installers/cli) installed and configured
 - [Docker Engine](https://docs.docker.com/engine/install/ubuntu/) and [Docker Compose](https://docs.docker.com/compose/install/linux/)
 - [HuggingFace API token](https://huggingface.co/docs/hub/en/security-tokens) for downloading LLM models
@@ -16,7 +16,7 @@ This guide covers deploying the Nemotron Voice Agent on Jetson Thor using Docker
 
 ## Project Structure
 
-The configuration files for this deployment are the following.
+The configuration files for this deployment are the following:
 
 ```
 ./
@@ -29,7 +29,7 @@ The configuration files for this deployment are the following.
 |------|---------|
 | [docker-compose.jetson.yml](../docker-compose.jetson.yml) | Jetson-specific Docker Compose with vLLM |
 | [env.jetson.example](../config/env.jetson.example) | Environment template for Jetson deployment |
-> **Note:** This deployment uses vLLM for LLM inference instead of NVIDIA NIM. The LLM NIM microservices use TensorRT-LLM which provides optimized, pre-compiled inference engines for specific GPU architectures. Since LLM NIM microservices for Jetson Thor are currently not available, this guide uses vLLM as a flexible alternative to load Hugging Face models directly.
+> **Note:** This deployment uses vLLM for LLM inference instead of NVIDIA NIM. The LLM NIM microservices use TensorRT-LLM that provides optimized, pre-compiled inference engines for specific GPU architectures. Since LLM NIM microservices for Jetson Thor are currently not available, this guide uses vLLM as a flexible alternative to load Hugging Face models directly.
 
 ---
 
@@ -56,7 +56,7 @@ The configuration files for this deployment are the following.
     HF_TOKEN=<your-huggingface-token>
     ```
 
-    **Jetson-specific defaults** (differ from main deployment):
+    **Jetson-specific defaults** (differ from main deployment)
     - `ENABLE_SPECULATIVE_SPEECH=false` — Disabled for resource optimization.
     - `WORKERS=1` — Single worker to reduce memory usage.
 

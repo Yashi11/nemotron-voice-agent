@@ -89,11 +89,11 @@ npx skills add .
 |------|-------|-------------|
 | Tutorial | [Getting Started](docs/01-getting-started.md) | Full deployment guide with prerequisites, GPU setup, and step-by-step instructions |
 | How-to | [Configuration Guide](docs/02-configuration-guide.md) | Configuration guide on the `.env` file depending on various use cases |
-| How-to | [Multilingual Support](docs/03-multilingual.md) | Enable multi-language conversations with automatic language detection |
-| How-to | [Jetson Thor Deployment](docs/04-jetson-thor.md) | Edge deployment guide for NVIDIA Jetson Thor platform |
-| Explanation | [Speculative Speech Processing](docs/05-speculative-speech-processing.md) | Reduce latency with interim transcript processing |
-| Explanation | [Best Practices](docs/06-best-practices.md) | Production deployment, latency optimization, and UX design guidelines |
-| Reference | [NVIDIA Pipecat](docs/07-nvidia-pipecat.md) | Overview of Pipecat services and processors for voice AI pipelines |
+| How-to | [Enable Multilingual Voice Agent](docs/how-to/enable-multilingual.md) | Enable multi-language conversations with automatic language detection |
+| How-to | [Jetson Thor Deployment](docs/03-jetson-thor.md) | Edge deployment guide for NVIDIA Jetson Thor platform |
+| How-to | [Tune Pipeline Performance](docs/how-to/tune-pipeline-performance.md#speculative-speech-processing) | Reduce latency with speculative speech and other performance settings |
+| Explanation | [Best Practices](docs/04-best-practices.md) | Production deployment, latency optimization, and UX design guidelines |
+| Reference | [NVIDIA Pipecat](docs/05-nvidia-pipecat.md) | Overview of Pipecat services and processors for voice AI pipelines |
 
 ## License
 

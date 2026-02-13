@@ -6,9 +6,9 @@ This guide walks you through deploying the Nemotron Voice Agent on your system.
 
 Before you begin, ensure you have the following:
 
-- Access to NVIDIA NGC with valid credentials. See [NGC Getting Started Guide](https://docs.nvidia.com/ngc/ngc-overview/index.html#registering-activating-ngc-account).
-- Docker with NVIDIA GPU support installed. See [NIM documentation](https://docs.nvidia.com/nim/riva/asr/latest/getting-started.html#prerequisites).
-- NVIDIA API key. Required for accessing NIM ASR, TTS, and LLM models and docker images. Get yours at [build.nvidia.com](https://build.nvidia.com/).
+- Access to NVIDIA NGC with valid credentials. Refer to the [NGC Getting Started Guide](https://docs.nvidia.com/ngc/ngc-overview/index.html#registering-activating-ngc-account).
+- Docker with NVIDIA GPU support installed. Refer to the [NIM documentation](https://docs.nvidia.com/nim/riva/asr/latest/getting-started.html#prerequisites).
+- NVIDIA API key. Required for accessing NIM ASR, TTS, and LLM models and Docker images. Get yours at [build.nvidia.com](https://build.nvidia.com/).
 
 ## GPU Requirements
 
@@ -39,14 +39,14 @@ This blueprint requires **2 NVIDIA GPUs** for running the application:
     cp config/env.example .env
     ```
 
-4. Update the `NVIDIA_API_KEY` in the `.env` file with your API keys.
+4. Update the `NVIDIA_API_KEY` in the `.env` file with your API key.
 
     ```bash
     # Required. Line 13 in .env file.
     NVIDIA_API_KEY=<your-nvidia-api-key>
     ```
 
-5. Login to NVIDIA NGC Docker Registry.
+5. Log in to the NVIDIA NGC Docker Registry.
 
     ```bash
     export NGC_API_KEY=<your-nvidia-api-key>

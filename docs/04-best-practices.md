@@ -9,7 +9,7 @@ Building production-grade voice agents requires careful consideration of multipl
 The following metrics are key to the success of a voice agent.
 
 - **Latency**: Time from user speech end to bot response start (target: 600-1500ms).
-- **Accuracy**: ASR word error rate (WER), factual correctness, LLM generation quality etc.
+- **Accuracy**: ASR word error rate (WER), factual correctness, LLM generation quality, and so on.
 - **Scalability**: Concurrent streams supported without audio glitches or performance degradation, all models scale independently.
 - **Availability**: System uptime and fault tolerance (target: 99.9%+).
 - **User Satisfaction**: Task completion rate and user feedback scores.
@@ -39,7 +39,7 @@ Implement event-driven patterns for:
 
 ## Optimizing Pipeline Latency
 
-For optimizing latency, first we need to measure e2e and component wise latency. Voice agent latency comes from multiple pipeline components. Understanding each contributor enables targeted optimization:
+To optimize latency, first measure end-to-end and per-component latency. Voice agent latency comes from multiple pipeline components. Understanding each contributor enables targeted optimization:
 
 ### Audio Processing Latency
 
@@ -80,7 +80,7 @@ For optimizing latency, first we need to measure e2e and component wise latency.
 **Model Inference:**
 - **Contribution**: 200-800ms depending on model size and complexity
 - **Optimization**:
-  - **Model Selection**: Use smaller, faster models (8B vs 70B parameters).
+  - **Model Selection**: Use smaller, faster models (8B compared to 70B parameters).
   - **TRT LLM Optimized**: Use TRT LLM optimized NIM deployments.
   - **Quantization**: Apply INT8/FP16 models for 2-3x speedup.
   - **KV-Cache Optimization**: Enable KV caching for lower TTFB and optimize based on use case.
@@ -99,7 +99,7 @@ For optimizing latency, first we need to measure e2e and component wise latency.
   - **Streaming TTS**: Start playback before full synthesis.
   - **Local Nemotron Speech TTS**: Achieve 150-200ms with TRT optimized Magpie model.
   - **Chunked Generation**: Process sentences as they are generated.
-  - **Batch Size**: Increase the Magpie model batch size (e.g., to 64) to boost throughput for high-volume or concurrent workloads.
+  - **Batch Size**: Increase the Magpie model batch size (for example, to 64) to boost throughput for high-volume or concurrent workloads.
 
 **Audio Post-processing:**
 - **Contribution**: 50-100ms (normalization, encoding)
@@ -119,7 +119,7 @@ For optimizing latency, first we need to measure e2e and component wise latency.
 - Process interim ASR transcripts before speech ends.
 - Pre-generate likely responses during user speech.
 - **Potential Savings**: Achieve 200-400ms reduction in perceived latency.
-- See [Speculative Speech Processing](./05-speculative-speech-processing.md) for details.
+- Refer to [Speculative Speech Processing](./how-to/tune-pipeline-performance.md#speculative-speech-processing) for details.
 
 **Filler Words or Intermediate Responses:**
 - Generate or use random filler words to reduce perceived latency.
@@ -265,7 +265,7 @@ Building production voice agents requires a holistic approach balancing technica
 
 1. **Design for Latency**: Every millisecond counts in conversational AI
 2. **Handle Errors Gracefully**: Users should never feel lost
-3. **Monitor Everything**: You can't improve what you don't measure
+3. **Monitor Everything**: You cannot improve what you do not measure
 4. **Test Thoroughly**: Automated testing catches issues before users do
 5. **Iterate Based on Data**: Use real user feedback to improve
 6. **Plan for Scale**: Design for 10x your current load
