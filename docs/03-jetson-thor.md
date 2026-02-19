@@ -48,12 +48,12 @@ The configuration files for this deployment are the following:
     cp config/env.jetson.example .env
     ```
 
-3. Update the `.env` file with your API keys:
+3. Set your API keys as environment variables:
 
     ```bash
     # Required
-    NVIDIA_API_KEY=<your-nvidia-api-key>
-    HF_TOKEN=<your-huggingface-token>
+    export NVIDIA_API_KEY=<your-nvidia-api-key>
+    export HF_TOKEN=<your-huggingface-token>
     ```
 
     **Jetson-specific defaults** (differ from main deployment)
@@ -86,6 +86,8 @@ The configuration files for this deployment are the following:
     ```bash
     sudo docker compose -f docker-compose.jetson.yml up -d
     ```
+
+    > **Note:** Deployment may take 15-20 minutes on first run.
 
 6. Access the application at `http://<jetson-ip>:8081` on your browser.
 

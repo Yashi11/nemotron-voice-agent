@@ -28,6 +28,9 @@ from nvidia_pipecat.processors.nvidia_context_aggregator import (
 from nvidia_pipecat.services.nvidia_llm import NvidiaLLMService
 from nvidia_pipecat.services.riva_speech import NemotronASRService, NemotronTTSService
 from nvidia_pipecat.utils.logging import setup_default_logging
+from nvidia_pipecat.utils.riva_text_filter import RivaTextFilter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as OTLPSpanExporterGRPC
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as OTLPSpanExporterHTTP
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import LLMMessagesUpdateFrame
 from pipecat.pipeline.pipeline import Pipeline
@@ -40,6 +43,7 @@ from pipecat.transports.websocket.fastapi import (
     FastAPIWebsocketParams,
     FastAPIWebsocketTransport,
 )
+from pipecat.utils.tracing.setup import setup_tracing
 
 load_dotenv(override=True)
 
@@ -47,6 +51,29 @@ setup_default_logging(level="DEBUG", exclude_warning=True)
 
 PROMPT_FILE = Path(os.getenv("PROMPT_FILE_PATH", str(Path(__file__).parent.parent / "config" / "prompt.yaml")))
 MULTILINGUAL_MODE = os.getenv("ENABLE_MULTILINGUAL", "false").lower() == "true"
+
+IS_TRACING_ENABLED = os.getenv("ENABLE_TRACING", "").lower() == "true"
+
+# Initialize tracing if enabled
+if IS_TRACING_ENABLED:
+    # Get the endpoint URL
+    endpoint_url = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+
+    # Determine which exporter to use based on the endpoint URL
+    if endpoint_url.startswith("http://") or endpoint_url.startswith("https://"):
+        # HTTP exporter - use full URL with protocol
+        otlp_exporter = OTLPSpanExporterHTTP(endpoint=endpoint_url)
+    else:
+        # gRPC exporter - endpoint should be host:port format (no protocol prefix)
+        otlp_exporter = OTLPSpanExporterGRPC(endpoint=endpoint_url, insecure=True)
+
+    # Set up tracing with the exporter
+    setup_tracing(
+        service_name="nemotron-voice-agent",
+        exporter=otlp_exporter,
+        console_export=os.getenv("OTEL_CONSOLE_EXPORT", "").lower() == "true",
+    )
+    logger.info("OpenTelemetry tracing initialized")
 
 
 class VADProfile(Enum):
@@ -180,6 +207,7 @@ async def run_bot(websocket: WebSocket, stream_id: str):
         "sample_rate": 16000,
         "generate_interruptions": VAD_PROFILE == VADProfile.ASR,
         "model": os.getenv("ASR_MODEL_NAME", "parakeet-1.1b-en-US-asr-streaming-silero-vad-sortformer"),
+        "function_id": os.getenv("ASR_CLOUD_FUNCTION_ID", "1598d209-5e27-4d3c-8079-4751568b1081"),
     }
     if MULTILINGUAL_MODE:
         stt_config.update(stop_history=900, stop_history_eou=900)
@@ -201,6 +229,14 @@ async def run_bot(websocket: WebSocket, stream_id: str):
         logger.error(f"Error loading IPA dictionary: {e}")
         raise
 
+    # TTS text filter only enabled when ENABLE_TTS_TEXT_FILTER=true AND language is en-US
+    enable_riva_text_filter = (
+        os.getenv("ENABLE_TTS_TEXT_FILTER", "true").lower() == "true"
+        and os.getenv("TTS_LANGUAGE", "en-US") == "en-US"
+        and os.getenv("ENABLE_MULTILINGUAL", "false").lower() == "false"
+        and os.getenv("SYSTEM_PROMPT_SELECTOR", "").lower() != "llama/tts_emotion_tags"
+    )
+
     tts = NemotronTTSService(
         server=os.getenv("TTS_SERVER_URL", "grpc.nvcf.nvidia.com:443"),
         api_key=os.getenv("NVIDIA_API_KEY"),
@@ -212,6 +248,7 @@ async def run_bot(websocket: WebSocket, stream_id: str):
             Path(os.getenv("ZERO_SHOT_AUDIO_PROMPT")) if os.getenv("ZERO_SHOT_AUDIO_PROMPT") else None
         ),
         custom_dictionary=ipa_dict,
+        text_filters=[RivaTextFilter()] if enable_riva_text_filter else [],
     )
 
     def _validated_selector(raw_value: str | None, default: str) -> str:
@@ -254,14 +291,24 @@ async def run_bot(websocket: WebSocket, stream_id: str):
         logger.warning("Invalid CHAT_HISTORY_LIMIT, falling back to default 20")
         chat_history_limit = 20
 
+    # Preserve all initial prompt messages from prompt.yaml
+    # This ensures system and first user messages (used for prompting) are never truncated
+    preserve_prompt_messages = len(messages)
+
     if enable_speculative_speech:
         context_aggregator = create_nvidia_context_aggregator(
-            context, send_interims=True, chat_history_limit=chat_history_limit
+            context,
+            send_interims=True,
+            chat_history_limit=chat_history_limit,
+            preserve_prompt_messages=preserve_prompt_messages,
         )
         tts_response_cacher = NvidiaTTSResponseCacher()
     else:
         context_aggregator = create_nvidia_context_aggregator(
-            context, send_interims=False, chat_history_limit=chat_history_limit
+            context,
+            send_interims=False,
+            chat_history_limit=chat_history_limit,
+            preserve_prompt_messages=preserve_prompt_messages,
         )
         tts_response_cacher = None
 
@@ -287,6 +334,7 @@ async def run_bot(websocket: WebSocket, stream_id: str):
             send_initial_empty_metrics=True,
             start_metadata={"stream_id": stream_id},
         ),
+        enable_tracing=IS_TRACING_ENABLED,
     )
 
     @transport.event_handler("on_client_connected")

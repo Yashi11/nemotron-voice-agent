@@ -361,14 +361,24 @@ async def run_bot(webrtc_connection):
         logger.warning("Invalid CHAT_HISTORY_LIMIT, falling back to default 20")
         chat_history_limit = 20
 
+    # Preserve all initial prompt messages from prompt.yaml
+    # This ensures system and first user messages (used for prompting) are never truncated
+    preserve_prompt_messages = len(messages)
+
     if enable_speculative_speech:
         context_aggregator = create_nvidia_context_aggregator(
-            context, send_interims=True, chat_history_limit=chat_history_limit
+            context,
+            send_interims=True,
+            chat_history_limit=chat_history_limit,
+            preserve_prompt_messages=preserve_prompt_messages,
         )
         tts_response_cacher = NvidiaTTSResponseCacher()
     else:
         context_aggregator = create_nvidia_context_aggregator(
-            context, send_interims=False, chat_history_limit=chat_history_limit
+            context,
+            send_interims=False,
+            chat_history_limit=chat_history_limit,
+            preserve_prompt_messages=preserve_prompt_messages,
         )
         tts_response_cacher = None
 
@@ -469,7 +479,7 @@ async def offer(request: Request):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="WebRTC demo")
-    parser.add_argument("--host", default="0.0.0.0", help="Host for HTTP server (default: localhost)")
+    parser.add_argument("--host", default="0.0.0.0", help="Host for HTTP server (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=7860, help="Port for HTTP server (default: 7860)")
     parser.add_argument("--workers", type=int, default=1, help="Number of workers for HTTP server (default: 1)")
     args = parser.parse_args()

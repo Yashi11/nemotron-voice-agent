@@ -10,7 +10,13 @@ The Nemotron Voice Agent supports multiple LLM models with different capabilitie
     cp config/env.example .env
     ```
 
-2. Edit the `.env` file. The file contains four pre-configured model blocks. To switch models, comment out the current block and uncomment your desired model.
+2. Export your NVIDIA API key as an environment variable:
+
+    ```bash
+    export NVIDIA_API_KEY=<your-nvidia-api-key>
+    ```
+
+3. Edit the `.env` file. The file contains four pre-configured model blocks. To switch models, comment out the current block and uncomment your desired model.
 
     **Example: Switch from Nemotron-3-Nano (default) to Llama-3.3-Nemotron-Super-49B**
 
@@ -47,22 +53,43 @@ The Nemotron Voice Agent supports multiple LLM models with different capabilitie
 
     > **Note:** Each model has a matching `SYSTEM_PROMPT_SELECTOR` value. Use the prompt selector that corresponds to your chosen model. For more information about system prompts, refer to [Customize System Prompts](./customize-system-prompts.md).
 
-3. Restart the services:
+4. Restart the services:
 
     ```bash
     docker compose down
-    docker compose up
+    docker compose up -d
     ```
 
 ## Using Cloud Endpoints
 
 Instead of local deployment, you can use NVIDIA's cloud-hosted models on build.nvidia.com. For example, you can set up the `.env` file to use the Nemotron-3-Nano model on build.nvidia.com as follows.
 
-```bash
-# In .env file
-NVIDIA_LLM_URL=https://integrate.api.nvidia.com/v1
-NVIDIA_LLM_MODEL=nvidia/nemotron-3-nano-30b-a3b  # Cloud model name
-NVIDIA_API_KEY=your_api_key_here
-```
+1. Set your NVIDIA API key as an environment variable:
+    ```bash
+    export NVIDIA_API_KEY=<your-nvidia-api-key>
+    ```
 
-**Note:** Comment out or remove the `nvidia-llm` service from [docker-compose.yml](../../docker-compose.yml) when using cloud endpoints.
+2. Update .env with LLM model details
+    ```bash
+    # In .env file
+    NVIDIA_LLM_URL=https://integrate.api.nvidia.com/v1
+    NVIDIA_LLM_MODEL=nvidia/nemotron-3-nano-30b-a3b  # Cloud model name
+    ```
+
+3. Comment out or remove the `nvidia-llm` service from the [`docker-compose.yml`](../../docker-compose.yml) file.
+
+4. Remove any dependencies on the `nvidia-llm` service in the `python-app` service.
+    ```yaml
+    # In docker-compose.yml:
+    python-app:
+      ...
+      depends_on:
+      # - nvidia-llm  <-- comment out or remove this line
+    ```
+
+5. Restart the remaining services:
+    ```bash
+    docker compose down
+    docker compose up -d
+    ```
+
