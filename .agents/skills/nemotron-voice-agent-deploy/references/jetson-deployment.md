@@ -47,18 +47,25 @@ cd nemotron-voice-agent
 cp config/env.jetson.example .env
 ```
 
-Edit `.env`:
+Export your NVIDIA API Key and HuggingFace token as environment variables:
 
-| Variable | Value |
-|----------|-------|
-| `NVIDIA_API_KEY` | Your NVIDIA API key |
-| `HF_TOKEN` | Your HuggingFace token |
-| `NVIDIA_LLM_MODEL` | `RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16` |
+```bash
+export NVIDIA_API_KEY=your-nvidia-api-key    # Replace with your NVIDIA API key
+export HF_TOKEN=your-huggingface-token       # Replace with your HuggingFace token
+```
+
+Edit `.env` and set the following:
+```
+NVIDIA_LLM_MODEL=RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16
+```
+
 
 ```bash
 sudo docker compose -f docker-compose.jetson.yml up -d
 docker logs -f llm-nvidia-jetson  # Monitor LLM startup
 ```
+
+> **Note:** Deployment may take 30-60 minutes on first run.
 
 ### 3. Access
 

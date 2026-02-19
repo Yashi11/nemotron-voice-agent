@@ -31,9 +31,13 @@ cd nemotron-voice-agent
 cp config/env.example .env
 ```
 
-Edit `.env`:
+Export your NVIDIA API key:
 ```bash
-NVIDIA_API_KEY=your-api-key  # Get from https://build.nvidia.com
+export NVIDIA_API_KEY=your-api-key  # Get from https://build.nvidia.com
+```
+
+Then edit `.env`:
+```bash
 NVIDIA_LLM_MODEL=nvidia/nemotron-3-nano-30b-a3b  # Cloud model name
 ```
 
@@ -47,6 +51,8 @@ docker compose up --build --no-deps -d python-app ui-app
 # WebRTC: http://localhost:9000
 # WebSocket: http://localhost:7860/static/index.html
 ```
+
+> **Note:** Deployment may take 30-60 minutes on first run.
 
 **If user requests Multilingual mode**, also add to `.env`:
 ```bash

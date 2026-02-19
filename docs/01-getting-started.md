@@ -39,11 +39,10 @@ This blueprint requires **2 NVIDIA GPUs** for running the application:
     cp config/env.example .env
     ```
 
-4. Update the `NVIDIA_API_KEY` in the `.env` file with your API key.
+4. Set your NVIDIA API key as an environment variable:
 
     ```bash
-    # Required. Line 13 in .env file.
-    NVIDIA_API_KEY=<your-nvidia-api-key>
+    export NVIDIA_API_KEY=<your-nvidia-api-key>
     ```
 
 5. Log in to the NVIDIA NGC Docker Registry.
@@ -56,8 +55,10 @@ This blueprint requires **2 NVIDIA GPUs** for running the application:
 6. Deploy the application.
 
     ```bash
-    docker compose -f docker-compose.yml up -d
+    docker compose up -d
     ```
+
+    > **Note:** Deployment may take 30-60 minutes on first run.
 
 7. Access the application at `http://<machine-ip>:9000/`
 
@@ -87,17 +88,21 @@ If you need to access the application from remote locations or deploy on cloud p
 
 3. Update the `.env` file with TURN server configuration.
 
+    **Important:** Replace `<your-public-ip-address>` with your actual public IP address in the `TURN_SERVER_URL` value below.
+
     ```bash
     # ----------------------------------------------------------------------------
     # TURN SERVER CREDENTIALS
     # ----------------------------------------------------------------------------
 
-    TURN_SERVER_URL=turn:$HOST_IP_EXTERNAL:3478
+    TURN_SERVER_URL=turn:<your-public-ip-address>:3478
     TURN_USERNAME=admin
     TURN_PASSWORD=admin
     ```
 
 4. Update WebRTC UI Configuration in the [webrtc_ui](../frontend/webrtc_ui/src/config.ts) file by replacing the empty `RTC_CONFIG` object with your TURN server configuration.
+
+    **Important:** Replace `<your-public-ip-address>` with your actual public IP address in the `urls` field below.
 
     ```typescript
     // Replace this:
@@ -107,7 +112,7 @@ If you need to access the application from remote locations or deploy on cloud p
     export const RTC_CONFIG = {
       iceServers: [
         {
-          urls: "turn:$HOST_IP_EXTERNAL:3478",
+          urls: "turn:<your-public-ip-address>:3478",
           username: "admin",
           credential: "admin",
         },
@@ -120,5 +125,5 @@ If you need to access the application from remote locations or deploy on cloud p
 5. Restart the Docker Compose services to apply the changes.
 
     ```bash
-    docker compose -f docker-compose.yml up --build -d
+    docker compose up --build -d
     ```

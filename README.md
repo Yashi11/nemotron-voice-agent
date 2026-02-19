@@ -2,6 +2,8 @@
 
 The Nemotron Voice Agent is a real-time conversational AI system that demonstrates how to build sophisticated voice AI applications using NVIDIA's cutting-edge models and the Pipecat framework. This developer blueprint combines automatic speech recognition (ASR), large language model (LLM) intelligence, and text-to-speech (TTS) to deliver fluid, human-like voice interactions.
 
+![Architecture Diagram](./docs/images/arch.png)
+
 ---
 
 ## Key Components
@@ -48,10 +50,10 @@ Start the application following these steps.
     cp config/env.example .env
     ```
 
-2. Open the `.env` file and edit the environment variable `NVIDIA_API_KEY` in line 13 with your NVIDIA API key.
+2. Set your NVIDIA API key as an environment variable:
 
     ```bash
-    NVIDIA_API_KEY=<your-nvidia-api-key>
+    export NVIDIA_API_KEY=<your-nvidia-api-key>
     ```
 
 3. Login to NVIDIA NGC Docker Registry.
@@ -66,6 +68,8 @@ Start the application following these steps.
     ```bash
     docker compose up -d
     ```
+
+    > **Note:** Deployment may take 30-60 minutes on first run.
 
 5. Access the application at `http://<machine-ip>:9000/`
 

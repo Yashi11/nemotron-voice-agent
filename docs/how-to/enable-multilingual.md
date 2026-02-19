@@ -1,6 +1,6 @@
 # Enable Multilingual Voice Agent
 
-This guide explains how to enable multilingual support in the Nemotron Voice Agent. When enabled, the agent detects the user's language and responds in the same language. Unsupported languages fall back to English.
+This guide explains how to enable multilingual support in the Nemotron Voice Agent. When enabled, the agent detects the user's language and responds in the same language. Unsupported languages fall back to English. See [Supported Languages](#supported-languages) for the list of supported languages.
 
 The following components enable multilingual conversations.
 
@@ -16,7 +16,7 @@ This guide uses the following key components to build the multilingual voice age
 
 ## How Multilingual Support Works
 
-When multilingual support is enabled, the agent detects the user's language and responds in the same language. Unsupported languages fall back to English.
+When multilingual support is enabled, the agent detects the user's language and responds in the same language. Unsupported languages fall back to English. See [Supported Languages](#supported-languages) for the list of supported languages.
 
 These are achieved with the following implementations.
 
@@ -83,6 +83,8 @@ Follow these steps to deploy the Nemotron Voice Agent in multilingual mode.
 
 4. Configure the LLM for multilingual by uncommenting OPTION 2 in the [.env](../../config/env.example) file and commenting out OPTION 1.
 
+    Multilingual mode uses the **Llama 3.3 Nemotron Super 49B** model, which is significantly larger than the default Nemotron-3-Nano model. Ensure your system has sufficient VRAM to run the 49B model before enabling multilingual mode. See the [main Requirements section](../../README.md#requirements) for general hardware and software prerequisites.
+
     ```bash
     # Comment out OPTION 1 (Nemotron-3-Nano) and uncomment OPTION 2:
     NVIDIA_LLM_IMAGE=nvcr.io/nim/nvidia/llama-3.3-nemotron-super-49b-v1.5:1.15.4
@@ -93,7 +95,7 @@ Follow these steps to deploy the Nemotron Voice Agent in multilingual mode.
     SYSTEM_PROMPT_SELECTOR=llama-3.3-nemotron-super-49b-v1.5/multilingual_voice_assistant
     ```
 
-    > **Note:** Each model has a matching `SYSTEM_PROMPT_SELECTOR` value. Use the prompt selector that corresponds to your chosen model. In this case, the prompt selector is `llama-3.3-nemotron-super-49b-v1.5/multilingual_voice_assistant`.
+    > **Note:** Each model has a matching `SYSTEM_PROMPT_SELECTOR` value. Use the prompt selector that corresponds to your chosen model. In this case, the prompt selector for multilingual voice agent is `llama-3.3-nemotron-super-49b-v1.5/multilingual_voice_assistant`.
 
 5. Deploy the Nemotron Voice Agent.
 
@@ -123,12 +125,14 @@ The multilingual agent supports the following language codes by default.
 | Language | Code |
 |----------|------|
 | English (US) | `en-US` |
-| German | `de-DE` |
 | French | `fr-FR` |
 | Spanish (US) | `es-US` |
-| Spanish (Spain) | `es-ES` |
+| German | `de-DE` |
+| Mandarin | `zh-CN` |
+| Italian | `it-IT` |
 
-You can customize the supported languages by editing the `lang_codes` variable in the `multilingual_voice_assistant` prompt in [config/prompt.yaml](../../config/prompt.yaml).
+
+You can customize the supported languages by editing the `lang_codes` variable in the `multilingual_voice_assistant` prompt in [config/prompt.yaml](../../config/prompt.yaml). By default, all languages supported by the deployed Magpie TTS model are automatically included as allowed language codes via runtime detection.
 
 ### Testing Language Switching
 

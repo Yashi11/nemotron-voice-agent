@@ -19,15 +19,37 @@ The voice ID format of the Magpie Multilingual TTS model is `Model.Language.Voic
 
 ## Using Cloud TTS Endpoints
 
-1. Set up the following environment variables in the `.env` file to use the Magpie Multilingual TTS model on NVIDIA's cloud endpoint.
+1. Set your NVIDIA API key as an environment variable:
+
+    ```bash
+    export NVIDIA_API_KEY=<your-nvidia-api-key>
+    ```
+
+2. Update the following environment variables in the `.env` file to use the Magpie Multilingual TTS model on NVIDIA's cloud endpoint.
 
     ```bash
     # In .env file
     TTS_SERVER_URL=grpc.nvcf.nvidia.com:443
-    NVIDIA_API_KEY=your_api_key_here
     ```
 
-2. Comment out the `tts-service` service in [docker-compose.yml](../../docker-compose.yml) when using cloud endpoints.
+3. Comment out the `tts-service` service in [docker-compose.yml](../../docker-compose.yml) when using cloud endpoints.
+
+4. Remove any dependencies on `tts-service` from the `python-app` service in your [`docker-compose.yml`](../../docker-compose.yml) file.
+
+    ```yaml
+    # In docker-compose.yml:
+    python-app:
+      ...
+      depends_on:
+      # - tts-service  <-- comment out or remove this line
+    ```
+
+5. Restart the services:
+
+    ```bash
+    docker compose down
+    docker compose up -d
+    ```
 
 ## Pronunciation Correction
 

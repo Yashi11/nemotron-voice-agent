@@ -51,5 +51,5 @@ Zero-shot TTS allows you to clone any voice using a short audio sample (5+ secon
 6. Deploy the services:
 
     ```bash
-    docker compose up
+    docker compose up -d
     ```

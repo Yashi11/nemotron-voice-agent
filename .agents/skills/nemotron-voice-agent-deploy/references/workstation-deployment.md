@@ -27,11 +27,10 @@ cd nemotron-voice-agent
 cp config/env.example .env
 ```
 
-Edit `.env`:
+Export your NVIDIA API key as an environment variable:
 
 ```bash
-# Required
-NVIDIA_API_KEY=your-api-key
+export NVIDIA_API_KEY=your-api-key
 ```
 
 Then choose ONE of:
@@ -63,7 +62,7 @@ docker compose up -d
 docker compose logs -f  # Monitor startup
 ```
 
-**First run:** TensorRT compilation takes 30-60 min. Engines cached in Docker volumes.
+> **Note:** Deployment may take 30-60 minutes on first run.
 
 **Access:** http://localhost:9000 | Remote: `ssh -L 9000:localhost:9000 user@host`
 

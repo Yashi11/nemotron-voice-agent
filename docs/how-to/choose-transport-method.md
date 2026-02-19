@@ -21,8 +21,8 @@ The following table compares the available transport options:
 2. Restart the services to apply the transport change:
 
     ```bash
-    docker compose down
-    docker compose up
+    docker compose stop python-app ui-app
+    docker compose up -d
     ```
 
 The system automatically loads the appropriate pipeline and UI based on the `TRANSPORT` setting. After starting the services, access the web interface through your browser at `http://your-server-ip:9000`.

@@ -135,6 +135,7 @@ services:
       - ASR_SERVER_URL=${ASR_SERVER_URL:-asr-service:50052}
       - TTS_SERVER_URL=${TTS_SERVER_URL:-tts-service:50051}
       - NVIDIA_LLM_URL=${NVIDIA_LLM_URL:-http://nvidia-llm:8000/v1}
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
 
     depends_on:
       tts-service:
