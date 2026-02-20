@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: BSD-2-Clause
 
 # Base image - OSRB approved Ubuntu base (Bug 4960044)
 FROM nvcr.io/nvidia/base/ubuntu:noble-20251013
@@ -14,13 +14,14 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app:$PYTHONPATH
 
 # System dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libgl1 \
     libglx-mesa0 \
     curl \
-    ffmpeg \
+    libglib2.0-0 \
     python3.12 \
     python3.12-venv \
+    gpgv \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \

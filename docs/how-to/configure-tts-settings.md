@@ -40,6 +40,10 @@ The voice ID format of the Magpie Multilingual TTS model is `Model.Language.Voic
     # In docker-compose.yml:
     python-app:
       ...
+      environment:
+      # Docker services endpoints
+      # - TTS_SERVER_URL=${TTS_SERVER_URL:-tts-service:50051} <-- comment out or remove this line
+      ...
       depends_on:
       # - tts-service  <-- comment out or remove this line
     ```
