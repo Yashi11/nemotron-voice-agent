@@ -83,6 +83,10 @@ Instead of local deployment, you can use NVIDIA's cloud-hosted models on build.n
     # In docker-compose.yml:
     python-app:
       ...
+      environment:
+      # Docker services endpoints
+      # - NVIDIA_LLM_URL=${NVIDIA_LLM_URL:-http://nvidia-llm:8000/v1} <-- comment out or remove this line
+      ...
       depends_on:
       # - nvidia-llm  <-- comment out or remove this line
     ```
@@ -92,4 +96,3 @@ Instead of local deployment, you can use NVIDIA's cloud-hosted models on build.n
     docker compose down
     docker compose up -d
     ```
-

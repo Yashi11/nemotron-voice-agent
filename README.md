@@ -101,8 +101,4 @@ npx skills add .
 
 ## License
 
-TBD
-
-## Disclaimer
-
-TBD
+This NVIDIA AI BLUEPRINT is licensed under the BSD 2-Clause License. See [LICENSE](LICENSE) for details. This project may download and install additional third-party open source software and containers. Review the license terms of these projects in [third_party_oss_license.txt](third_party_oss_license.txt) before use.
