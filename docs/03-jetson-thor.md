@@ -70,11 +70,33 @@ The configuration files for this deployment are the following:
         ngc config set
         ```
 
-    c. Download and deploy Nemotron Speech ASR and TTS using the Quick Start scripts:
+    c. Download the Nemotron Speech ASR and TTS Quick Start scripts:
 
         ```bash
         ngc registry resource download-version nvidia/riva/riva_quickstart_arm64:2.24.0
         cd riva_quickstart_arm64_v2.24.0
+        ```
+
+    d. [Optional] Enable Silero VAD for improved ASR performance:
+
+        > **Tip:** Enabling Silero VAD can help improve End-of-Utterance (EOU) detection and performance in noisy environments.
+
+        1. Edit the `config.sh` in Quick Start directory:
+
+            ```bash
+            # Use Silero Diarizer as accessory model for ASR
+            asr_accessory_model=("silero_diarizer")
+            ```
+
+        2. Update your `.env` file with the ASR model name:
+
+            ```bash
+            ASR_MODEL_NAME=parakeet-1.1b-en-US-asr-streaming-silero-vad-sortformer
+            ```
+
+    e. Deploy Nemotron Speech ASR and TTS models:
+
+        ```bash
         bash riva_init.sh
         bash riva_start.sh
         ```
