@@ -146,7 +146,7 @@ The agent detects language per message, so you can switch languages at any point
 
 ## Troubleshooting
 
-You can troubleshoot common issues with the multilingual agent by referring to the following table:
+You can troubleshoot common issues and known limitations with the multilingual agent by referring to the following table:
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
@@ -154,3 +154,5 @@ You can troubleshoot common issues with the multilingual agent by referring to t
 | TTS speaks wrong language | Language code mismatch | Check LLM is outputting valid language codes |
 | No speech output | Format parsing failure | Ensure LLM outputs correct `Language: Text: MetaData:` format |
 | ASR not transcribing correctly | Using English-only model | Switch to `parakeet-rnnt-1.1b-unified-ml-cs-universal-multi-asr-streaming` |
+| Background noise sensitivity | RNNT Multilingual ASR model interprets background noise as user input | Known limitation of RNNT Multilingual ASR model. Will be fixed in future versions |
+| LLM not following prompt or adding prompt instruction in response | LLM prompt may require further optimization or finetuning | Optimize or customize the system prompt. See [Customize System Prompts](./customize-system-prompts.md) for guidance |
