@@ -96,3 +96,32 @@ Instead of local deployment, you can use NVIDIA's cloud-hosted models on build.n
     docker compose down
     docker compose up -d
     ```
+
+## Selecting Model Profiles in LLM Local Deployment
+
+NVIDIA NIM provides optimized model profiles for different GPU configurations. Each profile defines the runtime engine and optimization criteria for your specific hardware setup.
+
+> **Note:** Before deploying, ensure your system meets the Hardware and Software requirements. For detailed information, refer to the [NVIDIA NIM Getting Started Guide](https://docs.nvidia.com/nim/large-language-models/latest/getting-started.html#software).
+
+1. Check which model profiles are compatible with your available GPUs using the `list-model-profiles` utility:
+
+    ```bash
+    docker run --rm --gpus=all \
+      -e NGC_API_KEY=$NVIDIA_API_KEY \
+      $NVIDIA_LLM_IMAGE \
+      list-model-profiles
+    ```
+
+2. To manually select a profile, set the `NIM_MODEL_PROFILE` environment variable in your `.env` file or docker-compose configuration:
+
+    ```bash
+    # Using profile name
+    NIM_MODEL_PROFILE="tensorrt_llm-A100-fp16-tp1-throughput"
+
+    # Or using profile ID
+    NIM_MODEL_PROFILE="751382df4272eafc83f541f364d61b35aed9cce8c7b0c869269cea5a366cd08c"
+    ```
+
+    If you don't manually select a profile, NIM automatically chooses the best profile by preferring hardware-specific profiles matching your GPU model, then selecting backend engines in order (`tensorrt_llm` > `vllm` > `sglang`), prioritizing more efficient precision formats (e.g., `fp8` > `fp16`), and balancing latency vs. throughput optimization targets based on available profiles. The selected profile is logged at startup, showing which profile was chosen and why.
+
+For more details on model profiles, see the [NVIDIA NIM Model Profiles documentation](https://docs.nvidia.com/nim/large-language-models/latest/profiles.html).

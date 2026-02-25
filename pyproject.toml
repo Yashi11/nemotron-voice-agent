@@ -13,9 +13,6 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "opentelemetry-exporter-otlp-proto-http>=1.39.1",
     "opentelemetry-exporter-otlp-proto-grpc>=1.39.1",
-    "cryptography>=46.0.5",
-    "protobuf>=5.29.6",
-    "python-multipart>=0.0.22",
     "wheel>=0.46.2",
 ]
 
@@ -23,6 +20,17 @@ dependencies = [
 nvidia-pipecat = { path = "./nvidia-pipecat", editable = true }
 torch = { index = "pytorch" }
 
+# Force patched versions for known CVEs
+[tool.uv]
+override-dependencies = [
+    "pillow>=12.1.1",
+    "nltk>=3.9.3",
+    "setuptools>=80",
+    "grpcio>=1.71",
+    "protobuf>=6.33.5",
+    "cryptography>=46.0.5",
+    "python-multipart>=0.0.22",
+]
 
 [[tool.uv.index]]
 name = "pytorch"
