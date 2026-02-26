@@ -24,6 +24,7 @@ Local deployment with self-hosted NIM containers on x86 workstations/servers.
 
 ```bash
 cd nemotron-voice-agent
+git submodule update --init
 cp config/env.example .env
 ```
 

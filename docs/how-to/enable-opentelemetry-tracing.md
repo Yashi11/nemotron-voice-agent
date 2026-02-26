@@ -56,3 +56,52 @@ Through the Phoenix UI dashboard, you can:
 - Debug issues with detailed span information.
 
 **Note:** The current implementation in `src/pipeline.py` supports OTLP exporters (HTTP and gRPC). For alternative tracing backends, refer to the [OpenTelemetry Tracing with Pipecat](https://github.com/pipecat-ai/pipecat-examples/tree/main/open-telemetry) documentation.
+
+## Phoenix UI walkthrough
+
+If you're not used to OpenTelemetry, Phoenix can look unfamiliar. This section walks you through the UI and explains what each part of a voice-agent trace means.
+
+### 1. Open Phoenix and open your project
+
+Open **http://localhost:6006** (or `http://your-server-ip:6006`). You'll see the **Projects** page. Click the `default` project to open it.
+
+![Phoenix Projects](../images/phoenix-projects.png)
+
+### 2. View spans and traces
+
+Inside the project you'll see tabs: **Spans**, **Traces**, **Sessions**, **Metrics**, **Config**.
+
+- Open the **Spans** tab to see individual operations (each row is one "span"). Leave the trace filter as **All** (or **Root Spans** if you only want top-level turns).
+
+![Spans table](../images/phoenix-spans.png)
+
+You'll see four span **kinds** for the voice agent:
+
+| Kind  | What it represents in the pipeline |
+|-------|------------------------------------|
+| **turn** | One full user–agent exchange: from user speech through ASR → LLM → TTS → playback. |
+| **stt**  | Speech-to-Text (ASR): converting the user's audio to text. |
+| **llm**  | Large Language Model: processing the transcript and generating the text reply (includes TTFB and completion). |
+| **tts**  | Text-to-Speech: turning the LLM's text into audio. |
+
+### 3. Trace details and span attributes
+
+Click a **trace** (e.g. from the Traces tab or from a span) to open **Trace Details**. The left panel shows the tree of spans; the right panel shows **Attributes** for the selected span.
+
+![Conversation trace](../images/phoenix-conversation-trace.png)
+
+You can click on any individual span to view detailed attributes and timings.
+
+Below are sample spans for ASR, LLM, and TTS:
+
+**STT span** (Speech-to-Text):
+
+![STT attributes](../images/phoenix-stt-attributes.png)
+
+**LLM span**:
+
+![LLM attributes](../images/phoenix-llm-attributes.png)
+
+**TTS span**:
+
+![TTS attributes](../images/phoenix-tts-attributes.png)

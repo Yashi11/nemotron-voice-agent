@@ -12,11 +12,12 @@ Before you begin, ensure you have the following:
 
 ## GPU Requirements
 
-This blueprint requires **2 NVIDIA GPUs** for running the application:
-- One GPU (GPU 0) for running NVIDIA Nemotron Speech ASR (Automatic Speech Recognition) and TTS (Text-to-Speech) models
-- One GPU (GPU 1) for running NVIDIA LLM NIM (Large Language Model) for inference
-
-**Note:** GPU requirements may vary depending on your chosen LLM model and available GPU memory.
+This blueprint requires **2 NVIDIA GPUs** (Ampere, Hopper, Ada, or later).
+- **GPU 0**: For running NVIDIA Nemotron Speech ASR (Automatic Speech Recognition) and TTS (Text-to-Speech) models.
+  - **Total VRAM required for ASR and TTS models: 48 GB**
+- **GPU 1**: For running NVIDIA LLM NIM.
+  - [Nemotron 3 Nano 30B A3B](https://build.nvidia.com/nvidia/nemotron-3-nano-30b-a3b/modelcard): 48 GB VRAM
+  - [Llama 3.3 Nemotron Super 49B v1.5](https://build.nvidia.com/nvidia/llama-3_3-nemotron-super-49b-v1_5/modelcard): 80 GB VRAM
 
 ---
 
@@ -61,6 +62,8 @@ This blueprint requires **2 NVIDIA GPUs** for running the application:
     > **Note:** Deployment may take 30-60 minutes on first run.
 
 7. Access the application at `http://<machine-ip>:9000/`
+
+    > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
 
     ![UI Screenshot](./images/ui_webrtc.png)
 

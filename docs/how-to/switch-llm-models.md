@@ -18,7 +18,7 @@ The Nemotron Voice Agent supports multiple LLM models with different capabilitie
 
 3. Edit the `.env` file. The file contains four pre-configured model blocks. To switch models, comment out the current block and uncomment your desired model.
 
-    **Example: Switch from Nemotron-3-Nano (default) to Llama-3.3-Nemotron-Super-49B**
+    **Example: Switch from [Nemotron-3-Nano](https://build.nvidia.com/nvidia/nemotron-3-nano-30b-a3b/modelcard) (default) to [Llama-3.3-Nemotron-Super-49B](https://build.nvidia.com/nvidia/llama-3_3-nemotron-super-49b-v1_5/modelcard)**
 
     Comment out the default configuration:
 
@@ -62,7 +62,7 @@ The Nemotron Voice Agent supports multiple LLM models with different capabilitie
 
 ## Using Cloud Endpoints
 
-Instead of local deployment, you can use NVIDIA's cloud-hosted models on build.nvidia.com. For example, you can set up the `.env` file to use the Nemotron-3-Nano model on build.nvidia.com as follows.
+Instead of local deployment, you can use NVIDIA's cloud-hosted models on [build.nvidia.com](https://build.nvidia.com/). For example, you can set up the `.env` file to use the [Nemotron-3-Nano](https://build.nvidia.com/nvidia/nemotron-3-nano-30b-a3b/modelcard) model on build.nvidia.com as follows.
 
 1. Set your NVIDIA API key as an environment variable:
     ```bash

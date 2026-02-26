@@ -40,6 +40,7 @@ The configuration files for this deployment are the following:
     ```bash
     git clone git@github.com:NVIDIA-AI-Blueprints/nemotron-voice-agent.git
     cd nemotron-voice-agent
+    git submodule update --init
     ```
 
 2. Configure the environment. Copy the example environment file [env.jetson.example](../config/env.jetson.example) to the root directory:
@@ -66,40 +67,40 @@ The configuration files for this deployment are the following:
 
     b. Configure NGC CLI with your API key:
 
-        ```bash
-        ngc config set
-        ```
+    ```bash
+    ngc config set
+    ```
 
     c. Download the Nemotron Speech ASR and TTS Quick Start scripts:
 
-        ```bash
-        ngc registry resource download-version nvidia/riva/riva_quickstart_arm64:2.24.0
-        cd riva_quickstart_arm64_v2.24.0
-        ```
+    ```bash
+    ngc registry resource download-version nvidia/riva/riva_quickstart_arm64:2.24.0
+    cd riva_quickstart_arm64_v2.24.0
+    ```
 
     d. [Optional] Enable Silero VAD for improved ASR performance:
 
         > **Tip:** Enabling Silero VAD can help improve End-of-Utterance (EOU) detection and performance in noisy environments.
 
-        1. Edit the `config.sh` in Quick Start directory:
+    1. Edit the `config.sh` in Quick Start directory `riva_quickstart_arm64_v2.24.0`:
 
-            ```bash
-            # Use Silero Diarizer as accessory model for ASR
-            asr_accessory_model=("silero_diarizer")
-            ```
+        ```bash
+        # Use Silero Diarizer as accessory model for ASR
+        asr_accessory_model=("silero_diarizer")
+        ```
 
-        2. Update your `.env` file with the ASR model name:
+    2. Update your `.env` file with the ASR model name:
 
-            ```bash
-            ASR_MODEL_NAME=parakeet-1.1b-en-US-asr-streaming-silero-vad-sortformer
-            ```
+        ```bash
+        ASR_MODEL_NAME=parakeet-1.1b-en-US-asr-streaming-silero-vad-sortformer
+        ```
 
     e. Deploy Nemotron Speech ASR and TTS models:
 
-        ```bash
-        bash riva_init.sh
-        bash riva_start.sh
-        ```
+    ```bash
+    bash riva_init.sh
+    bash riva_start.sh
+    ```
 
         > **Note:** Initialization may take 30-60 minutes on first run.
 
@@ -113,6 +114,9 @@ The configuration files for this deployment are the following:
 
 6. Access the application at `http://<jetson-ip>:8081` on your browser.
 
+    > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
+
+   > **Note:** To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<machine-ip>:9000` to the list, and restart Chrome. If you need to access the application from remote locations or deploy on cloud platforms, configure a TURN server—see [Optional: Deploy TURN Server for Remote Access](01-getting-started.md#optional-deploy-turn-server-for-remote-access).
 ---
 
 ## Switching LLM Models
