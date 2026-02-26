@@ -44,6 +44,7 @@ docker ps | grep riva  # Verify
 
 ```bash
 cd nemotron-voice-agent
+git submodule update --init
 cp config/env.jetson.example .env
 ```
 

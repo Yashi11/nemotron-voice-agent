@@ -28,6 +28,7 @@ nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null
 
 ```bash
 cd nemotron-voice-agent
+git submodule update --init
 cp config/env.example .env
 ```
 

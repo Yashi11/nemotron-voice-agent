@@ -1,8 +1,7 @@
 # Nemotron Voice Agent
 
-The Nemotron Voice Agent is a real-time conversational AI system that demonstrates how to build sophisticated voice AI applications using NVIDIA's cutting-edge models and the Pipecat framework. This developer blueprint combines automatic speech recognition (ASR), large language model (LLM) intelligence, and text-to-speech (TTS) to deliver fluid, human-like voice interactions.
+Nemotron Voice Agent provides a comprehensive, end-to-end voice agent blueprint built with NVIDIA Nemotron state-of-the-art open models, as NVIDIA NIM for acceleration and scaling. It is designed to guide developers through the creation of a cascaded pipeline, integrating Nemotron ASR, LLM, and TTS, while solving for the complexities of streaming, interruptible conversations. By leveraging NVIDIA NIM microservices, this developer example enables developers to accelerate the deployment of high-performance voice AI solutions.
 
-![Architecture Diagram](./docs/images/arch.png)
 
 ---
 
@@ -10,10 +9,16 @@ The Nemotron Voice Agent is a real-time conversational AI system that demonstrat
 
 The following are the key components in this blueprint:
 
-- **NVIDIA Nemotron Speech ASR & TTS**: High-performance streaming speech recognition (Parakeet CTC 1.1B) paired with multilingual text-to-speech synthesis (Magpie Multilingual).
+- **NVIDIA Nemotron Speech ASR & TTS**: High-performance streaming speech recognition and multilingual text-to-speech synthesis.
+  - [Parakeet CTC 1.1B ASR](https://build.nvidia.com/nvidia/parakeet-ctc-1_1b-asr/modelcard)
+  - [Parakeet 1.1B RNNT Multilingual ASR](https://build.nvidia.com/nvidia/parakeet-1_1b-rnnt-multilingual-asr/modelcard)
+  - [Magpie TTS Multilingual](https://build.nvidia.com/nvidia/magpie-tts-multilingual/modelcard)
 - **NVIDIA Nemotron LLMs**: State-of-the-art LLM models engineered for real-time conversational use cases.
+  - [Nemotron 3 Nano 30B A3B](https://build.nvidia.com/nvidia/nemotron-3-nano-30b-a3b/modelcard)
+  - [Llama 3.3 Nemotron Super 49B v1.5](https://build.nvidia.com/nvidia/llama-3_3-nemotron-super-49b-v1_5/modelcard)
 - **Pipeline Orchestration**: Built on top of the Pipecat framework with WebRTC transport, enabling low-latency real-time voice communication and speculative speech processing capabilities.
 
+![Architecture Diagram](./docs/images/arch.png)
 ---
 
 ## Requirements
@@ -24,9 +29,10 @@ Check the following requirements before you begin.
 
 This blueprint requires **2 NVIDIA GPUs** (Ampere, Hopper, Ada, or later).
 - **GPU 0**: For running NVIDIA Nemotron Speech ASR (Automatic Speech Recognition) and TTS (Text-to-Speech) models.
+  - **Total VRAM required for ASR and TTS models: 48 GB**
 - **GPU 1**: For running NVIDIA LLM NIM.
-
-GPU requirements may vary depending on your chosen LLM model and available GPU memory.
+  - [Nemotron 3 Nano 30B A3B](https://build.nvidia.com/nvidia/nemotron-3-nano-30b-a3b/modelcard): 48 GB VRAM
+  - [Llama 3.3 Nemotron Super 49B v1.5](https://build.nvidia.com/nvidia/llama-3_3-nemotron-super-49b-v1_5/modelcard): 80 GB VRAM
 
 ### Software Requirements
 
@@ -71,9 +77,18 @@ Start the application following these steps.
 
     > **Note:** Deployment may take 30-60 minutes on first run.
 
-5. Access the application at `http://<machine-ip>:9000/`
+5. Enable microphone access in Chrome before opening the app in the browser. Go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<machine-ip>:9000` to the list, and restart Chrome.
 
-For detailed setup instructions, proceed to [Getting Started Guide](docs/01-getting-started.md).
+    > **Note:** If this step is skipped, the UI may show `Cannot read properties of undefined (reading 'getUserMedia')` error.
+    >
+    > The UI might also get stuck or fail to access the microphone if you connect remotely (e.g., via public IP or cloud) and a TURN server is not configured.
+    > If you need to access the application from remote locations or deploy on cloud platforms, configure a TURN server—see [Optional: Deploy TURN Server for Remote Access](docs/01-getting-started.md#optional-deploy-turn-server-for-remote-access).
+
+6. Access the application at `http://<machine-ip>:9000/`
+
+    > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
+
+For detailed setup instructions and troubleshooting, proceed to [Getting Started Guide](docs/01-getting-started.md).
 
 ---
 
@@ -98,6 +113,25 @@ npx skills add .
 | How-to | [Tune Pipeline Performance](docs/how-to/tune-pipeline-performance.md#speculative-speech-processing) | Reduce latency with speculative speech and other performance settings |
 | Explanation | [Best Practices](docs/04-best-practices.md) | Production deployment, latency optimization, and UX design guidelines |
 | Reference | [NVIDIA Pipecat](docs/05-nvidia-pipecat.md) | Overview of Pipecat services and processors for voice AI pipelines |
+
+---
+
+## Performance
+
+**The Nemotron Voice Agent** perfomance benchmark shows **sub-second End-to-End (E2E) latency**. The setup uses **4× H100 GPUs** (one for Parakeet CTC 1.1B ASR, one for Magpie TTS, and two for Nemotron-3-Nano LLM) with [speculative speech processing](docs/how-to/tune-pipeline-performance.md#speculative-speech-processing) enabled. All latencies are in seconds.
+
+| Parallel Streams | E2E Latency | ASR Latency | TTS TTFB | LLM TTFT | LLM First-Sentence Latency |
+|-----------------|-------------|-------------|----------|----------|----------------------------|
+| 1               | 0.79        | 0.04        | 0.078    | 0.126    | 0.138                      |
+| 4               | 0.76        | 0.046       | 0.066    | 0.061    | 0.181                      |
+| 8               | 0.77        | 0.052       | 0.066    | 0.062    | 0.136                      |
+| 16              | 0.91        | 0.057       | 0.068    | 0.105    | 0.208                      |
+| 32              | 0.80        | 0.061       | 0.080    | 0.073    | 0.294                      |
+| 64              | 1.00        | 0.067       | 0.110    | 0.156    | 0.386                      |
+
+*E2E: End-to-End · TTFB: Time to First Byte · TTFT: Time to First Token*
+
+---
 
 ## License
 
