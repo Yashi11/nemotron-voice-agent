@@ -63,6 +63,16 @@ services:
       - .env
     environment:
       - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+    command: >
+      bash -c "
+      if [ \"$${TRANSPORT:-WEBRTC}\" = \"WEBSOCKET\" ]; then
+        echo \"Starting WebSocket pipeline...\"
+        uv run src/pipeline_websocket.py --host 0.0.0.0 --port 7860 --workers $${WORKERS:-1}
+      else
+        echo \"Starting WebRTC pipeline...\"
+        uv run src/pipeline.py --host 0.0.0.0 --port 7860 --workers $${WORKERS:-1}
+      fi
+      "
     volumes:
       - ./audio_dumps:/app/audio_dumps
       - ./config:/app/config
