@@ -27,7 +27,7 @@ override-dependencies = [
     "nltk>=3.9.3",
     "setuptools>=80",
     "grpcio>=1.71",
-    "protobuf>=6.33.5",
+    "protobuf==5.29.6",
     "cryptography>=46.0.5",
     "python-multipart>=0.0.22",
 ]
