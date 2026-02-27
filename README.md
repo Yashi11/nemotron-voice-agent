@@ -113,25 +113,10 @@ npx skills add .
 | How-to | [Tune Pipeline Performance](docs/how-to/tune-pipeline-performance.md#speculative-speech-processing) | Reduce latency with speculative speech and other performance settings |
 | Explanation | [Best Practices](docs/04-best-practices.md) | Production deployment, latency optimization, and UX design guidelines |
 | Reference | [NVIDIA Pipecat](docs/05-nvidia-pipecat.md) | Overview of Pipecat services and processors for voice AI pipelines |
+| Reference | [Evaluation and Performance](docs/06-evaluation-and-performance.md) | Accuracy benchmarking and latency/perf tests |
 
 ---
 
-## Performance
-
-**The Nemotron Voice Agent** perfomance benchmark shows **sub-second End-to-End (E2E) latency**. The setup uses **4× H100 GPUs** (one for Parakeet CTC 1.1B ASR, one for Magpie TTS, and two for Nemotron-3-Nano LLM) with [speculative speech processing](docs/how-to/tune-pipeline-performance.md#speculative-speech-processing) enabled. All latencies are in seconds.
-
-| Parallel Streams | E2E Latency | ASR Latency | TTS TTFB | LLM TTFT | LLM First-Sentence Latency |
-|-----------------|-------------|-------------|----------|----------|----------------------------|
-| 1               | 0.79        | 0.04        | 0.078    | 0.126    | 0.138                      |
-| 4               | 0.76        | 0.046       | 0.066    | 0.061    | 0.181                      |
-| 8               | 0.77        | 0.052       | 0.066    | 0.062    | 0.136                      |
-| 16              | 0.91        | 0.057       | 0.068    | 0.105    | 0.208                      |
-| 32              | 0.80        | 0.061       | 0.080    | 0.073    | 0.294                      |
-| 64              | 1.00        | 0.067       | 0.110    | 0.156    | 0.386                      |
-
-*E2E: End-to-End · TTFB: Time to First Byte · TTFT: Time to First Token*
-
----
 
 ## License
 
