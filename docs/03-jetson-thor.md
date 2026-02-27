@@ -33,6 +33,18 @@ The configuration files for this deployment are the following:
 
 ---
 
+## Models Used by Default
+
+All models are deployed on the local Jetson device. Default models used:
+
+| Component | Default model / identifier |
+|-----------|----------------------------|
+| **ASR**   | `parakeet-1.1b-en-US-asr-streaming` |
+| **TTS**   | `magpie_tts_ensemble-Magpie-Multilingual` |
+| **LLM**   | `RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16` |
+
+---
+
 ## Deployment Steps
 
 1. Clone the repository and navigate to the root directory.
@@ -80,7 +92,7 @@ The configuration files for this deployment are the following:
 
     d. [Optional] Enable Silero VAD for improved ASR performance:
 
-        > **Tip:** Enabling Silero VAD can help improve End-of-Utterance (EOU) detection and performance in noisy environments.
+    > **Tip:** Enabling Silero VAD can help improve End-of-Utterance (EOU) detection and performance in noisy environments.
 
     1. Edit the `config.sh` in Quick Start directory `riva_quickstart_arm64_v2.24.0`:
 
@@ -102,7 +114,7 @@ The configuration files for this deployment are the following:
     bash riva_start.sh
     ```
 
-        > **Note:** Initialization may take 30-60 minutes on first run.
+    > **Note:** Initialization may take 30-60 minutes on first run.
 
 5. Start LLM Service and Voice Agent Application. Start services from the root directory:
 

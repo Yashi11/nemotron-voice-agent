@@ -56,7 +56,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: nvcr.io/nvstaging/blueprint/nemotron-voice-agent:${IMAGE_VERSION:-dev}
+    image: nvcr.io/nvidia/blueprint/nemotron-voice-agent:${IMAGE_VERSION:-dev}
     container_name: voice-agent-webrtc-jetson
     network_mode: host
     env_file:
@@ -91,7 +91,7 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    image: nvcr.io/nvstaging/blueprint/nemotron-voice-agent-ui:${IMAGE_VERSION:-dev}
+    image: nvcr.io/nvidia/blueprint/nemotron-voice-agent-ui:${IMAGE_VERSION:-dev}
     container_name: webrtc-ui-jetson
     ports:
       - "8081:8000"
