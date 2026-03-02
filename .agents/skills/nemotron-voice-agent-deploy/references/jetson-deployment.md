@@ -62,7 +62,7 @@ NVIDIA_LLM_MODEL=RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16
 
 
 ```bash
-sudo docker compose -f docker-compose.jetson.yml up -d
+docker compose -f docker-compose.jetson.yml up -d
 docker logs -f llm-nvidia-jetson  # Monitor LLM startup
 ```
 
@@ -79,8 +79,8 @@ docker logs -f llm-nvidia-jetson  # Monitor LLM startup
 **Switch LLM:**
 ```bash
 # Edit NVIDIA_LLM_MODEL in .env
-sudo docker compose -f docker-compose.jetson.yml down
-sudo docker compose -f docker-compose.jetson.yml up -d
+docker compose -f docker-compose.jetson.yml down
+docker compose -f docker-compose.jetson.yml up -d
 ```
 
 **GPU memory:** Adjust `GPU_MEMORY_UTILIZATION` (default 0.15 = 15% of ~122GB) for LLM deployment.
@@ -88,6 +88,6 @@ sudo docker compose -f docker-compose.jetson.yml up -d
 ## Stop Services
 
 ```bash
-sudo docker compose -f docker-compose.jetson.yml down
+docker compose -f docker-compose.jetson.yml down
 bash riva_stop.sh
 ```

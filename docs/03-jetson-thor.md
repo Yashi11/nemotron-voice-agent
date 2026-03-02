@@ -120,7 +120,7 @@ All models are deployed on the local Jetson device. Default models used:
 5. Start LLM Service and Voice Agent Application. Start services from the root directory:
 
     ```bash
-    sudo docker compose -f docker-compose.jetson.yml up -d
+    docker compose -f docker-compose.jetson.yml up -d
     ```
 
     > **Note:** Deployment may take 15-20 minutes on first run.
@@ -165,14 +165,14 @@ The Jetson deployment uses vLLM to load HuggingFace models. Update these variabl
 2. Restart the services:
 
     ```bash
-    sudo docker compose -f docker-compose.jetson.yml down
-    sudo docker compose -f docker-compose.jetson.yml up -d
+    docker compose -f docker-compose.jetson.yml down
+    docker compose -f docker-compose.jetson.yml up -d
     ```
 
 3. Verify the model is loading:
 
     ```bash
-    sudo docker compose -f docker-compose.jetson.yml logs -f llm-nvidia-jetson
+    docker compose -f docker-compose.jetson.yml logs -f llm-nvidia-jetson
     ```
 
 > **Note:** The first model download may take several minutes depending on model size and network speed.
@@ -183,11 +183,11 @@ The Jetson deployment uses vLLM to load HuggingFace models. Update these variabl
 
 ```bash
 # View logs
-sudo docker compose -f docker-compose.jetson.yml logs -f python-app
+docker compose -f docker-compose.jetson.yml logs -f python-app
 
 # Stop all services
-sudo docker compose -f docker-compose.jetson.yml down
+docker compose -f docker-compose.jetson.yml down
 
 # Rebuild after code changes
-sudo docker compose -f docker-compose.jetson.yml up --build -d python-app
+docker compose -f docker-compose.jetson.yml up --build -d python-app
 ```
