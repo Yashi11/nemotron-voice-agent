@@ -6,7 +6,7 @@ This guide points to tooling for benchmarking the Nemotron Voice Agent for **acc
 git submodule update --init
 ```
 
-**Transport:** The BigBench and performance scripts connect to the voice agent over **WebSocket only**. If your deployment uses WebRTC (the default), switch to WebSocket before running these benchmarks. See [Choose a Transport Method](how-to/choose-transport-method.md) for how to set `TRANSPORT=WEBSOCKET` in `.env` and restart the services.
+**Transport:** The BigBench and performance scripts connect to the voice agent over **WebSocket only**. If your deployment uses WebRTC (the default), switch to WebSocket before running these benchmarks. Refer to [Choose a Transport Method](how-to/choose-transport-method.md) for how to set `TRANSPORT=WEBSOCKET` in `.env` and restart the services.
 
 ---
 
@@ -23,9 +23,9 @@ The following table lists the evaluation and performance tooling:
 
 ## BigBench Audio Benchmarking
 
-BigBench Audio evaluates **answer correctness** on the [ArtificialAnalysis/big_bench_audio](https://huggingface.co/datasets/ArtificialAnalysis/big_bench_audio) dataset. For setup, prerequisites, and step-by-step instructions (speech-to-speech and text-inference pipelines), see the [AA-BigBenchAudio-eval README](../nvidia-pipecat/tools/scripts/AA-BigBenchAudio-eval/README.md).
+BigBench Audio evaluates **answer correctness** on the [ArtificialAnalysis/big_bench_audio](https://huggingface.co/datasets/ArtificialAnalysis/big_bench_audio) dataset. For setup, prerequisites, and step-by-step instructions (speech-to-speech and text-inference pipelines), refer to the [AA-BigBenchAudio-eval README](../nvidia-pipecat/tools/scripts/AA-BigBenchAudio-eval/README.md).
 
-### Reference results
+### Reference Results
 
 The following table shows accuracy (%) on Big Bench Audio for text-only (standalone LLM) vs speech-to-speech (LLM in voice agent pipeline):
 
@@ -40,11 +40,13 @@ The following table shows accuracy (%) on Big Bench Audio for text-only (standal
 
 ## Performance Tests
 
-The performance tests in `nvidia-pipecat/tests/perf/` measure **latency** and **scalability** (multi-client WebSocket benchmark, TTFB analysis, glitch and reverse barge-in detection). For prerequisites, how to run the multi-client benchmark and TTFB analyzer, and troubleshooting, see the [Performance tests README](../nvidia-pipecat/tests/perf/README.md).
+The performance tests in `nvidia-pipecat/tests/perf/` measure latency and scalability (multi-client WebSocket benchmark, TTFB analysis, glitch and reverse barge-in detection). For prerequisites, how to run the multi-client benchmark and TTFB analyzer, and troubleshooting, refer to the [Performance tests README](../nvidia-pipecat/tests/perf/README.md).
 
-### Reference results
+### Reference Results
 
 **The Nemotron Voice Agent** performance benchmark shows **sub-second End-to-End (E2E) latency**. The setup uses **4× H100 GPUs** (one for Parakeet CTC 1.1B ASR, one for Magpie TTS, and two for Nemotron-3-Nano LLM) with [speculative speech processing](how-to/tune-pipeline-performance.md#speculative-speech-processing) enabled. All latencies are in seconds.
+
+> **Note:** This benchmark uses a 4-GPU setup to measure scalability. The [minimum deployment requirement](01-getting-started.md#gpu-requirements) is 2 GPUs.
 
 | Parallel Streams | E2E Latency | ASR Latency | TTS TTFB | LLM TTFT | LLM First-Sentence Latency |
 | --- | --- | --- | --- | --- | --- |
@@ -57,4 +59,4 @@ The performance tests in `nvidia-pipecat/tests/perf/` measure **latency** and **
 
 *E2E: End-to-End · TTFB: Time to First Byte · TTFT: Time to First Token*
 
-For production targets and tuning guidance, see [Best Practices](04-best-practices.md) and [Tune Pipeline Performance](how-to/tune-pipeline-performance.md).
+For production targets and tuning guidance, refer to [Best Practices](04-best-practices.md) and [Tune Pipeline Performance](how-to/tune-pipeline-performance.md).

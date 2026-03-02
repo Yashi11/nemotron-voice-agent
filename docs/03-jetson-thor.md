@@ -29,7 +29,8 @@ The configuration files for this deployment are the following:
 |------|---------|
 | [docker-compose.jetson.yml](../docker-compose.jetson.yml) | Jetson-specific Docker Compose with vLLM |
 | [env.jetson.example](../config/env.jetson.example) | Environment template for Jetson deployment |
-> **Note:** This deployment uses vLLM for LLM inference instead of NVIDIA NIM. The LLM NIM microservices use TensorRT-LLM that provides optimized, pre-compiled inference engines for specific GPU architectures. Since LLM NIM microservices for Jetson Thor are currently not available, this guide uses vLLM as a flexible alternative to load Hugging Face models directly.
+
+> **Note:** This deployment uses vLLM for LLM inference instead of NVIDIA NIM. LLM NIM microservices for Jetson Thor are not yet available, so this guide uses vLLM as a flexible alternative to load Hugging Face models directly.
 
 ---
 
@@ -128,7 +129,8 @@ All models are deployed on the local Jetson device. Default models used:
 
     > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
 
-   > **Note:** To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<machine-ip>:9000` to the list, and restart Chrome. If you need to access the application from remote locations or deploy on cloud platforms, configure a TURN server—see [Optional: Deploy TURN Server for Remote Access](01-getting-started.md#optional-deploy-turn-server-for-remote-access).
+   > **Note:** To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<jetson-ip>:8081` to the list, and restart Chrome. If you need to access the application from remote locations or deploy on cloud platforms, configure a TURN server. Refer to [Optional: Deploy TURN Server for Remote Access](01-getting-started.md#optional-deploy-turn-server-for-remote-access).
+
 ---
 
 ## Switching LLM Models

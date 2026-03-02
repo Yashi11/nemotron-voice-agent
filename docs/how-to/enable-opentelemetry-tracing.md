@@ -57,25 +57,25 @@ Through the Phoenix UI dashboard, you can:
 
 **Note:** The current implementation in `src/pipeline.py` supports OTLP exporters (HTTP and gRPC). For alternative tracing backends, refer to the [OpenTelemetry Tracing with Pipecat](https://github.com/pipecat-ai/pipecat-examples/tree/main/open-telemetry) documentation.
 
-## Phoenix UI walkthrough
+## Phoenix UI Walkthrough
 
-If you're not used to OpenTelemetry, Phoenix can look unfamiliar. This section walks you through the UI and explains what each part of a voice-agent trace means.
+If you are not familiar with OpenTelemetry, Phoenix can look unfamiliar. This section walks you through the UI and explains what each part of a voice-agent trace means.
 
-### 1. Open Phoenix and open your project
+### 1. Open Phoenix and Open Your Project
 
-Open **http://localhost:6006** (or `http://your-server-ip:6006`). You'll see the **Projects** page. Click the `default` project to open it.
+Open **http://localhost:6006** (or `http://your-server-ip:6006`). The **Projects** page opens. Click the `default` project to open it.
 
 ![Phoenix Projects](../images/phoenix-projects.png)
 
-### 2. View spans and traces
+### 2. View Spans and Traces
 
-Inside the project you'll see tabs: **Spans**, **Traces**, **Sessions**, **Metrics**, **Config**.
+Inside the project, you can find the following tabs: **Spans**, **Traces**, **Sessions**, **Metrics**, **Config**.
 
 - Open the **Spans** tab to see individual operations (each row is one "span"). Leave the trace filter as **All** (or **Root Spans** if you only want top-level turns).
 
 ![Spans table](../images/phoenix-spans.png)
 
-You'll see four span **kinds** for the voice agent:
+The voice agent produces four span **kinds**:
 
 | Kind  | What it represents in the pipeline |
 |-------|------------------------------------|
@@ -84,7 +84,7 @@ You'll see four span **kinds** for the voice agent:
 | **llm**  | Large Language Model: processing the transcript and generating the text reply (includes TTFB and completion). |
 | **tts**  | Text-to-Speech: turning the LLM's text into audio. |
 
-### 3. Trace details and span attributes
+### 3. Trace Details and Span Attributes
 
 Click a **trace** (e.g. from the Traces tab or from a span) to open **Trace Details**. The left panel shows the tree of spans; the right panel shows **Attributes** for the selected span.
 

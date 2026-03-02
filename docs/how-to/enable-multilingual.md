@@ -1,6 +1,6 @@
 # Enable Multilingual Voice Agent
 
-This guide explains how to enable multilingual support in the Nemotron Voice Agent. When enabled, the agent detects the user's language and responds in the same language. Unsupported languages fall back to English. See [Supported Languages](#supported-languages) for the list of supported languages.
+This guide explains how to enable multilingual support in the Nemotron Voice Agent. When enabled, the agent detects the user's language and responds in the same language. Unsupported languages fall back to English. Refer to [Supported Languages](#supported-languages) for the list of supported languages.
 
 The following components enable multilingual conversations.
 
@@ -16,9 +16,7 @@ This guide uses the following key components to build the multilingual voice age
 
 ## How Multilingual Support Works
 
-When multilingual support is enabled, the agent detects the user's language and responds in the same language. Unsupported languages fall back to English. See [Supported Languages](#supported-languages) for the list of supported languages.
-
-These are achieved with the following implementations.
+The following sections describe how the multilingual pipeline components work together.
 
 ### LLM Response Format
 
@@ -83,7 +81,7 @@ Follow these steps to deploy the Nemotron Voice Agent in multilingual mode.
 
 4. Configure the LLM for multilingual by uncommenting OPTION 2 in the [.env](../../config/env.example) file and commenting out OPTION 1.
 
-    Multilingual mode uses the **Llama 3.3 Nemotron Super 49B** model, which is significantly larger than the default Nemotron-3-Nano model. Ensure your system has sufficient VRAM to run the 49B model before enabling multilingual mode. See the [main Requirements section](../../README.md#requirements) for general hardware and software prerequisites.
+    Multilingual mode uses the **Llama 3.3 Nemotron Super 49B** model, which is significantly larger than the default Nemotron-3-Nano model. Ensure your system has sufficient VRAM to run the 49B model before enabling multilingual mode. Refer to the [main Requirements section](../../README.md#requirements) for general hardware and software prerequisites.
 
     ```bash
     # Comment out OPTION 1 (Nemotron-3-Nano) and uncomment OPTION 2:
@@ -132,7 +130,7 @@ The multilingual agent supports the following language codes by default.
 | Italian | `it-IT` |
 
 
-You can customize the supported languages by editing the `lang_codes` variable in the `multilingual_voice_assistant` prompt in [config/prompt.yaml](../../config/prompt.yaml). By default, all languages supported by the deployed Magpie TTS model are automatically included as allowed language codes via runtime detection.
+You can customize the supported languages by editing the `lang_codes` variable in the `multilingual_voice_assistant` prompt in [config/prompt.yaml](../../config/prompt.yaml). By default, all languages supported by the deployed Magpie TTS model are automatically included as allowed language codes through runtime detection.
 
 ### Testing Language Switching
 
@@ -156,5 +154,5 @@ You can troubleshoot common issues and known limitations with the multilingual a
 | ASR not transcribing correctly | Using English-only model | Switch to `parakeet-rnnt-1.1b-unified-ml-cs-universal-multi-asr-streaming` |
 | Background noise sensitivity | RNNT Multilingual ASR model interprets background noise as user input | Known limitation of RNNT Multilingual ASR model. Will be fixed in future versions |
 | Mandarin and Italian ASR not recognized sometimes | ASR model has lower accuracy for some languages | Known limitation. Will be fixed in future versions |
-| LLM not following prompt or adding prompt instruction in response | LLM prompt may require further optimization or finetuning | Optimize or customize the system prompt. See [Customize System Prompts](./customize-system-prompts.md) for guidance |
-| LLM appends English sentence to non-English language | LLM language consistency varies by context or prompt | Optimize system prompt for language consistency; see [Customize System Prompts](./customize-system-prompts.md) |
+| LLM not following prompt or adding prompt instruction in response | LLM prompt may require further optimization or finetuning | Optimize or customize the system prompt. Refer to [Customize System Prompts](./customize-system-prompts.md) for guidance |
+| LLM appends English sentence to non-English language | LLM language consistency varies by context or prompt | Optimize system prompt for language consistency. Refer to [Customize System Prompts](./customize-system-prompts.md) |

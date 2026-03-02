@@ -1,6 +1,6 @@
 # NVIDIA Pipecat Services
 
-[NVIDIA Pipecat](https://pypi.org/project/nvidia-pipecat/) offers services that help you build multimodal interactive experiences using NVIDIA technology. You can use these services to create new Pipecat pipelines that drive full-duplex voice agents and incorporate NVIDIA technologies such as Automatic Speech Recognition (ASR), Text-to-Speech (TTS), Retrieval-Augmented Generation (RAG), and NIM LLM microservices. Using the Pipecat framework, you can customize your application controller to meet your requirements. The services are compatible with the Pipecat framework and you can integrate them into any Pipecat pipeline.
+[NVIDIA Pipecat](https://pypi.org/project/nvidia-pipecat/) provides services for building full-duplex voice agents with NVIDIA ASR, TTS, RAG, and NIM LLM microservices. The services are compatible with the [Pipecat framework](https://github.com/pipecat-ai/pipecat) and you can integrate them into any Pipecat pipeline.
 
 > **Note**
 > Some advanced concepts, such as speculative speech processing, require careful integration with existing Pipecat pipelines. You might need to adapt and upgrade your frame processor implementation to work with these concepts and processors.

@@ -25,11 +25,11 @@ Audio Input → VAD → ASR → Agent → TTS → Audio Output
 ```
 
 Implement event-driven patterns for:
-- Handle real-time transcription updates.
-- Process intermediate results.
-- Monitor system health events.
-- Track user interaction events.
-- Use async/await patterns for non-blocking operations.
+- Handling real-time transcription updates.
+- Processing intermediate results.
+- Monitoring system health events.
+- Tracking user interaction events.
+- Using async/await patterns for non-blocking operations.
 
 **Benefits:**
 - Test and scale individual components independently.
@@ -147,7 +147,7 @@ update profile, set alerts, or lock your card. What would you like?"
 "What would you like to do today?"
 # (Let user guide, offer suggestions if confused)
 ```
-### Persona & Tone Consistency
+### Persona and Tone Consistency
 
 **Define Agent Personality:**
 - Choose professional vs. casual tone.
@@ -189,7 +189,7 @@ update profile, set alerts, or lock your card. What would you like?"
 
 **System Prompt Instructions:**
 - Include persona and tone guidelines directly in the system prompt.
-- Instruct the model to avoid formatting (bullet points, markdown, URLs) that doesn't translate to voice.
+- Instruct the model to avoid formatting (bullet points, markdown, URLs) that does not translate to voice.
 - Define conversation boundaries and scope to prevent rambling.
 - Include examples of ideal voice responses for few-shot guidance.
 - Add instructions for progressive disclosure and context-aware suggestions.
@@ -229,7 +229,7 @@ ERROR_MESSAGES = {
 
 ---
 
-## Scalability & Performance
+## Scalability and Performance
 
 ### Horizontal Scaling
 
