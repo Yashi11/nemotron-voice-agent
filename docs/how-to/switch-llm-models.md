@@ -26,7 +26,7 @@ The Nemotron Voice Agent supports multiple LLM models with different capabilitie
     # ----------------------------------------------------------------------------
     # OPTION 1: Nemotron-3-Nano (comment out this block)
     # ----------------------------------------------------------------------------
-    # NVIDIA_LLM_IMAGE=nvcr.io/nim/nvidia/nemotron-3-nano:1.5.1-variant
+    # NVIDIA_LLM_IMAGE=nvcr.io/nim/nvidia/nemotron-3-nano:1.7.0-variant
     # NVIDIA_LLM_MODEL=nvidia/nemotron-3-nano
     # TEMPERATURE=1.0
     # TOP_P=1.0
@@ -122,6 +122,13 @@ NVIDIA NIM provides optimized model profiles for different GPU configurations. E
     NIM_MODEL_PROFILE="751382df4272eafc83f541f364d61b35aed9cce8c7b0c869269cea5a366cd08c"
     ```
 
-    If you don't manually select a profile, NIM automatically chooses the best profile by preferring hardware-specific profiles matching your GPU model, then selecting backend engines in order (`tensorrt_llm` > `vllm` > `sglang`), prioritizing more efficient precision formats (e.g., `fp8` > `fp16`), and balancing latency vs. throughput optimization targets based on available profiles. The selected profile is logged at startup, showing which profile was chosen and why.
+    If you do not manually select a profile, NIM automatically chooses the best profile based on the following criteria:
 
-For more details on model profiles, see the [NVIDIA NIM Model Profiles documentation](https://docs.nvidia.com/nim/large-language-models/latest/profiles.html).
+    - Prefers hardware-specific profiles matching your GPU model.
+    - Selects backend engines in order: `tensorrt_llm` > `vllm` > `sglang`.
+    - Prioritizes more efficient precision formats (for example, `fp8` over `fp16`).
+    - Balances latency and throughput optimization targets based on available profiles.
+
+    The selected profile is logged at startup, showing which profile was chosen and why.
+
+For more details on model profiles, refer to the [NVIDIA NIM Model Profiles documentation](https://docs.nvidia.com/nim/large-language-models/latest/profiles.html).

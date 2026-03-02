@@ -21,6 +21,8 @@ This blueprint requires **2 NVIDIA GPUs** (Ampere, Hopper, Ada, or later).
 
 ---
 
+## Deployment Steps
+
 1. Clone the repository and navigate to the root directory of the project.
 
     ```bash
@@ -67,7 +69,9 @@ This blueprint requires **2 NVIDIA GPUs** (Ampere, Hopper, Ada, or later).
 
     ![UI Screenshot](./images/ui_webrtc.png)
 
-    **Note:** To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<machine-ip>:9000` to the list, and restart Chrome. To wait for all services to be healthy, check with `docker compose ps`.
+    > **Note:** To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<machine-ip>:9000` to the list, and restart Chrome.
+
+    To verify all services are healthy, run `docker compose ps`.
 
 ---
 
