@@ -2,39 +2,47 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 # Base image - OSRB approved Ubuntu base (Bug 4960044)
+FROM nvcr.io/nvidia/base/ubuntu:noble-20251013 AS client-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /client
+
+COPY client/package.json client/package-lock.json ./
+RUN npm ci
+COPY client/ ./
+RUN npm run build
+
 FROM nvcr.io/nvidia/base/ubuntu:noble-20251013
 
 # Image metadata
 LABEL maintainer="NVIDIA"
 LABEL description="Nemotron Voice Agent"
-LABEL version="1.0"
+LABEL version="2.0"
 
-# Environment setup
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app:$PYTHONPATH
 
-# System dependencies
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-    libgl1 \
-    libglx-mesa0 \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     curl \
+    libgl1 \
     libglib2.0-0 \
+    libxcb1 \
     python3.12 \
     python3.12-venv \
-    gpgv \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && mv /root/.local/bin/uv /usr/local/bin/uv
 
-# App directory setup
 WORKDIR /app
-
-# Copy project files
-COPY pyproject.toml uv.lock ./
-COPY src ./src
-COPY config ./config
-COPY nvidia-pipecat ./nvidia-pipecat
 
 # Create legal directory and copy license files
 RUN mkdir -p /app/legal
@@ -58,14 +66,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends xz-utils dpkg-d
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+COPY pyproject.toml uv.lock ./
+
 # Dependencies
 # Note: Python package source code is available via uv's cache and can be
 # extracted using: uv pip show <package> --files
 # For full source compliance, see /app/legal/third_party_oss_license.txt
 RUN uv venv --python python3.12 && . .venv/bin/activate && uv sync --frozen
 
-# Port configuration
+COPY src/ src/
+COPY prompt.yaml services.cloud.yaml services.local.yaml ./
+COPY --from=client-builder /client/dist/ client/dist/
+
 EXPOSE 7860
 
-# Start command
-CMD ["uv", "run", "src/pipeline.py"]
+CMD ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0"]

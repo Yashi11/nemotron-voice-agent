@@ -12,125 +12,164 @@ Before you begin, ensure you have the following:
 
 ## GPU Requirements
 
-This blueprint requires **2 NVIDIA GPUs** (Ampere, Hopper, Ada, or later).
-- **GPU 0**: For running NVIDIA Nemotron Speech ASR (Automatic Speech Recognition) and TTS (Text-to-Speech) models.
-  - **Total VRAM required for ASR and TTS models: 48 GB**
-- **GPU 1**: For running NVIDIA LLM NIM.
-  - [Nemotron 3 Nano 30B A3B](https://build.nvidia.com/nvidia/nemotron-3-nano-30b-a3b/modelcard): 48 GB VRAM
-  - [Llama 3.3 Nemotron Super 49B v1.5](https://build.nvidia.com/nvidia/llama-3_3-nemotron-super-49b-v1_5/modelcard): 80 GB VRAM
+**Cloud-only mode** (default): No local GPUs required. ASR, LLM, and TTS services run via NVIDIA cloud APIs.
+
+**Docker Compose profiles**:
+
+| Profile | Hardware | Services | Description |
+|---------|----------|----------|-------------|
+| `all-examples` | None (cloud only) | UI selector + booking server | Default selector across Generic Cascaded and Agentic Airline |
+| `generic` / `agentic-airline` | None (cloud only) | Single-example backend | Lock the backend to one cloud example |
+| `generic-workstation` / `agentic-airline-workstation` | 2 GPUs | GPU 0: ASR + TTS NIMs, GPU 1: NIM LLM | Full local deployment for the chosen example |
+| `generic-dgxspark` | 1 GPU, 128 GB unified memory | ASR + TTS NIMs + vLLM LLM | Single-GPU local deployment for the Generic example |
+| `generic-jetson` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) | Edge deployment for the Generic example |
 
 ---
 
 ## Deployment Steps
 
-1. Clone the repository and navigate to the root directory of the project.
+1. Clone the repository and navigate to the root directory.
 
     ```bash
     git clone git@github.com:NVIDIA-AI-Blueprints/nemotron-voice-agent.git
     cd nemotron-voice-agent
     ```
 
-2. Initialize and update the git submodules.
+2. Configure the environment. Copy the example environment file [.env.example](.env.example) to the root directory.
 
     ```bash
-    git submodule update --init
+    cp .env.example .env
     ```
 
-3. Configure the environment. To get started, copy the example environment file [.env.example](../config/env.example) to the root directory.
-
-    ```bash
-    cp config/env.example .env
-    ```
-
-4. Set your NVIDIA API key as an environment variable:
+3. Set your NVIDIA API key as an environment variable:
 
     ```bash
     export NVIDIA_API_KEY=<your-nvidia-api-key>
     ```
 
-5. Log in to the NVIDIA NGC Docker Registry.
+4. Log in to the NVIDIA NGC Docker Registry.
 
     ```bash
-    export NGC_API_KEY=<your-nvidia-api-key>
-    docker login nvcr.io
+    printf '%s' "$NVIDIA_API_KEY" | docker login nvcr.io -u '$oauthtoken' --password-stdin
     ```
 
-6. Deploy the application.
+    For DGX Spark staging or private Magpie TTS images, ensure `NVIDIA_API_KEY` has access before logging in.
+
+5. Deploy the default selector application:
 
     ```bash
-    docker compose up -d
+    docker compose --profile all-examples up -d
     ```
 
-    > **Note:** Deployment may take 30-60 minutes on first run.
+    This starts one UI/backend plus the Agentic Airline booking server using cloud/NVCF services. Use the UI pipeline selector to switch between **Generic Cascaded** and **Agentic Airline**.
 
-7. Access the application at `http://<machine-ip>:9000/`
+    Standalone cloud profiles are also available when you want to lock the backend to one example:
+
+    ```bash
+    docker compose --profile generic up -d
+    docker compose --profile agentic-airline up -d
+    ```
+
+    > **Note:** Deployment may take 30–60 minutes on first run.
+
+6. Access the application at `https://<machine-ip>:7860`.
 
     > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
-
-    ![UI Screenshot](./images/ui_webrtc.png)
-
-    > **Note:** To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<machine-ip>:9000` to the list, and restart Chrome.
 
     To verify all services are healthy, run `docker compose ps`.
 
 ---
 
+## Optional: Deploy with Local NIM Profiles
+
+For local GPU deployments, set `DEPLOYMENT_PLATFORM` in `.env` so the backend loads the matching section of `services.local.yaml`, then start the matching Docker Compose profile:
+
+```bash
+# In .env
+DEPLOYMENT_PLATFORM=workstation   # or dgxspark / jetson
+```
+
+The platform value is the bare name; local deployments use the example-prefixed profiles (e.g. `generic-workstation`, `generic-dgxspark`, `generic-jetson`, `agentic-airline-workstation`). The `all-examples` selector profile stays cloud/NVCF-only.
+
+DGX Spark also requires `HF_TOKEN` for the vLLM model download. If the selected Magpie TTS image is staging or private, use a `NVIDIA_API_KEY` with access to that image:
+
+```bash
+# In .env for DGX Spark
+DEPLOYMENT_PLATFORM=dgxspark
+HF_TOKEN=hf_...
+NVIDIA_API_KEY=nvapi-...
+```
+
+```bash
+# Generic example — full local deployment (2 GPUs required)
+docker compose --profile generic-workstation up -d
+
+# Generic example — DGX Spark
+docker compose --profile generic-dgxspark up -d
+
+# Generic example — Jetson edge (set HF_TOKEN in .env)
+docker compose --profile generic-jetson up -d
+
+# Agentic Airline example — full local deployment (2 GPUs required)
+docker compose --profile agentic-airline-workstation up -d
+```
+
+Run with `--profile generic` (or `--profile agentic-airline`) and `DEPLOYMENT_PLATFORM` unset to stay remote/NVCF. Always keep `DEPLOYMENT_PLATFORM` in `.env` aligned with the `--profile` you launch.
+
+For Jetson-specific setup, refer to [Jetson Thor Deployment](03-jetson-thor.md).
+
+---
+
+## Optional: Local Development (without Docker)
+
+For development and debugging, you can run the server directly:
+
+1. Install [uv](https://docs.astral.sh/uv/) and Node.js 20+.
+
+2. Install dependencies and build the client:
+
+    ```bash
+    uv sync
+    cd client && npm install && npm run build && cd ..
+    ```
+
+3. Configure the environment:
+
+    ```bash
+    cp .env.example .env
+    # Edit .env and set NVIDIA_API_KEY
+    ```
+
+4. Start the server:
+
+    ```bash
+    uv run python src/server.py
+    ```
+
+5. Access the application at `https://localhost:7860`.
+
+---
+
 ## Optional: Deploy TURN Server for Remote Access
 
-If you need to access the application from remote locations or deploy on cloud platforms, configure a TURN server following these steps.
+Only needed when the browser connects from a different network than the host (NAT, restrictive firewall, cloud deployment). Localhost and same-subnet clients work without this.
 
-1. Set an environment variable for your public IP address.
-    ```bash
-    export HOST_IP_EXTERNAL=<your-public-ip-address>
+A Coturn service ships in `docker-compose.yml` behind an opt-in `turn` profile. Add `--profile turn` to any deploy command:
+
+```bash
+docker compose --profile generic --profile turn up -d               # cloud-only + TURN
+docker compose --profile generic-workstation --profile turn up -d   # any local profile + TURN
+```
+
+- Coturn binds host ports UDP `3478` and UDP `49160-49200`. These must be reachable from clients (open them on your cloud firewall / security group).
+- The client auto-fetches ICE config from `GET /api/ice-servers` — no client-side setup needed.
+- Default credentials are `admin:admin`. For production, override in `.env`:
+
+    ```env
+    # Required when TURN is deployed on a different host than all-examples.
+    TURN_URL=turn:<turn-host-or-ip>:3478
+    TURN_USERNAME=<user>
+    TURN_PASSWORD=<pass>
     ```
 
-2. Deploy the Coturn server.
-
-    ```bash
-    docker run -d --network=host instrumentisto/coturn -n --verbose --log-file=stdout \
-      --external-ip=$HOST_IP_EXTERNAL --listening-ip=0.0.0.0 --lt-cred-mech --fingerprint \
-      --user=admin:admin --no-multicast-peers --realm=tokkio.realm.org \
-      --min-port=51000 --max-port=52000
-    ```
-
-3. Update the `.env` file with TURN server configuration.
-
-    **Important:** Replace `<your-public-ip-address>` with your actual public IP address in the `TURN_SERVER_URL` value below.
-
-    ```bash
-    # ----------------------------------------------------------------------------
-    # TURN SERVER CREDENTIALS
-    # ----------------------------------------------------------------------------
-
-    TURN_SERVER_URL=turn:<your-public-ip-address>:3478
-    TURN_USERNAME=admin
-    TURN_PASSWORD=admin
-    ```
-
-4. Update WebRTC UI Configuration in the [webrtc_ui](../frontend/webrtc_ui/src/config.ts) file by replacing the empty `RTC_CONFIG` object with your TURN server configuration.
-
-    **Important:** Replace `<your-public-ip-address>` with your actual public IP address in the `urls` field below.
-
-    ```typescript
-    // Replace this:
-    export const RTC_CONFIG = {};
-
-    // With this:
-    export const RTC_CONFIG = {
-      iceServers: [
-        {
-          urls: "turn:<your-public-ip-address>:3478",
-          username: "admin",
-          credential: "admin",
-        },
-      ],
-    };
-    ```
-
-    For more information, refer to the [WebRTC TURN Server Documentation](https://webrtc.org/getting-started/turn-server).
-
-5. Restart the Docker Compose services to apply the changes.
-
-    ```bash
-    docker compose up --build -d
-    ```
+- If `TURN_URL` is unset, `all-examples` derives the TURN host from the request. When using a reverse proxy in that mode, ensure it forwards the `X-Forwarded-Host` header so the derived TURN URL resolves to the client-reachable hostname.

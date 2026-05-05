@@ -1,29 +1,12 @@
 # Evaluation and Performance
 
-This guide points to tooling for benchmarking the Nemotron Voice Agent for **accuracy** and **latency/throughput**. All tooling lives in the `nvidia-pipecat` submodule. Ensure the submodule is initialized:
-
-```bash
-git submodule update --init
-```
-
-**Transport:** The BigBench and performance scripts connect to the voice agent over **WebSocket only**. If your deployment uses WebRTC (the default), switch to WebSocket before running these benchmarks. Refer to [Choose a Transport Method](how-to/choose-transport-method.md) for how to set `TRANSPORT=WEBSOCKET` in `.env` and restart the services.
+This guide provides reference benchmarks for the Nemotron Voice Agent covering **accuracy**, **full-duplex behavior**, and **latency/throughput**.
 
 ---
 
-## Overview
+## Accuracy: BigBench Audio Benchmarking
 
-The following table lists the evaluation and performance tooling:
-
-| Goal | Location | Documentation |
-| --- | --- | --- |
-| **Accuracy (BigBench)** | `nvidia-pipecat/tools/scripts/AA-BigBenchAudio-eval/` | [AA-BigBenchAudio-eval README](../nvidia-pipecat/tools/scripts/AA-BigBenchAudio-eval/README.md) |
-| **Latency & scalability** | `nvidia-pipecat/tests/perf/` | [Performance tests README](https://github.com/NVIDIA-AI-Blueprints/nemotron-voice-agent/blob/main/nvidia-pipecat/tests/perf/README.md) |
-
----
-
-## BigBench Audio Benchmarking
-
-BigBench Audio evaluates **answer correctness** on the [ArtificialAnalysis/big_bench_audio](https://huggingface.co/datasets/ArtificialAnalysis/big_bench_audio) dataset. For setup, prerequisites, and step-by-step instructions (speech-to-speech and text-inference pipelines), refer to the [AA-BigBenchAudio-eval README](../nvidia-pipecat/tools/scripts/AA-BigBenchAudio-eval/README.md).
+BigBench Audio evaluates **answer correctness** on the [ArtificialAnalysis/big_bench_audio](https://huggingface.co/datasets/ArtificialAnalysis/big_bench_audio) dataset.
 
 ### Reference Results
 
@@ -36,17 +19,65 @@ The following table shows accuracy (%) on Big Bench Audio for text-only (standal
 | Nemotron 30B (`nvidia/nemotron-3-nano`) | Reasoning ON, Budget 500 | 78.76 | 75.60 |
 | Nemotron 30B | Reasoning OFF | 56.50 | 50.40 |
 
+### How to Reproduce
+
+[`benchmarking_tools/AA-BigBenchAudio-Eval/`](../benchmarking_tools/AA-BigBenchAudio-Eval/README.md) drives the full pipeline (download → preprocess → inference → Riva transcription → LLM-judge scoring). Prerequisites: a running voice agent (see [Getting Started](01-getting-started.md)), `ffmpeg`, a Riva ASR endpoint (default `localhost:50051`), and judge-LLM credentials (`EVAL_API_URL`, `EVAL_API_KEY`).
+
+From the **repo root**, install benchmark dependencies once:
+
+```bash
+uv sync --group benchmark
+```
+
+Then, from `benchmarking_tools/AA-BigBenchAudio-Eval/`, run the speech pipeline:
+
+```bash
+uv run python download_dataset.py --input_dir ./datasets/bigbench_audio --split train
+uv run python speech-inference.py --input_dir ./datasets/bigbench_audio --preprocess
+uv run python speech-inference.py --input_dir ./datasets/bigbench_audio --inference \
+  --server-url http://127.0.0.1:7860
+uv run python transcribe.py --input_dir ./datasets/bigbench_audio
+EVAL_API_URL=https://.../invoke EVAL_API_KEY=your_key \
+  uv run python eval.py --input_dir ./datasets/bigbench_audio
+uv run python analyze_results.py --input_dir ./datasets/bigbench_audio
+```
+
+See the [eval README](../benchmarking_tools/AA-BigBenchAudio-Eval/README.md) for the text-only pipeline, HTTPS / self-signed-cert flags, and per-script options.
+
 ---
 
-## Performance Tests
+## Full-Duplex Behavior
 
-The performance tests in `nvidia-pipecat/tests/perf/` measure latency and scalability (multi-client WebSocket benchmark, TTFB analysis, glitch and reverse barge-in detection). For prerequisites, how to run the multi-client benchmark and TTFB analyzer, and troubleshooting, refer to the [Performance tests README](../nvidia-pipecat/tests/perf/README.md).
+[Full-Duplex-Bench](https://github.com/DanielLin94144/Full-Duplex-Bench) (v1, v1.5) probes turn-taking behavior under interruption — when the agent yields to a user barge-in, when it keeps talking through background noise, and how quickly the bot reply lands after the user finishes speaking. The repo's [`benchmarking_tools/Full-Duplex-Bench-Eval/`](../benchmarking_tools/Full-Duplex-Bench-Eval/README.md) tool acts as the inference client: it streams each dataset sample to the running voice agent over WebSocket and writes the bot's reply audio back into the per-sample folders. Scoring (TOR, P_resp, P_inter, …) is then computed by the upstream Full-Duplex-Bench tooling against those output WAVs.
+
+### How to Reproduce
+
+Install benchmark dependencies once and start the agent from the **repo root**:
+
+```bash
+uv sync --group benchmark
+uv run python src/server.py --no-tls
+```
+
+Then, from `benchmarking_tools/Full-Duplex-Bench-Eval/`, point the client at the running server:
+
+```bash
+uv run python inference.py \
+  --input_dir /path/to/full-duplex-bench/samples \
+  --server-url http://127.0.0.1:7860
+```
+
+This populates `output.wav` (and `clean_output.wav` when a `clean_input.wav` is present) in each numeric sample folder. Feed those into Full-Duplex-Bench's evaluation scripts to compute the metrics. See the [eval README](../benchmarking_tools/Full-Duplex-Bench-Eval/README.md) for HTTPS / self-signed-cert flags and `--retry_samples` for re-running specific IDs.
+
+---
+
+## Latency and Scalability
 
 ### Reference Results
 
-**The Nemotron Voice Agent** performance benchmark shows **sub-second End-to-End (E2E) latency**. The setup uses **4× H100 GPUs** (one for Parakeet CTC 1.1B ASR, one for Magpie TTS, and two for Nemotron-3-Nano LLM) with [speculative speech processing](how-to/tune-pipeline-performance.md#speculative-speech-processing) enabled. All latencies are in seconds.
+**The Nemotron Voice Agent** performance benchmark shows **sub-second End-to-End (E2E) latency**. The setup uses **4x H100 GPUs** (one for Parakeet CTC 1.1B ASR, one for Magpie TTS, and two for Nemotron-3-Nano LLM). All latencies are in seconds.
 
-> **Note:** This benchmark uses a 4-GPU setup to measure scalability. The [minimum deployment requirement](01-getting-started.md#gpu-requirements) is 2 GPUs.
+> **Note:** This benchmark uses a 4-GPU setup to measure scalability. The [minimum deployment requirement](01-getting-started.md#gpu-requirements) is cloud-only (no local GPUs) or 2 GPUs with the `workstation` profile.
 
 | Parallel Streams | E2E Latency | ASR Latency | TTS TTFB | LLM TTFT | LLM First-Sentence Latency |
 | --- | --- | --- | --- | --- | --- |

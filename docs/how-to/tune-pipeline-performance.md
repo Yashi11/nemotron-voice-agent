@@ -1,159 +1,132 @@
 # Tune Pipeline Performance
 
-This section covers advanced pipeline configurations for optimizing the performance and user experience of the Nemotron Voice Agent.
+This section covers pipeline configurations for optimizing the performance and user experience of the Nemotron Voice Agent.
 
-- [Speculative Speech Processing](#speculative-speech-processing)
-- [Chat History Limit](#chat-history-limit)
+- [Smart Turn Detection](#smart-turn-detection)
 - [Audio Debugging](#audio-debugging)
+- [Chat History Limit](#chat-history-limit)
 - [Audio Output Buffering](#audio-output-buffering)
+- [Transport Selection](#transport-selection)
 
-## Speculative Speech Processing
+## Smart Turn Detection
 
-Speculative speech processing reduces response latency by processing interim ASR transcripts before the user finishes speaking. This feature is enabled by default and provides approximately 300ms reduction in end-to-end latency.
-
-### Configuration
-
-Speculative speech processing is controlled by the `ENABLE_SPECULATIVE_SPEECH` environment variable in [.env](../../config/env.example).
-
-```bash
-# Enable speculative speech processing (default)
-ENABLE_SPECULATIVE_SPEECH=true
-
-# Or disable speculative speech processing
-ENABLE_SPECULATIVE_SPEECH=false
-```
-
-**Note:** This feature only works with Nemotron Speech ASR.
-
-### Benefits
-
-When enabled, speculative speech processing provides:
-
-| Benefit | Description |
-|---------|-------------|
-| **Lower latency** | ~300ms reduction by starting response generation before user finishes speaking |
-| **Natural conversation flow** | TTS responses are cached and released at appropriate times |
-| **Parallel processing** | LLM and TTS services process interim transcripts while user continues speaking |
+The cascaded pipeline uses smart turn detection (`LocalSmartTurnAnalyzerV3`) to determine when the user has finished speaking, reducing unnecessary silence waiting before generating a response.
 
 ### How It Works
 
-1. User speaks. ASR generates interim transcripts with stability scores as audio is processed.
-2. Stable interims processed. Transcripts with stability=1.0 are sent to LLM for early response generation.
-3. Responses cached. TTS outputs are buffered while the user is still speaking.
-4. User stops speaking. Cached responses are released, providing faster perceived response time.
-5. Final transcript arrives. If different from interims, the response is updated.
-
-![Workflow](../images/speculative_speech_user_context.png)
+1. User speaks. ASR generates interim transcripts as audio is processed.
+2. Smart turn analysis evaluates the transcript context and audio signals to predict end-of-utterance.
+3. Once a turn boundary is detected, the pipeline sends the transcript to the LLM for response generation.
+4. TTS synthesizes and streams back the response.
 
 ### Key Components
 
-The following NVIDIA Pipecat components enable speculative speech processing. For more details, refer to the [NVIDIA Pipecat documentation](../05-nvidia-pipecat.md).
-
 | Component | Purpose |
 |-----------|---------|
-| `NvidiaUserContextAggregator` | Filters stable interim transcripts and manages conversation context |
-| `NvidiaAssistantContextAggregator` | Updates responses as context changes and prevents overlapping turns |
-| `NvidiaTTSResponseCacher` | Buffers TTS responses during user speech and coordinates release timing |
-
-### Pipeline Configuration
-
-When speculative speech is enabled, the agent's pipeline includes the TTS response cacher:
-
-```python
-pipeline = Pipeline([
-    transport.input(),
-    stt,                                    # NemotronASRService
-    context_aggregator.user(),              # Filters interim transcripts
-    llm,
-    tts,
-    tts_response_cacher,                    # Caches responses during user speech
-    transport.output(),
-    context_aggregator.assistant()
-])
-```
-
-When disabled, the response cacher is removed and only final transcripts are processed.
-
-### Advanced: Building Custom Frame Processors
-
-When developing components that work with speculative speech processing, follow these guidelines:
-
-**Handle Interim States**
-- Design frames to carry stability information.
-- Include mechanisms to update or replace interim content.
-- Implement clear state transitions from interim to final.
-
-**Design for Incremental Updates**
-- Support partial response processing and cancellation.
-- Handle transitions between interim and final states.
-- Consider that `TTSRawAudio` frames are cached until release conditions are triggered.
-
-### Technical Foundation
-
-This implementation builds on NVIDIA Nemotron Speech ASR's Two-Pass End of Utterance mechanism:
-
-- Real-time interim transcript generation with stability metrics
-- Hypothesis refinement as more audio is processed
-- Clear signaling of final transcripts
-
-For more details, refer to the [NVIDIA Nemotron Speech ASR documentation](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/asr/asr-overview.html#two-pass-end-of-utterance).
-
-## Chat History Limit
-
-To control the conversation context window, set the `CHAT_HISTORY_LIMIT` environment variable to the number of conversation turns to retain in the `.env` file. By default, the conversation context window is set to 20.
-
-```bash
-# In .env file
-CHAT_HISTORY_LIMIT=20  # Number of conversation turns to retain
-```
-
-**Recommendations**
-- **Standard conversations**: 20 (default)
-- **Emotion-aware TTS**: 3-5 (better emotion tracking)
-- **Multilingual mode**: 3-5 (better language detection)
+| `SileroVADAnalyzer` | Voice activity detection with configurable silence threshold |
+| `LocalSmartTurnAnalyzerV3` | ML-based end-of-utterance detection for natural turn-taking |
+| `InterimAwareTurnStopStrategy` | Coordinates turn detection with interim ASR transcripts |
 
 ## Audio Debugging
 
-You can enable raw audio capture for ASR/TTS debugging and issue reproduction.
+Enable raw audio capture for ASR/TTS debugging and issue reproduction. Each conversation turn is saved as a separate WAV file for easy analysis.
+
+### Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ENABLE_ASR_AUDIO_DUMP` | `false` | Capture incoming user audio |
-| `ENABLE_TTS_AUDIO_DUMP` | `false` | Capture outgoing synthesized audio |
-| `AUDIO_DUMP_PATH` | `./audio_dumps` | Output directory for WAV files |
+| `ENABLE_ASR_AUDIO_DUMP` | `false` | Capture incoming user audio (per turn) |
+| `ENABLE_TTS_AUDIO_DUMP` | `false` | Capture outgoing synthesized audio (per turn) |
+| `AUDIO_DUMP_PATH` | `audio_dumps/cascaded` | Output directory (relative to project root, or absolute) |
 
-To enable audio debugging, set the environment variables as follows in the `.env` file.
+To enable audio debugging, set the environment variables in the `.env` file:
 
 ```bash
 ENABLE_ASR_AUDIO_DUMP=true
 ENABLE_TTS_AUDIO_DUMP=true
-AUDIO_DUMP_PATH=./audio_dumps # Output directory for WAV files.
+AUDIO_DUMP_PATH=audio_dumps/cascaded
 ```
 
-Output files use WAV format with stream IDs for correlation.
+### Output Format
 
-> **Note:** If Docker creates the folder with different permissions, you can fix this in one of two ways:
->- Option 1: Pre-create directory before container start
->    ```bash
->    mkdir -p ./audio_dumps
->    ```
->- Option 2: Fix ownership after container creates it
->    ```bash
->    sudo chown -R $(id -u):$(id -g) ./audio_dumps
->    ```
+Files are saved as 16-bit mono PCM WAV with per-turn indexing:
+
+```
+audio_dumps/cascaded/
+├── asr_<stream_id>_000.wav   # User turn 0
+├── asr_<stream_id>_001.wav   # User turn 1
+├── tts_<stream_id>_000.wav   # Bot turn 0
+├── tts_<stream_id>_001.wav   # Bot turn 1
+└── ...
+```
+
+The `<stream_id>` is a unique 8-character hex ID per session, so files from concurrent sessions don't collide.
+
+> **Note:** If Docker creates the folder with different permissions, fix ownership:
+>
+> ```bash
+> # Option 1: Pre-create directory before container start
+> mkdir -p ./audio_dumps/cascaded
+>
+> # Option 2: Fix ownership after container creates it
+> sudo chown -R $(id -u):$(id -g) ./audio_dumps
+> ```
 
 > **Warning:** Disable audio debugging in production to prevent disk exhaustion.
 
+## Chat History Limit
+
+Controls the cascaded pipeline conversation window size. Older messages are dropped using a
+sliding window while preserving the initial prompt messages.
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CHAT_HISTORY_RECENT_TURNS` | `20` | Number of most recent non-prompt messages to keep |
+
+```bash
+CHAT_HISTORY_RECENT_TURNS=20
+```
+
+### How It Works
+
+When the message count exceeds `CHAT_HISTORY_RECENT_TURNS`, the cascaded pipeline trims context with a
+sliding window:
+
+1. Initial prompt messages loaded at session start are always preserved.
+2. From all later messages, only the latest `CHAT_HISTORY_RECENT_TURNS` messages are kept.
+3. Older non-prompt messages are removed.
+
+### Recommendations
+
+| Use Case | Value |
+|----------|-------|
+| Standard conversations | `20` (default) |
+| Multilingual mode | `3-5` |
+| Long-form sessions | `30-50` |
+
 ## Audio Output Buffering
 
-To control audio output latency and stability, set the `AUDIO_OUT_10MS_CHUNKS` environment variable to the number of 10ms chunks to buffer for output. By default, the audio output buffer size is set to 5.
+To control audio output latency and stability for the cascaded pipeline, set the `AUDIO_OUT_10MS_CHUNKS` environment variable to the number of 10ms chunks to buffer for output. By default, the cascaded pipeline uses `5` for WebRTC and `10` for FastAPI WebSocket.
 
 ```bash
 # In .env file
-AUDIO_OUT_10MS_CHUNKS=5  # Number of 10ms chunks to buffer
+AUDIO_OUT_10MS_CHUNKS=10  # Override transport defaults
 ```
 
 The following are the configuration guidelines for the `AUDIO_OUT_10MS_CHUNKS` environment variable.
 - **Default WebRTC**: 5 chunks (50ms buffer) - optimized for low latency
 - **Default WebSocket**: 10 chunks (100ms buffer) - more stable for network variations
 - **High Concurrency**: 10-40 chunks (100-400ms buffer) - prevents audio glitches under high load
+
+## Transport Selection
+
+The server supports both WebRTC and WebSocket transports simultaneously on different endpoints:
+
+| Transport | Endpoint | Best For |
+|-----------|----------|----------|
+| **WebRTC** | `POST /api/offer` | Production voice interactions, lowest latency (~50-150ms) |
+| **WebSocket** | `WS /api/ws` | Testing, firewall-restricted environments, simpler deployments (~100-300ms) |
+
+The client UI automatically selects the transport. Both are available without any configuration changes.

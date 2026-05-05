@@ -1,0 +1,147 @@
+# Scaling Perf
+
+Load-test the Nemotron Voice Agent with synthetic clients. Each "client" is a
+Python process that connects to the running server over WebSocket, plays a
+WAV file as the user, listens for the bot's response, and records how long
+each turn took. You can run a single client (smoke test) or fan out to N
+parallel clients (concurrency / scaling test) and produce a sweep across
+multiple concurrency levels.
+
+**RTVI** (Real-Time Voice/Video Inference) is the Pipecat-standard
+protocol the server uses to push per-turn timing breakdowns (LLM / TTS /
+ASR sub-latencies) to the client over the same WebSocket as the audio.
+The benchmark parses those frames alongside the audio stream.
+
+## Layout
+
+| File | Job |
+|------|-----|
+| `benchmark.py` | Drives **one** client by default. Also produces summaries when invoked with `--aggregate-run-dir` / `--aggregate-suite-dir`. |
+| `simulate_concurrency.sh` | Spawns N parallel `benchmark.py` workers per concurrency level (with synchronized metric windows + cooldowns) and then calls `benchmark.py` in aggregate mode. |
+
+## Setup
+
+These scripts reuse the repo's root environment — no separate venv required.
+Pipecat is already a project dependency, and `websockets` is pulled in via the
+root `benchmark` dependency group (shared by every tool under
+`benchmarking_tools/`).
+
+1. From the repository root, sync the project (one-time):
+
+   ```bash
+   uv sync --group benchmark
+   ```
+
+2. Start the voice-agent server (Docker compose or `uv run python src/server.py`).
+3. Drop **16 kHz, mono, 16-bit PCM** WAV files into `dataset/`. The benchmark
+   cycles through them as the simulated user's utterances each turn.
+
+`simulate_concurrency.sh` auto-dispatches `benchmark.py` through `uv run`
+when the root `pyproject.toml` is detected, so the commands below work
+straight from a fresh `uv sync --group benchmark`.
+
+## Run
+
+From this directory:
+
+```bash
+# Single-client (1 process)
+uv run python3 benchmark.py
+
+# Concurrent run (4 parallel processes, single concurrency level)
+./simulate_concurrency.sh --clients 4
+
+# Scaling sweep (one run per concurrency level; cooldown between levels)
+./simulate_concurrency.sh --clients "1 2 4 8 16"
+```
+
+The shell wrapper accepts `-h`/`--help`. Common flags:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--clients "N1 N2 …"` | `1` | One run per concurrency level. Quote the list. |
+| `--host` / `--port` | `localhost` / `7860` | Server target. |
+| `--test-duration` | `150` | Seconds of metric collection per level. |
+| `--client-start-delay` | `1` | Stagger between clients connecting (s). With N clients and delay D, the metric window opens at ``now + (N-1)*D`` so every worker is connected before measurement starts. |
+| `--cooldown` | `10` | Pause between sweep levels (s) — lets the server settle between bursts. |
+| `--reverse-barge-in-threshold` | `0.4` | Bot audio arriving within this many seconds of the user finishing speaking is discarded as a *reverse* barge-in (the server racing the end of the user's utterance) instead of being timed as the real response. Used internally; not surfaced in summaries. |
+| `--no-save-audio` | (audio saved) | Skip writing per-client output WAVs. |
+| `--dataset-dir DIR` | `./dataset` | Override input WAV directory. |
+| `--output-dir DIR` | this folder | Override result destination. |
+
+`Ctrl-C` is graceful — workers stop, partial results stay on disk.
+
+### Calling `benchmark.py` directly
+
+The shell script orchestrates concurrency for you, but `benchmark.py` is
+runnable on its own when you only need one client (smoke tests, debugging).
+See `uv run python3 benchmark.py --help` for the full per-client surface
+(`--stream-id`, `--metrics-start-time`, `--session-end-time`,
+`--result-path`, `--logger-path`, `--audio-output-path`, …). Without those
+flags the script computes sane defaults.
+
+### Re-aggregating an existing run
+
+If you already have `result_*.json` files (e.g. you killed the orchestrator
+mid-sweep) you can rebuild the summaries with the same script:
+
+```bash
+uv run python3 benchmark.py --aggregate-run-dir   path/to/run_4_clients --num-clients 4
+uv run python3 benchmark.py --aggregate-suite-dir path/to/perf_suite_<ts>
+```
+
+## Output layout
+
+**Where to look first:** open `results.txt` for `simulate_concurrency.sh` runs
+(single-level or sweeps). For direct `uv run python3 benchmark.py` runs, check
+the client summary line and `result_<id>.json`. Per-client `.log` files are
+mainly for debugging specific failures.
+
+Single concurrency level (`--clients 1`, `--clients 4`, etc.):
+
+```
+results_<timestamp>/
+├── benchmark_summary.json       # rolled-up summary across all clients
+├── results.txt                  # one-row summary table (human-readable)
+├── results.tsv                  # one-row summary table (tab-separated)
+├── results.json                 # one-row summary object list
+└── client_<i>_<unix_ms>/        # i = 1..N, unix_ms makes the dir unique
+    ├── benchmark_<id>.log       # turn-by-turn log
+    ├── result_<id>.json         # per-client metrics, parsed back by aggregation
+    └── audio_output_<id>.wav    # bot audio captured by this client (unless --no-save-audio)
+```
+
+Multi-level sweep (`--clients "1 4 16"`):
+
+```
+perf_suite_<timestamp>/
+├── results.txt                  # column-aligned, human-readable
+├── results.tsv                  # tab-separated (spreadsheets / pandas)
+├── results.json                 # one object per concurrency level
+└── run_<N>_clients/             # one of these per --clients value
+    ├── benchmark_summary.json
+    └── client_<i>_<unix_ms>/...
+```
+
+## What it measures
+
+Per-client (the core target of this tool):
+
+- end-to-end response latency per turn (avg / p95 / min / max), measured at
+  the simulated user — the wall-clock from "user finished speaking" to
+  "first audio frame of the real response".
+- **audio glitch** detection — flagged when the output buffer underruns
+  (i.e. the player would have to insert silence to keep up).
+
+Pulled from the server over RTVI (each value is reported per turn,
+weighted-averaged across all turns/clients in a run):
+
+| Metric | Meaning |
+|--------|---------|
+| `llm_ttft` | Time-to-first-token from the LLM |
+| `tts_ttfb` | Time-to-first-byte from the TTS |
+| `asr_ttfb` | Time-to-first-byte from the ASR |
+| `server_e2e` | Server-side end-to-end (user-stop → first bot speech) |
+| `vad_smart_turn` | VAD + smart-turn analyzer time |
+| `llm_processing_time` | LLM end-to-end (request → final token) |
+| `llm_tokens_per_sec` | Completion tokens / `llm_processing_time` |

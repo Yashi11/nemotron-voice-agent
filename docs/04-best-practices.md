@@ -57,11 +57,11 @@ To optimize latency, first measure end-to-end and per-component latency. Voice a
   - Minimize audio buffer sizes while maintaining quality.
   - Implement jitter buffers for network variations.
 - **Scaling Audio Output for Concurrency:**
-  When scaling to multiple concurrent audio streams using either FastAPI WebSocket transport or WebRTC transport, consider increasing the output audio chunk size using the `AUDIO_OUT_10MS_CHUNKS` parameter up to 400ms to reduce audio glitches and enable smoother playback.
+  When scaling to multiple concurrent audio streams in the cascaded pipeline using either WebRTC or FastAPI WebSocket transport, consider increasing the output audio chunk size using the `AUDIO_OUT_10MS_CHUNKS` parameter up to 400ms to reduce audio glitches and enable smoother playback.
 
   **Configuration in `.env`:**
   ```bash
-  # Number of 10ms chunks to buffer (default: 10)
+  # Override transport defaults (WebRTC: 5, WebSocket: 10)
   AUDIO_OUT_10MS_CHUNKS=10
   ```
 
@@ -99,7 +99,7 @@ To optimize latency, first measure end-to-end and per-component latency. Voice a
   - **Streaming TTS**: Start playback before full synthesis.
   - **Local Nemotron Speech TTS**: Achieve 150-200ms with TRT optimized Magpie model.
   - **Chunked Generation**: Process sentences as they are generated.
-  - **Batch Size**: Increase the Magpie model batch size (for example, to 64) to boost throughput for high-volume or concurrent workloads.
+  - **Batch Size**: Tune the Magpie model batch size for the deployment shape. The 2-GPU `workstation` profile keeps ASR/TTS on GPU 0 and the LLM on GPU 1, so TTS no longer shares memory with the LLM. Keep the default `batch_size=8` for baseline stability, then benchmark before increasing it. Single-GPU `dgxspark` still shares GPU memory across ASR, TTS, and LLM.
 
 **Audio Post-processing:**
 - **Contribution**: 50-100ms (normalization, encoding)
@@ -115,11 +115,11 @@ To optimize latency, first measure end-to-end and per-component latency. Voice a
 
 ### Advanced Latency Reduction Techniques
 
-**Speculative Speech Processing:**
+**Smart Turn Detection:**
+- Use smart turn analysis to detect end-of-utterance more accurately, reducing unnecessary waiting.
 - Process interim ASR transcripts before speech ends.
 - Pre-generate likely responses during user speech.
 - **Potential Savings**: Achieve 200-400ms reduction in perceived latency.
-- Refer to [Speculative Speech Processing](./how-to/tune-pipeline-performance.md#speculative-speech-processing) for details.
 
 **Filler Words or Intermediate Responses:**
 - Generate or use random filler words to reduce perceived latency.
@@ -168,7 +168,6 @@ update profile, set alerts, or lock your card. What would you like?"
 - Consider user demographics.
 - Evaluate regional accent preferences.
 - Offer gender neutrality options.
-- Create custom IPA dictionary for mispronunciations.
 
 **Quality Metrics:**
 - Target naturalness (MOS score > 4.0).

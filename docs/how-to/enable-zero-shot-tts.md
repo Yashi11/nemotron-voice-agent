@@ -1,5 +1,7 @@
 # Enable Zero-Shot TTS
 
+> **Planned Feature** — Zero-shot TTS pipeline integration is not yet available in v2. The steps below outline the intended workflow once support is added. See [TODO.md](../../TODO.md) for tracking.
+
 Zero-shot TTS allows you to clone any voice using a short audio sample (5+ seconds). This feature uses the Magpie Zero-shot model. Apply for access at the [NVIDIA RIVA TTS Zero-shot models page](https://developer.nvidia.com/riva-tts-zeroshot-models).
 
 ## Steps
@@ -20,32 +22,22 @@ Zero-shot TTS allows you to clone any voice using a short audio sample (5+ secon
 
 3. Run the Magpie zero-shot NIM microservice following the instructions in the [NVIDIA NIM RIVA TTS documentation](https://docs.nvidia.com/nim/riva/tts/latest/getting-started.html#launching-the-nim).
 
-4. Set the environment variables in the `.env` file as follows.
-
-    ```bash
-    # Comment out standard TTS configuration
-    #TTS_DOCKER_IMAGE=nvcr.io/nim/nvidia/magpie-tts-multilingual:1.6.0
-    #TTS_VOICE_ID=Magpie-Multilingual.EN-US.Aria
-    #TTS_MODEL_NAME=magpie_tts_ensemble-Magpie-Multilingual
-    #TTS_NIM_TAGS=name=magpie-tts-multilingual,batch_size=32
-
-    # Enable Zero-shot TTS
-    TTS_DOCKER_IMAGE=<ZEROSHOT_NIM_MICROSERVICE_IMAGE> # Use your version
-    TTS_VOICE_ID=Magpie-ZeroShot.Female-1
-    TTS_MODEL_NAME=magpie_tts_ensemble-Magpie-ZeroShot
-    TTS_NIM_TAGS=name=magpie-tts-zeroshot,batch_size=32
-    ZERO_SHOT_AUDIO_PROMPT=audio_prompts/custom_voice.wav
-    ```
-
-5. Update the `python-app` service in [docker-compose.yml](../../docker-compose.yml) to mount audio prompts:
+4. Add the zero-shot TTS service to [`services.local.yaml`](../../services.local.yaml) under the active platform block (or to [`services.cloud.yaml`](../../services.cloud.yaml) if you expose it as a built-in cloud entry). Use Compose network names for on-prem entries; the backend rewrites them to `localhost` when the app is run directly on the host:
 
     ```yaml
-    python-app:
-      # ... existing configuration ...
-      volumes:
-        - ./audio_dumps:/app/audio_dumps
-        - ./config/:/app/config/
-        - ./audio_prompts:/app/audio_prompts  # Add this line
+    workstation:
+      tts:
+        magpie-zeroshot:
+          name: "Magpie Zero-Shot"
+          server: "tts-service:50051"
+          voice_id: "Magpie-ZeroShot.Female-1"
+          function_id: ""
+    ```
+
+5. Select the zero-shot TTS service from the UI, or set it as default in `.env`:
+
+    ```bash
+    DEFAULT_TTS=magpie-zeroshot
     ```
 
 6. Deploy the services:

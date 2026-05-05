@@ -1,16 +1,24 @@
 # Configuration Guide
 
-Use the following guides to configure the Nemotron Voice Agent. Each guide is task-focused and includes the steps to enable or configure specific features.
+The Nemotron Voice Agent is configured through a small set of files at the repository root. Use the following guides to customize specific features.
+
+## Configuration Files
+
+| File | Purpose |
+|------|---------|
+| [`.env.example`](../.env.example) | API keys, default service selections, and feature flags |
+| [`services.cloud.yaml`](../services.cloud.yaml) | Cloud (NVCF) service catalog for plain `docker compose up -d` |
+| [`services.local.yaml`](../services.local.yaml) | On-prem catalog used when `DEPLOYMENT_PLATFORM` is set to `workstation`, `dgxspark`, or `jetson` |
+| [`prompt.yaml`](../prompt.yaml) | Persona and system prompt presets selectable from the UI |
 
 ## How-To Guides
 
 | Guide | Description |
 |-------|-------------|
-| [Switch LLM Models](./how-to/switch-llm-models.md) | Change the LLM backend between local NIM microservices and NVIDIA cloud endpoints. |
-| [Customize System Prompts](./how-to/customize-system-prompts.md) | Select pre-built prompt samples or create custom prompts to define your agent's personality and behavior. |
-| [Enable Multilingual Voice Agent](./how-to/enable-multilingual.md) | Deploy the agent with automatic language detection and multilingual responses. |
-| [Configure TTS Settings](./how-to/configure-tts-settings.md) | Set up TTS voice, pronunciation correction (IPA), cloud TTS endpoints, and text filters. |
-| [Enable Zero-Shot TTS](./how-to/enable-zero-shot-tts.md) | Clone any voice from a short audio sample using the Magpie Zero-shot model. |
-| [Choose a Transport Method](./how-to/choose-transport-method.md) | Switch between WebRTC (default) and WebSocket transport. |
-| [Enable OpenTelemetry Tracing](./how-to/enable-opentelemetry-tracing.md) | Add observability with Phoenix to monitor pipeline performance and conversation flows. |
-| [Tune Pipeline Performance](./how-to/tune-pipeline-performance.md) | Adjust speculative speech, chat history, audio debugging, and output buffering settings. |
+| [Configure Services](./how-to/configure-services.md) | Switch and add LLM, ASR, and TTS services via the UI or YAML catalogs |
+| [Configure Prompts](./how-to/configure-prompts.md) | Switch and add prompt presets via the UI or `prompt.yaml` |
+| [Enable Multilingual Voice Agent](./how-to/enable-multilingual.md) | Enable prompt-driven multilingual replies with automatic TTS language switching |
+| [Configure TTS Settings](./how-to/configure-tts-settings.md) | Set up TTS voice, cloud endpoints, and text filters |
+| [Enable Zero-Shot TTS](./how-to/enable-zero-shot-tts.md) | Clone any voice from a short audio sample using the Magpie Zero-shot model |
+| [Tune Pipeline Performance](./how-to/tune-pipeline-performance.md) | Smart turn detection, audio debugging, chat history, and transport options |
+| [Enable OpenTelemetry Tracing](./how-to/enable-opentelemetry-tracing.md) | Monitor latency, debug issues, and analyze conversation flows with Phoenix or any OTLP backend |
