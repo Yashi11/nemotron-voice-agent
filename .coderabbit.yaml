@@ -1,0 +1,10 @@
+language: en-US
+reviews:
+  auto_review:
+    enabled: true
+    base_branches:
+      - main
+      - develop
+  path_filters:
+    - "!uv.lock"
+    - "!third_party_oss_license.txt"

@@ -1,0 +1,43 @@
+# Cloud (NVCF) service catalog — used for plain `docker compose up -d`
+# and when `DEPLOYMENT_PLATFORM` is unset.
+#
+# On-prem (`DEPLOYMENT_PLATFORM=workstation`): see `services.local.yaml`.
+# Jetson and DGX Spark are not supported for the Agentic Airline use case.
+
+# ── LLM Services (Cascaded pipeline) ──
+llm:
+  nemotron-nano:
+    name: "Nemotron 3 Nano 30B A3B"
+    model_id: "nvidia/nemotron-3-nano-30b-a3b"
+    base_url: "https://integrate.api.nvidia.com/v1"
+    system_prompt: ""
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+
+  nemotron-super:
+    name: "Nemotron 3 Super 120B A12B"
+    model_id: "nvidia/nemotron-3-super-120b-a12b"
+    base_url: "https://integrate.api.nvidia.com/v1"
+    system_prompt: ""
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+
+# ── TTS Services (Cascaded pipeline) ──
+tts:
+  magpie-tts:
+    name: "Magpie TTS Multilingual"
+    server: "grpc.nvcf.nvidia.com:443"
+    voice_id: "Magpie-Multilingual.EN-US.Aria"
+    function_id: ""
+
+# ── ASR Services (Cascaded pipeline) ──
+asr:
+  nemotron-speech:
+    name: "Nemotron Speech Streaming En 0.6B"
+    server: "grpc.nvcf.nvidia.com:443"
+    model: "nemotron-speech-streaming-en-0.6b-asr"
+    function_id: "bb0837de-8c7b-481f-9ec8-ef5663e9c1fa"
+
+  parakeet-ctc:
+    name: "Parakeet CTC 1.1B"
+    server: "grpc.nvcf.nvidia.com:443"
+    model: "parakeet-ctc-1.1b-asr"
+    function_id: "d8dd4e9b-fbf5-4fb0-9dba-8cf436c8d965"

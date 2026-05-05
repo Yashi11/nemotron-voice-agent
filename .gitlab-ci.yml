@@ -1,7 +1,8 @@
 variables:
-  SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
-  GIT_SUBMODULE_STRATEGY: recursive
+  SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
   GIT_DEPTH: 0
+  GIT_CLEAN_FLAGS: "-ffdx -e client/node_modules/"
+  UV_PYTHON: "3.12"
 
 workflow:
   rules:
@@ -11,8 +12,9 @@ workflow:
 
 stages:
   - lint
-  - test
+  - validate
   - build
+  - deploy
   - build-sonar
   - sonarqube-vulnerability-report
 
@@ -20,13 +22,31 @@ stages:
 .install_uv_template: &install_uv
   before_script:
     - uv --version
-    - uv sync --dev
+    - uv python install 3.12
+    - uv sync --dev --python 3.12
 
 # Docker login to NVIDIA Container Registry
 .docker_login_template: &docker_login
   before_script:
     - docker --version
     - echo "$NGC_API_KEY" | docker login nvcr.io -u '$oauthtoken' --password-stdin
+
+client-lint:
+  stage: lint
+  tags:
+    - shell
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  script:
+    - >
+      docker run --rm
+      -v "$CI_PROJECT_DIR/client:/work"
+      -w /work
+      node:20-slim
+      bash -c "npm ci && npm run lint"
 
 format-check:
   stage: lint
@@ -46,27 +66,63 @@ lint-check:
     - uv run ruff check .
   allow_failure: false
 
-build-python-app:
+skills-validate:
+  stage: validate
+  tags:
+    - shell
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+  script:
+    - mkdir -p skills-report
+    - >
+      docker run --rm
+      --user "$(id -u):$(id -g)"
+      -v "$CI_PROJECT_DIR:/work"
+      -w /work
+      python:3.12-slim
+      bash -lc "python -m venv /tmp/nv-base-venv &&
+      . /tmp/nv-base-venv/bin/activate &&
+      pip install nv-base -i https://urm.nvidia.com/artifactory/api/pypi/nv-shared-pypi/simple &&
+      nv-base validate .agents --no-llm --no-dedup --checks schema,pii,code-integrity,unicode,quality,lint -r cli json html -o /work/skills-report/"
+  artifacts:
+    when: always
+    paths:
+      - skills-report/
+    expire_in: 30 days
+
+build-app:
   stage: build
   tags:
     - shell
   <<: *docker_login
   variables:
-    IMAGE_NAME: nemotron-voice-agent/python-app
+    IMAGE_NAME: nemotron-voice-agent/all-examples
     IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
   script:
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f Dockerfile .
 
-build-ui:
-  stage: build
+deploy:
+  stage: deploy
   tags:
-    - shell
-  <<: *docker_login
-  variables:
-    IMAGE_NAME: nemotron-voice-agent/ui
-    IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    - nemotron-voice-agent-pipeline
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+  before_script:
+    - echo "NVIDIA_API_KEY=${NGC_API_KEY}" > .env
+    - echo "DEFAULT_LLM=nemotron-nano" >> .env
+    - echo "DEFAULT_TTS=magpie-tts" >> .env
+    - echo "DEFAULT_ASR=nemotron-speech" >> .env
+    - echo "PROMPT_SELECTOR=flowershop" >> .env
+    - echo "PIPELINE_APP_PORT=7860" >> .env
   script:
-    - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f frontend/Dockerfile .
+    - docker compose --profile all-examples build
+    - docker compose --profile all-examples up -d --remove-orphans all-examples
+    - echo "Pipeline selector deployed at https://$(hostname):7860/"
+  after_script:
+    - rm -f .env
 
 build-sonar:
   stage: build-sonar

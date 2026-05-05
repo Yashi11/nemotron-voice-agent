@@ -1,92 +1,78 @@
 # Configure TTS Settings
 
-The Text-to-Speech (TTS) system supports multiple voices and languages using the [NVIDIA Magpie TTS model](https://build.nvidia.com/nvidia/magpie-tts-multilingual/modelcard).
+The Text-to-Speech (TTS) system supports multiple voices and languages using the [NVIDIA Magpie TTS model](https://build.nvidia.com/nvidia/magpie-tts-multilingual/modelcard). TTS services are defined in [`services.cloud.yaml`](../../services.cloud.yaml) or [`services.local.yaml`](../../services.local.yaml), and voices can be changed from the UI.
 
-## Default Multilingual TTS Voice
+## Default Configuration
 
-```bash
-# In .env file
-TTS_DOCKER_IMAGE=nvcr.io/nim/nvidia/magpie-tts-multilingual:1.6.0
-TTS_VOICE_ID=Magpie-Multilingual.EN-US.Aria
-TTS_MODEL_NAME=magpie_tts_ensemble-Magpie-Multilingual
-TTS_LANGUAGE=en-US
-TTS_NIM_TAGS=name=magpie-tts-multilingual,batch_size=32
+The default cloud TTS service is defined in `services.cloud.yaml`:
+
+```yaml
+tts:
+  magpie-tts:
+    name: "Magpie TTS Multilingual"
+    server: "grpc.nvcf.nvidia.com:443"
+    voice_id: "Magpie-Multilingual.EN-US.Aria"
+    function_id: ""
 ```
 
 The voice ID format of the Magpie Multilingual TTS model is `Model.Language.VoiceName`.
 
 **Note:** The available voices depend on your Magpie TTS model version. Refer to the [NVIDIA Magpie TTS documentation](https://docs.nvidia.com/nim/riva/tts/latest/support-matrix.html#available-voices) for the complete voice list.
 
-## Using Cloud TTS Endpoints
+## Changing TTS Voice from the UI
 
-1. Set your NVIDIA API key as an environment variable:
+The client UI includes a voice selector. Available voices and languages are automatically discovered from the connected TTS service. Select a voice from the dropdown to switch during a session.
 
-    ```bash
-    export NVIDIA_API_KEY=<your-nvidia-api-key>
-    ```
+## Using Local TTS NIM
 
-2. Update the following environment variables in the `.env` file to use the Magpie Multilingual TTS model on NVIDIA's cloud endpoint.
+When a local Magpie TTS NIM runs on GPU 0, add or edit the entry under the active platform block in `services.local.yaml`. Use Compose network names (`tts-service:50051`); the backend rewrites them to `localhost:50151` automatically when the app is run directly on the host instead of inside a container:
 
-    ```bash
-    # In .env file
-    TTS_SERVER_URL=grpc.nvcf.nvidia.com:443
-    ```
-
-3. Comment out the `tts-service` service in [docker-compose.yml](../../docker-compose.yml) when using cloud endpoints.
-
-4. Remove any dependencies on `tts-service` from the `python-app` service in your [`docker-compose.yml`](../../docker-compose.yml) file.
-
-    ```yaml
-    # In docker-compose.yml:
-    python-app:
-      ...
-      environment:
-      # Docker services endpoints
-      # - TTS_SERVER_URL=${TTS_SERVER_URL:-tts-service:50051} <-- comment out or remove this line
-      ...
-      depends_on:
-      # - tts-service  <-- comment out or remove this line
-    ```
-
-5. Restart the services:
-
-    ```bash
-    docker compose down
-    docker compose up -d
-    ```
-
-## Pronunciation Correction
-
-You can customize word pronunciation using International Phonetic Alphabet (IPA).
-
-1. Edit [config/ipa.json](../../config/ipa.json) and add custom word-to-IPA mappings:
-
-    ```json
-    {
-      "NVIDIA": "ˈɛnˌvɪdiə",
-      "GreenForce": "ɡriːn fɔrs",
-      "API": "eɪ piː aɪ"
-    }
-    ```
-
-2. Set the environment variable `TTS_IPA_FILE_PATH` to the path of the IPA file. In the example [.env](../../config/env.example) file, the IPA file path is set to `./config/ipa.json`.
-
-    ```bash
-    TTS_IPA_FILE_PATH=./config/ipa.json
-    ```
-
-The pipeline automatically applies IPA corrections to TTS output.
-
-## Adding Text Filters
-
-Apply text filters to remove special characters that can cause Magpie TTS failures.
-
-```bash
-# In .env file
-ENABLE_TTS_TEXT_FILTER=true  # Default: true
+```yaml
+workstation:
+  tts:
+    magpie-tts:
+      name: "Magpie TTS (local)"
+      server: "tts-service:50051"
+      voice_id: "Magpie-Multilingual.EN-US.Aria"
+      function_id: ""
 ```
 
-Consider the following when adding text filters:
+## Changing the Default TTS Service
 
-- The filter runs only for `TTS_LANGUAGE=en-US` and is skipped for other languages.
-- To create custom filters for your use case or language, extend the `BaseTextFilter` class from [pipecat-ai](https://github.com/pipecat-ai/pipecat/blob/v0.0.98/src/pipecat/utils/text/base_text_filter.py).
+Edit the `.env` file only if you want to override the default TTS key. Any override must match a key in the active catalog for your deployment; otherwise the first built-in TTS entry is used:
+
+```bash
+DEFAULT_TTS=magpie-tts
+```
+
+## Pronunciation Correction (IPA)
+
+Override Magpie's default pronunciation for specific words using an International Phonetic Alphabet (IPA) dictionary. Set `TTS_IPA_FILE_PATH` in `.env` to a JSON or YAML file (relative paths resolve from the repo root):
+
+```bash
+TTS_IPA_FILE_PATH=config/ipa.json
+```
+
+Example dictionary:
+
+```json
+{
+  "NVIDIA": "ˈɛnˌvɪdiə",
+  "GreenForce": "ɡriːn fɔrs",
+  "API": "eɪ piː aɪ"
+}
+```
+
+The dictionary is loaded at session start and applied to every TTS request. Restart the server (or re-apply the active Compose profile) after changing the file path.
+
+## TTS Text Filter
+
+The text filter (`NemotronSpeechTextFilter`) strips markdown formatting, special characters, and excess whitespace before sending text to the TTS model. This prevents synthesis failures caused by unsupported characters.
+
+Controlled via the `ENABLE_TTS_TEXT_FILTER` environment variable in `.env`:
+
+```bash
+ENABLE_TTS_TEXT_FILTER=true
+```
+
+The filter is automatically disabled when a multilingual prompt is selected, because multilingual responses are handled by a dedicated processor that extracts the spoken `Text:` block and switches TTS language and voice dynamically. For setup details, see [Enable Multilingual Voice Agent](./enable-multilingual.md).
