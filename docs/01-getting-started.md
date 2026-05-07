@@ -129,18 +129,26 @@ For development and debugging, you can run the server directly:
 2. Install dependencies and build the client:
 
     ```bash
-    uv sync
+    uv sync --group dev
     cd client && npm install && npm run build && cd ..
     ```
 
-3. Configure the environment:
+3. Install local commit hooks:
+
+    ```bash
+    uv run --project . --group dev pre-commit install
+    ```
+
+    The hooks run formatting and linting checks on staged files during `git commit`.
+
+4. Configure the environment:
 
     ```bash
     cp .env.example .env
     # Edit .env and set NVIDIA_API_KEY
     ```
 
-4. Start the server:
+5. Start the server:
 
     ```bash
     uv run python src/server.py
@@ -154,7 +162,7 @@ For development and debugging, you can run the server directly:
     | `uv run python src/server.py --all-examples` | Select any registered example, including `cascaded/agentic-airline` |
     | `uv run python src/server.py --example cascaded/agentic-airline` | Lock the server to one example |
 
-5. Access the application at `https://localhost:7860`.
+6. Access the application at `https://localhost:7860`.
 
 ---
 
