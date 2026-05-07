@@ -20,12 +20,22 @@ repos:
       - id: mixed-line-ending
         args: ['--fix=lf']
 
-  # Ruff for linting and formatting
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.13
+  # Project-local linting and formatting commands
+  - repo: local
     hooks:
-      # Run the linter
-      - id: ruff
-        args: [--fix]
-      # Run the formatter
+      - id: ruff-check
+        name: uv run ruff check
+        entry: uv run --project . --group dev ruff check
+        language: system
+        types_or: [python, pyi]
       - id: ruff-format
+        name: uv run ruff format
+        entry: uv run --project . --group dev ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: client-lint
+        name: npm run lint
+        entry: npm --prefix client run lint
+        language: system
+        pass_filenames: false
+        files: '^client/.*\.(js|jsx|ts|tsx)$'
