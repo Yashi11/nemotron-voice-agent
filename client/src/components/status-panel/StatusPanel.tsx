@@ -11,9 +11,9 @@ import { PromptSelector } from "../PromptSelector";
 import { VoiceSettings } from "../VoiceSettings";
 
 export function StatusPanel() {
-  const { pipelineMode, cascadedSubMode, setSelectedS2SServer } = useApp();
-
-  const isAgenticAirline = pipelineMode === "cascaded" && cascadedSubMode === "agentic_airline";
+  const { selectedExample, setSelectedS2SServer } = useApp();
+  const isAgenticAirline = selectedExample?.id === "agentic-airline";
+  const isS2S = selectedExample?.family === "speech-to-speech";
 
   return (
     <aside className="status-panel">
@@ -21,7 +21,7 @@ export function StatusPanel() {
       <PipelineExampleSelector />
       <TransportSelector />
       {!isAgenticAirline && <PromptSelector />}
-      {pipelineMode === "s2s" ? (
+      {isS2S ? (
         <S2SModelSelector onSelect={setSelectedS2SServer} />
       ) : (
         <>

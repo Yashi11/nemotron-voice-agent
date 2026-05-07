@@ -143,9 +143,9 @@ export interface ServiceCatalog {
 export interface DeploymentOption {
   family: string;
   id: string;
+  key: string;
   label: string;
   slots: string[];
-  pipelineMode: "cascaded" | "agentic" | "s2s";
 }
 
 export interface DeploymentResponse {

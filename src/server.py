@@ -56,10 +56,8 @@ from pipecat.transports.smallwebrtc.request_handler import (
 )
 
 import config_store
-from cascaded.agentic_airline.pipeline import bot as agentic_airline_bot
-from cascaded.generic.pipeline import bot as cascaded_bot
+import examples_registry
 from cascaded.shared.prewarm import prewarm_tts, warmup_tts_synthesis
-from speech_to_speech.pipeline import bot as s2s_bot
 from utils import (
     PROJECT_ROOT,
     build_services_api_response,
@@ -81,103 +79,30 @@ _SPEECH_READY_ENDPOINTS = {
     "tts": ("tts-service", 50051, 50151, 9000),
 }
 _TURN_LISTEN_PORT = 3478
-_VALID_PIPELINE_MODES = frozenset({"cascaded", "agentic", "s2s"})
 _INDEX_NO_CACHE_HEADERS = {"Cache-Control": "no-store"}
-
-
-def _infer_pipeline_mode(example: dict[str, Any]) -> str:
-    """Infer the canonical pipeline mode for a deployment metadata dict."""
-    mode = str(example.get("pipelineMode") or "").strip().lower()
-    if mode in _VALID_PIPELINE_MODES:
-        return mode
-
-    example_id = str(example.get("id") or "").strip().lower()
-    if example_id == "agentic-airline":
-        return "agentic"
-    if example_id in {"speech-to-speech", "s2s"} or str(example.get("family") or "").strip().lower() == "s2s":
-        return "s2s"
-    return "cascaded"
-
-
-_EXAMPLE_METADATA: dict[str, dict] = {
-    "agentic": {
-        "family": "cascaded",
-        "id": "agentic-airline",
-        "label": "Agentic Airline",
-        "slots": ["llm", "asr", "tts"],
-        "pipelineMode": "agentic",
-    },
-    "s2s": {
-        "family": "s2s",
-        "id": "speech-to-speech",
-        "label": "Speech to Speech",
-        "slots": ["s2s"],
-        "pipelineMode": "s2s",
-    },
-    "cascaded": {
-        "family": "cascaded",
-        "id": "generic",
-        "label": "Generic Cascaded",
-        "slots": ["llm", "asr", "tts"],
-        "pipelineMode": "cascaded",
-    },
-}
-
-
-def _default_example_metadata(pipeline_mode: str = "") -> dict:
-    """Return deployment metadata for the built-in pipeline selector path."""
-    mode = _effective_pipeline_mode(pipeline_mode)
-    return dict(_EXAMPLE_METADATA.get(mode, _EXAMPLE_METADATA["cascaded"]))
-
-
-def _agentic_airline_available() -> bool:
-    """Return whether the booking-backed airline example can run in this process."""
-    return bool(os.getenv("BOOKING_API_URL", "").strip())
-
-
-def _all_experience_metadata() -> list[dict]:
-    """Return the selector options for the built-in multi-mode server."""
-    options = [
-        _default_example_metadata("cascaded"),
-        _default_example_metadata("s2s"),
-    ]
-    if _agentic_airline_available():
-        options.insert(1, _default_example_metadata("agentic"))
-    return options
-
-
-def _deployment_selector_locked(forced_bot_fn: Callable[..., Any] | None) -> bool:
-    """Return whether the server is pinned to a single deployment."""
-    return forced_bot_fn is not None or bool(os.getenv("DEFAULT_PIPELINE_MODE", "").strip())
 
 
 def _deployment_response(
     active: dict,
     forced_bot_fn: Callable[..., Any] | None,
+    options: list[dict],
 ) -> dict:
     """Build the metadata payload consumed by the client selector page."""
     active_deployment = dict(active)
     active_deployment.setdefault("slots", [])
-    active_deployment["pipelineMode"] = _infer_pipeline_mode(active_deployment)
 
-    if _deployment_selector_locked(forced_bot_fn):
-        options = [active_deployment]
-        selectable = False
-    else:
-        options = _all_experience_metadata()
-        selectable = True
-
+    locked = forced_bot_fn is not None or bool(os.getenv("DEFAULT_PIPELINE_MODE", "").strip())
     return {
         "active": active_deployment,
-        "selectable": selectable,
-        "options": options,
+        "selectable": not locked,
+        "options": [active_deployment] if locked else options,
     }
 
 
 def _sanitize_session_config(data: dict) -> dict:
-    """Sanitize request config and drop prompt overrides for agentic mode."""
+    """Sanitize request config and drop prompt overrides for the agentic-airline example."""
     filtered = filter_session_config(data)
-    if _effective_pipeline_mode(str(filtered.get("pipeline_mode", ""))) == "agentic":
+    if examples_registry.find(str(filtered.get("pipeline_mode", "")))["id"] == "agentic-airline":
         filtered.pop("prompt_key", None)
         filtered.pop("prompt_content", None)
     return filtered
@@ -193,25 +118,29 @@ def _load_bot(spec: str) -> tuple[Callable[..., Any], dict]:
     if not callable(bot_fn):
         raise AttributeError(f"{module_path}:{attr} is not callable")
 
-    example = getattr(module, "EXAMPLE", None)
-    if not isinstance(example, dict):
-        label = module_path.split(".")[-2 if module_path.endswith(".pipeline") else -1]
-        example = {
-            "family": module_path.split(".", 1)[0],
-            "id": label.replace("_", "-"),
-            "label": label.replace("_", " ").title(),
-            "slots": [],
-        }
-    example.setdefault("slots", [])
-    example.setdefault("pipelineMode", _infer_pipeline_mode(example))
+    builtin = next((e for e in examples_registry.iter_all() if e["bot"] is bot_fn), None)
+    if builtin is not None:
+        example = examples_registry.metadata(builtin)
+    else:
+        example = getattr(module, "EXAMPLE", None) or {}
+        if not isinstance(example, dict) or not example:
+            label = module_path.split(".")[-2 if module_path.endswith(".pipeline") else -1]
+            example = {
+                "family": module_path.split(".", 1)[0],
+                "id": label.replace("_", "-"),
+                "label": label.replace("_", " ").title(),
+            }
+        example = dict(example)
+        example.setdefault("slots", [])
+        example.setdefault("key", f"{example.get('family', module_path.split('.', 1)[0])}/{example.get('id', attr)}")
 
     module_dir = Path(module.__file__).resolve().parent
-    cloud_yaml = module_dir / "services.cloud.yaml"
-    local_yaml = module_dir / "services.local.yaml"
-    if cloud_yaml.is_file():
-        os.environ["SERVICES_CLOUD_PATH"] = str(cloud_yaml)
-    if local_yaml.is_file():
-        os.environ["SERVICES_LOCAL_PATH"] = str(local_yaml)
+    for env_var, candidate in (
+        ("SERVICES_CLOUD_PATH", module_dir / "services.cloud.yaml"),
+        ("SERVICES_LOCAL_PATH", module_dir / "services.local.yaml"),
+    ):
+        if candidate.is_file():
+            os.environ[env_var] = str(candidate)
     set_active_slots(example.get("slots") or None)
 
     return bot_fn, example
@@ -251,25 +180,9 @@ def _store_session_config(data: dict) -> str:
     return session_id
 
 
-_BOT_DISPATCH = {"agentic": agentic_airline_bot, "s2s": s2s_bot}
-
-
-def _effective_pipeline_mode(pipeline_mode: str) -> str:
-    """Resolve the pipeline mode, honouring ``DEFAULT_PIPELINE_MODE`` as a hard override."""
-    override = os.getenv("DEFAULT_PIPELINE_MODE", "").lower()
-    return override or (pipeline_mode or "cascaded").lower()
-
-
 def _select_bot(pipeline_mode: str, forced_bot_fn: Callable[..., Any] | None = None):
-    """Return the bot function for the given pipeline mode.
-
-    ``DEFAULT_PIPELINE_MODE`` env, when set, acts as a **hard override** that
-    wins over any client-supplied ``pipeline_mode`` (e.g. set
-    ``DEFAULT_PIPELINE_MODE=agentic`` to lock the server to the airline bot).
-    """
-    if forced_bot_fn is not None:
-        return forced_bot_fn
-    return _BOT_DISPATCH.get(_effective_pipeline_mode(pipeline_mode), cascaded_bot)
+    """Return the bot for ``pipeline_mode`` (``DEFAULT_PIPELINE_MODE`` env wins; ``forced_bot_fn`` overrides)."""
+    return forced_bot_fn if forced_bot_fn is not None else examples_registry.find(pipeline_mode)["bot"]
 
 
 async def _run_blocking(func, *args, timeout: float | None = None):
@@ -521,13 +434,25 @@ async def _ensure_services_ready_for_connection(config: dict, example: dict) -> 
     await _ensure_tts_ready_for_connection(config, example)
 
 
-def create_app(host: str = "localhost", bot_spec: str = "") -> FastAPI:
+def create_app(
+    host: str = "localhost",
+    bot_spec: str = "",
+    example_key: str = "",
+    all_examples: bool = False,
+) -> FastAPI:
     """Build and return the FastAPI application with all routes."""
     forced_bot_fn: Callable[..., Any] | None = None
-    deployment = _default_example_metadata()
+    selected_example = examples_registry.find(example_key)
+    deployment = examples_registry.metadata(selected_example)
+    selector_options = (
+        examples_registry.all_selector_options() if all_examples else examples_registry.selector_options()
+    )
     if bot_spec:
         forced_bot_fn, deployment = _load_bot(bot_spec)
         logger.info(f"Loaded bot override: {bot_spec} -> deployment={deployment}")
+    elif example_key:
+        forced_bot_fn = selected_example["bot"]
+        logger.info(f"Loaded example: {deployment['key']} -> deployment={deployment}")
 
     handler = SmallWebRTCRequestHandler(host=host)
 
@@ -548,7 +473,9 @@ def create_app(host: str = "localhost", bot_spec: str = "") -> FastAPI:
 
     def _resolve_example(config: dict) -> dict:
         """Return the active example metadata: pinned for forced bot, else inferred from config."""
-        return deployment if forced_bot_fn is not None else _default_example_metadata(config.get("pipeline_mode", ""))
+        if forced_bot_fn is not None:
+            return deployment
+        return examples_registry.metadata(examples_registry.find(config.get("pipeline_mode", "")))
 
     async def _readiness_check_or_503(config: dict, log_label: str) -> JSONResponse | None:
         """Return a 503 response if any selected service is not ready, else ``None``."""
@@ -561,7 +488,7 @@ def create_app(host: str = "localhost", bot_spec: str = "") -> FastAPI:
 
     @app.get("/api/deployment")
     async def get_deployment():
-        return _deployment_response(deployment, forced_bot_fn)
+        return _deployment_response(deployment, forced_bot_fn, selector_options)
 
     # ---- Session config (avoids long URLs for prompts / system_prompt) ----
 
@@ -734,6 +661,13 @@ def main():
     parser = argparse.ArgumentParser(description="Pipeline NVIDIA Server")
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--port", type=int, default=7860)
+    parser.add_argument(
+        "--example",
+        type=str,
+        default="",
+        help="Registry example key to run, for example cascaded/generic or cascaded/agentic-airline",
+    )
+    parser.add_argument("--all-examples", action="store_true", help="Expose all registered examples in the UI selector")
     parser.add_argument("--bot", type=str, default="", help="Optional bot module path, for example pkg.mod:bot")
     parser.add_argument("--no-tls", action="store_true", help="Disable HTTPS (use plain HTTP)")
     parser.add_argument("--tls-cert", type=str, help="Path to TLS certificate file")
@@ -755,7 +689,7 @@ def main():
         ),
     )
 
-    app = create_app(host=args.host, bot_spec=args.bot)
+    app = create_app(host=args.host, bot_spec=args.bot, example_key=args.example, all_examples=args.all_examples)
 
     ssl_kwargs: dict = {}
     scheme = "http"

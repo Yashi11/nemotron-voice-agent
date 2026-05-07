@@ -8,6 +8,7 @@ import { useApp } from "../context/useApp";
 import {
   createSessionConfig,
   createWebRTCSession,
+  type DeploymentOption,
   type LLMService,
   type Prompt,
   type SimpleService,
@@ -19,12 +20,11 @@ type StartBotClient = {
   disconnect: () => Promise<void>;
 };
 
-const WEBRTC_CONNECT_TIMEOUT_MS = 20_000;
+const WEBRTC_CONNECT_TIMEOUT_MS = 30_000;
 const WEBRTC_TIMEOUT_ERROR_NAME = "WebRTCConnectionTimeoutError";
 
 type SessionConfigOptions = {
-  pipelineMode: "cascaded" | "s2s";
-  cascadedSubMode: "simple" | "agentic_airline";
+  selectedExample: DeploymentOption;
   selectedS2SServer: string;
   selectedLLM?: LLMService;
   selectedASR?: SimpleService;
@@ -81,9 +81,25 @@ async function withWebRTCConnectTimeout(promise: Promise<void>): Promise<void> {
   }
 }
 
+function applyService(
+  config: Record<string, string>,
+  enabled: boolean,
+  prefix: "asr" | "tts",
+  service: SimpleService | undefined,
+  optional: Record<string, string | undefined>,
+): void {
+  if (!enabled || !service) return;
+  config[`${prefix}_id`] = service.id;
+  if (!service.builtIn) {
+    config[`${prefix}_server`] = service.server;
+    for (const [field, value] of Object.entries(optional)) {
+      if (value) config[`${prefix}_${field}`] = value;
+    }
+  }
+}
+
 function buildSessionConfig({
-  pipelineMode,
-  cascadedSubMode,
+  selectedExample,
   selectedS2SServer,
   selectedLLM,
   selectedASR,
@@ -92,44 +108,32 @@ function buildSessionConfig({
   selectedPrompt,
   selectedPromptKey,
 }: SessionConfigOptions): Record<string, string> {
-  const isAgenticAirline = pipelineMode === "cascaded" && cascadedSubMode === "agentic_airline";
-  const backendMode = isAgenticAirline ? "agentic" : pipelineMode;
-  const config: Record<string, string> = { pipeline_mode: backendMode };
+  const slots = new Set(selectedExample.slots);
+  const isAgenticAirline = selectedExample.id === "agentic-airline";
+  const config: Record<string, string> = { pipeline_mode: selectedExample.key };
 
-  if (pipelineMode === "s2s" && selectedS2SServer) {
-    config.s2s_server = selectedS2SServer;
-  }
+  if (slots.has("s2s") && selectedS2SServer) config.s2s_server = selectedS2SServer;
 
-  if (pipelineMode === "cascaded") {
-    if (selectedLLM) {
-      config.llm_id = selectedLLM.id;
-      if (!selectedLLM.builtIn) {
-        config.model_id = selectedLLM.modelId;
-        config.base_url = selectedLLM.baseUrl;
-        if (selectedLLM.systemPrompt) config.system_prompt = selectedLLM.systemPrompt;
-        if (selectedLLM.extraParams) config.extra_params = selectedLLM.extraParams;
-      }
-    }
-
-    if (selectedASR) {
-      config.asr_id = selectedASR.id;
-      if (!selectedASR.builtIn) {
-        config.asr_server = selectedASR.server;
-        if (selectedASR.model) config.asr_model = selectedASR.model;
-        if (selectedASR.functionId) config.asr_function_id = selectedASR.functionId;
-      }
-    }
-
-    if (selectedTTS) {
-      config.tts_id = selectedTTS.id;
-      if (!selectedTTS.builtIn) {
-        config.tts_server = selectedTTS.server;
-        if (selectedTTS.functionId) config.tts_function_id = selectedTTS.functionId;
-      }
-      const voiceToSend = selectedVoiceId || selectedTTS.voiceId;
-      if (voiceToSend) config.tts_voice_id = voiceToSend;
+  if (slots.has("llm") && selectedLLM) {
+    config.llm_id = selectedLLM.id;
+    if (!selectedLLM.builtIn) {
+      config.model_id = selectedLLM.modelId;
+      config.base_url = selectedLLM.baseUrl;
+      if (selectedLLM.systemPrompt) config.system_prompt = selectedLLM.systemPrompt;
+      if (selectedLLM.extraParams) config.extra_params = selectedLLM.extraParams;
     }
   }
+
+  applyService(config, slots.has("asr"), "asr", selectedASR, {
+    model: selectedASR?.model,
+    function_id: selectedASR?.functionId,
+  });
+  applyService(config, slots.has("tts"), "tts", selectedTTS, {
+    function_id: selectedTTS?.functionId,
+  });
+
+  const voiceToSend = selectedVoiceId || selectedTTS?.voiceId;
+  if (slots.has("tts") && voiceToSend) config.tts_voice_id = voiceToSend;
 
   if (selectedPromptKey && !isAgenticAirline) {
     config.prompt_key = selectedPromptKey;
@@ -142,7 +146,7 @@ function buildSessionConfig({
 export function Header() {
   const client = usePipecatClient() as StartBotClient | undefined;
   const { isConnected, isConnecting } = useConnectionState();
-  const { pipelineMode, cascadedSubMode, selectedTransport, selectedS2SServer, selectedLLM, selectedASR, selectedTTS, selectedVoiceId, selectedPrompt, selectedPromptKey } = useApp();
+  const { selectedExample, selectedTransport, selectedS2SServer, selectedLLM, selectedASR, selectedTTS, selectedVoiceId, selectedPrompt, selectedPromptKey } = useApp();
   const [connectionError, setConnectionError] = useState("");
 
   const handleClick = async () => {
@@ -152,13 +156,15 @@ export function Header() {
       if (!client) {
         throw new Error("Connection client is not ready yet.");
       }
+      if (!selectedExample) {
+        throw new Error("Pipeline example not loaded yet. Please retry in a moment.");
+      }
 
       if (isConnected) {
         await client.disconnect();
       } else {
         const config = buildSessionConfig({
-          pipelineMode,
-          cascadedSubMode,
+          selectedExample,
           selectedS2SServer,
           selectedLLM,
           selectedASR,

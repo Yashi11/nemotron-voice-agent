@@ -1,38 +1,38 @@
 // SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-import { type CascadedSubMode } from "../context/AppContext";
 import { useConnectionState } from "../hooks/useConnectionState";
 import { useApp } from "../context/useApp";
 
-const CASCADED_SUB_MODES: { id: CascadedSubMode; label: string }[] = [
-  { id: "simple", label: "Generic Cascaded" },
-  { id: "agentic_airline", label: "Agentic Airline" },
-];
+function formatExampleName(id: string): string {
+  return id
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 export function PipelineExampleSelector() {
   const { isLocked } = useConnectionState();
-  const { pipelineMode, cascadedSubMode, setCascadedSubMode, agenticAirlineAvailable, deploymentSelectable } = useApp();
-  const modes = agenticAirlineAvailable
-    ? CASCADED_SUB_MODES
-    : CASCADED_SUB_MODES.filter((mode) => mode.id !== "agentic_airline");
+  const { selectedExample, selectExample, deploymentOptions, deploymentSelectable } = useApp();
   const disabled = isLocked || !deploymentSelectable;
 
-  if (pipelineMode !== "cascaded") return null;
+  if (!selectedExample) return null;
+
+  const examplesInFamily = deploymentOptions.filter((option) => option.family === selectedExample.family);
 
   return (
     <div className="panel-section">
       <p className="panel-label">PIPELINE EXAMPLE</p>
       <select
         className="select-dark select-full"
-        value={cascadedSubMode}
-        onChange={(e) => setCascadedSubMode(e.target.value as CascadedSubMode)}
+        value={selectedExample.key}
+        onChange={(e) => selectExample(e.target.value)}
         disabled={disabled}
-        aria-label="Cascaded pipeline example"
+        aria-label="Pipeline example"
       >
-        {modes.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.label}
+        {examplesInFamily.map((option) => (
+          <option key={option.key} value={option.key}>
+            {formatExampleName(option.id)}
           </option>
         ))}
       </select>
