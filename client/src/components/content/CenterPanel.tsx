@@ -38,8 +38,8 @@ function ConversationContent() {
 
 export function CenterPanel() {
   const [activeTab, setActiveTab] = useState<Tab>("conversation");
-  const { pipelineMode, cascadedSubMode } = useApp();
-  const isAgenticAirline = pipelineMode === "cascaded" && cascadedSubMode === "agentic_airline";
+  const { selectedExample } = useApp();
+  const isAgenticAirline = selectedExample?.id === "agentic-airline";
   const tabs = isAgenticAirline ? ALL_TABS.filter((t) => t.id !== "prompts") : ALL_TABS;
   const effectiveTab: Tab = isAgenticAirline && activeTab === "prompts" ? "conversation" : activeTab;
 

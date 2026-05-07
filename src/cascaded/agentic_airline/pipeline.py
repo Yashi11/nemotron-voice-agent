@@ -64,13 +64,6 @@ DEFAULT_TTS_KEY = os.getenv("DEFAULT_TTS", "")
 DEFAULT_ASR_KEY = os.getenv("DEFAULT_ASR", "")
 CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 20)
 
-EXAMPLE = {
-    "family": "cascaded",
-    "id": "agentic-airline",
-    "label": "Agentic Airline",
-    "slots": ["llm", "asr", "tts"],
-}
-
 _FAST_AGENT_PROMPT_FILE = Path(__file__).parent / "prompts" / "fast_agent.yaml"
 _FAST_AGENT_PROMPT_KEY = "airline_fast_agent"
 

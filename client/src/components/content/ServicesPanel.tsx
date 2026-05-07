@@ -234,7 +234,7 @@ function groupServicesBySource<T extends SourceGroupedService>(items: T[]) {
 
 export function ServicesPanel() {
   const {
-    pipelineMode,
+    selectedExample,
     llms, llmsLoading, selectedLLMId, selectLLM, addLLM,
     asrServices, asrLoading, selectedASRId, selectASR, addASR, updateASR, removeASR,
     ttsServices, ttsLoading, selectedTTSId, selectTTS, addTTS, updateTTS, removeTTS,
@@ -246,7 +246,7 @@ export function ServicesPanel() {
   const [addingASR, setAddingASR] = useState(false);
   const [addingTTS, setAddingTTS] = useState(false);
 
-  if (pipelineMode === "s2s") {
+  if (selectedExample?.family === "speech-to-speech") {
     const s2sModels = catalog?.s2s ?? [];
     const s2sGroups = groupServicesBySource(s2sModels);
     return (

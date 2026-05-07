@@ -62,13 +62,6 @@ DEFAULT_TTS_KEY = os.getenv("DEFAULT_TTS", "")
 DEFAULT_ASR_KEY = os.getenv("DEFAULT_ASR", "")
 CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 10)
 
-EXAMPLE = {
-    "family": "cascaded",
-    "id": "generic",
-    "label": "Generic",
-    "slots": ["llm", "asr", "tts"],
-}
-
 
 def _parse_extra_params(raw: str) -> dict:
     return parse_json_dict(raw, label="extra_params")
@@ -196,7 +189,7 @@ async def bot(runner_args: RunnerArguments) -> None:
     """Build and run the NVIDIA cascaded pipeline for a single session."""
     platform = get_deployment_platform() or "cloud-nim"
     logger.info(
-        f"Starting {EXAMPLE['label']} pipeline (tools={list(TOOL_HANDLERS)}, "
+        f"Starting generic cascaded pipeline (tools={list(TOOL_HANDLERS)}, "
         f"prompt={PROMPT_SELECTOR}, platform={platform})"
     )
 

@@ -35,7 +35,7 @@ Check the following requirements before you begin.
 
 | Profile | Hardware | Services | Description |
 |---------|----------|----------|-------------|
-| `all-examples` | None (cloud only) | UI selector + booking server | Default selector across Generic Cascaded and Agentic Airline |
+| `all-examples` | None (cloud only) | UI selector + booking server | Selector across all registered examples |
 | `generic` / `agentic-airline` | None (cloud only) | Single-example backend | Lock the backend to one cloud example |
 | `generic-workstation` / `agentic-airline-workstation` | 2 GPUs | GPU 0: ASR + TTS NIMs, GPU 1: NIM LLM | Full local deployment for the chosen example |
 | `generic-dgxspark` | 1 GPU, 128 GB unified memory | ASR + TTS NIMs + vLLM LLM | Single-GPU local deployment for the Generic example |

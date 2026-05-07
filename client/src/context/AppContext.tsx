@@ -7,12 +7,10 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { useDeployment, useDefaultLLMs, useDefaultPrompts, useDefaultASR, useDefaultTTS, type LLMService, type Prompt, type SimpleService } from "../api";
+import { useDeployment, useDefaultLLMs, useDefaultPrompts, useDefaultASR, useDefaultTTS, type DeploymentOption, type LLMService, type Prompt, type SimpleService } from "../api";
 import { readLSArray, readLSString, writeLSString, writeLSJson, removeLSKey } from "../utils";
 import { AppContext } from "./app-context";
 
-export type PipelineMode = "cascaded" | "s2s";
-export type CascadedSubMode = "simple" | "agentic_airline";
 export type TransportType = "webrtc" | "websocket";
 
 const ASR_STORAGE = "nvidia-voice-agent-asr-custom";
@@ -24,8 +22,7 @@ const LLM_SELECTION_STORAGE = "nvidia-voice-agent-llm-selection";
 const PROMPT_STORAGE = "nvidia-voice-agent-prompts-custom";
 const PROMPT_SELECTION = "nvidia-voice-agent-prompt-selection";
 const TRANSPORT_STORAGE = "nvidia-voice-agent-transport";
-const PIPELINE_MODE_STORAGE = "nvidia-voice-agent-pipeline-mode";
-const CASCADED_SUB_MODE_STORAGE = "nvidia-voice-agent-cascaded-sub-mode";
+const SELECTED_EXAMPLE_STORAGE = "nvidia-voice-agent-selected-example";
 
 type ManagedService = {
   id: string;
@@ -108,14 +105,14 @@ function useManagedServiceCatalog<T extends ManagedService>({
 }
 
 export interface AppState {
-  pipelineMode: PipelineMode;
-  setPipelineMode: (m: PipelineMode) => void;
+  /** Currently selected example (server-provided). Undefined until /api/deployment resolves. */
+  selectedExample: DeploymentOption | undefined;
+  /** Switch to an option by its registry ``key`` (id when globally unique, else family). */
+  selectExample: (key: string) => void;
+  /** Full list of examples available on this deployment. */
+  deploymentOptions: DeploymentOption[];
 
-  cascadedSubMode: CascadedSubMode;
-  setCascadedSubMode: (m: CascadedSubMode) => void;
-  agenticAirlineAvailable: boolean;
-
-  /** When false, the server pinned a single bot — clients must not let the user switch modes. */
+  /** When false, the server pinned a single bot — clients must not let the user switch examples. */
   deploymentSelectable: boolean;
 
   selectedTransport: TransportType;
@@ -166,47 +163,24 @@ export interface AppState {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { data: deployment } = useDeployment();
-  const deploymentLoaded = deployment !== undefined;
-  const agenticAirlineAvailable = !deploymentLoaded
-    || deployment.options.some((option) => option.pipelineMode === "agentic" || option.id === "agentic-airline");
-  const deploymentSelectable = !deploymentLoaded || deployment.selectable;
+  const deploymentSelectable = deployment ? deployment.selectable : true;
+  const deploymentOptions = useMemo(() => deployment?.options ?? [], [deployment]);
 
-  // --- Pipeline mode state ---
-  const [pipelineMode, setPipelineModeRaw] = useState<PipelineMode>(() => {
-    try { const v = localStorage.getItem(PIPELINE_MODE_STORAGE); if (v === "s2s" || v === "cascaded") return v as PipelineMode; } catch { /* ignore */ }
-    return "cascaded";
-  });
-  const setPipelineMode = useCallback((m: PipelineMode) => {
-    setPipelineModeRaw(m);
-    writeLSString(PIPELINE_MODE_STORAGE, m);
+  // --- Selected example state (one source of truth, driven by /api/deployment) ---
+  const [selectedKey, setSelectedKey] = useState<string>(() => readLSString(SELECTED_EXAMPLE_STORAGE));
+  const selectExample = useCallback((key: string) => {
+    setSelectedKey(key);
+    writeLSString(SELECTED_EXAMPLE_STORAGE, key);
   }, []);
 
-  // --- Cascaded sub-mode state ---
-  const [cascadedSubMode, setCascadedSubModeRaw] = useState<CascadedSubMode>(() => {
-    try {
-      const v = localStorage.getItem(CASCADED_SUB_MODE_STORAGE);
-      if (v === "simple" || v === "agentic_airline") return v as CascadedSubMode;
-    } catch { /* ignore */ }
-    return "simple";
-  });
-  const setCascadedSubMode = useCallback((m: CascadedSubMode) => {
-    setCascadedSubModeRaw(m);
-    writeLSString(CASCADED_SUB_MODE_STORAGE, m);
-  }, []);
-
-  const pinnedMode = useMemo(() => {
-    if (!deployment || deployment.selectable) return null;
-    const activeMode = deployment.active.pipelineMode;
-    if (activeMode === "s2s") return { pipeline: "s2s" as PipelineMode, sub: "simple" as CascadedSubMode };
-    if (activeMode === "agentic") return { pipeline: "cascaded" as PipelineMode, sub: "agentic_airline" as CascadedSubMode };
-    return { pipeline: "cascaded" as PipelineMode, sub: "simple" as CascadedSubMode };
-  }, [deployment]);
-
-  const effectivePipelineMode: PipelineMode = pinnedMode?.pipeline ?? pipelineMode;
-  const effectiveCascadedSubMode: CascadedSubMode = pinnedMode?.sub
-    ?? (deploymentLoaded && !agenticAirlineAvailable && cascadedSubMode === "agentic_airline"
-        ? "simple"
-        : cascadedSubMode);
+  const selectedExample = useMemo<DeploymentOption | undefined>(() => {
+    if (!deployment) return undefined;
+    if (!deployment.selectable) return deployment.active;
+    return (
+      deployment.options.find((option) => option.key === selectedKey)
+      ?? deployment.options[0]
+    );
+  }, [deployment, selectedKey]);
 
   // --- Transport state ---
   const [selectedTransport, setSelectedTransport] = useState<TransportType>(() => {
@@ -349,8 +323,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const selectedPrompt = useMemo(() => prompts.find((p) => p.key === effectiveSelectedPromptKey), [prompts, effectiveSelectedPromptKey]);
 
   const value = useMemo<AppState>(() => ({
-    pipelineMode: effectivePipelineMode, setPipelineMode,
-    cascadedSubMode: effectiveCascadedSubMode, setCascadedSubMode, agenticAirlineAvailable,
+    selectedExample, selectExample, deploymentOptions,
     deploymentSelectable,
     selectedTransport, setTransport,
     selectedS2SServer, setSelectedS2SServer,
@@ -359,7 +332,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ttsServices, ttsLoading, selectedTTSId: effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,
     selectedVoiceId, setSelectedVoiceId,
     prompts, promptsLoading, selectedPromptKey: effectiveSelectedPromptKey, selectPrompt, addPrompt, updatePrompt, removePrompt, selectedPrompt,
-  }), [effectivePipelineMode, setPipelineMode, effectiveCascadedSubMode, setCascadedSubMode, agenticAirlineAvailable, deploymentSelectable, selectedTransport, setTransport, selectedS2SServer,
+  }), [selectedExample, selectExample, deploymentOptions, deploymentSelectable, selectedTransport, setTransport, selectedS2SServer,
        llms, llmsLoading, effectiveSelectedLLMId, selectLLM, addLLM, updateLLM, removeLLM, selectedLLM,
        asrServices, asrLoading, effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
        ttsServices, ttsLoading, effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,
