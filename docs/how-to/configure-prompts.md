@@ -1,6 +1,6 @@
 # Configure Prompts
 
-You can customize your voice agent's personality, behavior, and response format using system prompts. Prompts are defined in [`prompt.yaml`](../../prompt.yaml) and can be switched or added at runtime via the UI.
+You can customize your voice agent's personality, behavior, and response format using system prompts. Built-in prompts are defined in example-local `prompts.yaml` files and can be switched or added at runtime via the UI.
 
 ## Switching Prompts via the UI
 
@@ -12,14 +12,9 @@ You can add custom prompts directly from the UI's **Prompts** tab without editin
 
 ## Available Prompt Presets
 
-The following presets are available in [`prompt.yaml`](../../prompt.yaml):
+Prompt presets are defined per example. The generic cascaded example currently provides the presets below.
 
 ### Flowershop Assistant (default)
-
-```bash
-# In .env
-PROMPT_SELECTOR=flowershop
-```
 
 **Characteristics:**
 - Persona: Flora from GreenForce Garden
@@ -28,33 +23,27 @@ PROMPT_SELECTOR=flowershop
 
 ### Generic Assistant
 
-```bash
-# In .env
-PROMPT_SELECTOR=generic_assistant
-```
-
 Tool calling is enabled automatically for this preset; the other built-in prompts run without function calls.
 
 ### Multilingual Voice Assistant
-
-```bash
-# In .env
-PROMPT_SELECTOR=multilingual_voice_assistant
-```
 
 Uses structured `Language: Text: MetaData:` output format for automatic language detection and multilingual responses.
 
 ## Changing the Default Prompt
 
-Edit the `.env` file to set the default prompt key (must match a key in `prompt.yaml`):
+Mark the desired entry with `default: true` in the active example's `prompts.yaml`. If no entry is marked, the first entry is used.
 
-```bash
-PROMPT_SELECTOR=flowershop
+```yaml
+my_prompt:
+  default: true
+  description: "Your prompt description"
+  content: |
+    ...
 ```
 
-## Adding Prompts via `prompt.yaml`
+## Adding Built-In Prompts via `prompts.yaml`
 
-To make a prompt available as a built-in option for all users, add an entry to [`prompt.yaml`](../../prompt.yaml). This requires a server restart for the new entry to appear in the UI.
+To make a prompt available as a built-in option for all users of an example, add an entry to that example's `prompts.yaml`, such as [`src/cascaded/generic/prompts.yaml`](../../src/cascaded/generic/prompts.yaml) or [`src/speech_to_speech/generic/prompts.yaml`](../../src/speech_to_speech/generic/prompts.yaml). The client loads built-in prompts for the active example; refresh open browser tabs after editing YAML.
 
 ```yaml
 my_custom_prompt:

@@ -115,7 +115,6 @@ deploy:
     - echo "DEFAULT_LLM=nemotron-nano" >> .env
     - echo "DEFAULT_TTS=magpie-tts" >> .env
     - echo "DEFAULT_ASR=nemotron-speech" >> .env
-    - echo "PROMPT_SELECTOR=flowershop" >> .env
     - echo "PIPELINE_APP_PORT=7860" >> .env
   script:
     - docker compose --profile all-examples build

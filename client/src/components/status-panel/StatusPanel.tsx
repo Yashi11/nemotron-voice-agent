@@ -10,7 +10,6 @@ import { VoiceSettings } from "../VoiceSettings";
 
 export function StatusPanel() {
   const { selectedExample } = useApp();
-  const isAgenticAirline = selectedExample?.id === "agentic-airline";
   const isS2S = selectedExample?.family === "speech-to-speech";
 
   return (
@@ -18,7 +17,7 @@ export function StatusPanel() {
       <PipelineModeSelector />
       <PipelineExampleSelector />
       <TransportSelector />
-      {!isAgenticAirline && <PromptSelector />}
+      <PromptSelector />
       {!isS2S && <VoiceSettings />}
     </aside>
   );

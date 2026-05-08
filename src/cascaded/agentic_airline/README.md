@@ -19,7 +19,7 @@ service catalogs, prompts, and example-local compose file.
 | `state/` | per-stream scratch memory and canonical entity store |
 | `tools/` | fast-LLM tools plus booking-backend client |
 | `policy/` | deterministic fare / IRROPS policy tables |
-| `prompts/` | airline fast-agent prompt |
+| `prompts.yaml` | airline fast-agent prompt catalog |
 | `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for standalone and selector runs |
 | `docker-compose.yml` | example-local pipeline + booking backend stack |
 
@@ -105,7 +105,7 @@ with deployment and configuration:
 | Skill | Purpose |
 | --- | --- |
 | [`deploy`](../../../.agents/skills/deploy/SKILL.md) | hardware-mode selection, NGC login, and root-compose deploy across every profile (`all-examples`, `generic[-*]`, `agentic-airline[-*]`) |
-| [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, `prompt.yaml`, or example-local `services.{cloud,local}.yaml`, then re-apply |
+| [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, example-local prompts, or example-local `services.{cloud,local}.yaml`, then re-apply |
 
 Install them into your coding agent with `npx skills add .` (see the
 [top-level README](../../../README.md#agent-skills)). When deploying only

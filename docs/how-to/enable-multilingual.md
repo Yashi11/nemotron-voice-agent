@@ -6,7 +6,7 @@ This guide explains how to enable multilingual support in the cascaded pipeline.
 
 The multilingual flow is prompt-driven. There is no separate environment flag to enable it.
 
-1. Select a multilingual prompt from the UI or set a multilingual prompt key in `prompt.yaml`.
+1. Select a multilingual prompt from the UI or set a multilingual prompt key that exists in the active example's `prompts.yaml`.
 2. The LLM returns structured output in this format:
 
 ```text

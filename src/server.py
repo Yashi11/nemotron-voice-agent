@@ -60,16 +60,16 @@ from cascaded.shared.prewarm import prewarm_tts, warmup_tts_synthesis
 from utils import (
     PROJECT_ROOT,
     build_services_api_response,
+    default_prompt_key,
     filter_session_config,
     is_endpoint_reachable,
+    load_prompt_catalog,
     load_service_entry,
-    load_yaml_file,
     parse_endpoint,
     set_active_slots,
 )
 
 CLIENT_DIST = PROJECT_ROOT / "client" / "dist"
-PROMPT_FILE = PROJECT_ROOT / "prompt.yaml"
 _session_configs: dict[str, dict] = {}
 _CONNECT_PREWARM_TIMEOUT_SECS = 15
 _CONNECT_HEALTH_TIMEOUT_SECS = 5
@@ -101,13 +101,15 @@ def _deployment_response(
 
 
 def _sanitize_session_config(data: dict, fallback_example_key: str = "") -> dict:
-    """Sanitize request config and drop prompt overrides for the agentic-airline example."""
-    example = _activate_example_catalog_by_key(str(data.get("pipeline_mode", "")) or fallback_example_key)
-    filtered = filter_session_config(data)
-    if example["id"] == "agentic-airline":
-        filtered.pop("prompt_key", None)
-        filtered.pop("prompt_content", None)
-    return filtered
+    """Activate the catalog for the requested pipeline_mode and drop unknown slot keys."""
+    _activate_example_catalog_by_key(str(data.get("pipeline_mode", "")) or fallback_example_key)
+    return filter_session_config(data)
+
+
+def _example_with_module(example_key: str = "") -> tuple[dict, Any]:
+    """Return ``(metadata, module)`` for a registry example key."""
+    selected = examples_registry.find(example_key)
+    return examples_registry.metadata(selected), importlib.import_module(selected["bot"].__module__)
 
 
 def _activate_example_catalog(module: Any, example: dict) -> None:
@@ -123,9 +125,7 @@ def _activate_example_catalog(module: Any, example: dict) -> None:
 
 def _activate_example_catalog_by_key(example_key: str = "") -> dict:
     """Activate the package-local service catalog for a registry example key."""
-    selected = examples_registry.find(example_key)
-    example = examples_registry.metadata(selected)
-    module = importlib.import_module(selected["bot"].__module__)
+    example, module = _example_with_module(example_key)
     _activate_example_catalog(module, example)
     return example
 
@@ -587,19 +587,22 @@ def create_app(
                 with contextlib.suppress(Exception):
                     await websocket.close()
 
-    # ---- Prompt catalog (read-only, defaults from prompt.yaml) ----
+    # ---- Prompt catalog (read-only, scoped to the active example) ----
 
     @app.get("/api/prompts")
-    async def get_prompts():
-        data = load_yaml_file(PROMPT_FILE)
+    async def get_prompts(pipeline_mode: str = Query(default="")):
+        _, module = _example_with_module(pipeline_mode or fallback_example_key)
+        catalog = load_prompt_catalog(module.__file__)
+        default_key = default_prompt_key(catalog)
         return [
             {
                 "key": key,
                 "description": val.get("description", ""),
                 "content": val.get("content", ""),
+                "default": key == default_key,
                 "builtIn": True,
             }
-            for key, val in data.items()
+            for key, val in catalog.items()
             if isinstance(val, dict) and "content" in val
         ]
 

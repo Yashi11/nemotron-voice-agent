@@ -1,6 +1,6 @@
 ---
 name: configure-pipeline
-description: Configure Nemotron Voice Agent runtime via `.env`, example-local `services.{cloud,local}.yaml`, and `prompt.yaml`. Use when changing prompts, tracing, S2S endpoint, audio knobs, or local NIM image overrides.
+description: Configure Nemotron Voice Agent runtime via `.env`, example-local `services.{cloud,local}.yaml`, and example-local `prompts.yaml`. Use when changing prompts, tracing, S2S endpoint, audio knobs, or local NIM image overrides.
 version: "1.0.0"
 metadata:
   author: Ashutosh Rautela <arautela@nvidia.com>
@@ -20,7 +20,7 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 ## Scope
 
 - Run commands from the repository root.
-- Limit repository-backed changes to `.env`, `prompt.yaml`, and per-example service catalogs.
+- Limit repository-backed changes to `.env`, example-local `prompts.yaml`, and per-example service catalogs.
 - UI-only prompt or service tests stay in browser localStorage. Redeployment is not required.
 - Use `deploy` for initial deployment, profile selection, or auth troubleshooting.
 
@@ -31,7 +31,7 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 2. Edit the smallest configuration surface that satisfies the request:
    - `.env`: feature flags, tracing, S2S settings, chat history, audio debugging, buffering, and local NIM image overrides such as `ASR_DOCKER_IMAGE`, `ASR_NIM_TAGS`, and `TTS_DOCKER_IMAGE`.
    - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`): built-in LLM, ASR, TTS, S2S, and example-specific role catalogs (e.g. `fast-llm`, `orchestrator-llm`, `booking-server`).
-   - `prompt.yaml`: built-in prompt presets and prompt content.
+   - `<example-package>/prompts.yaml`: built-in prompt presets and prompt content for the active example.
 
 3. Validate:
    - Multilingual prompts must use multilingual-capable ASR and TTS from the active catalog (e.g. `magpie-tts`, `parakeet-rnnt`); verify the keys exist before referencing them.
@@ -43,24 +43,24 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 
 ## Rules
 
-- Config-only changes use compose re-apply without `--build`.
+- `.env` changes: compose re-apply.
+- YAML catalog changes (`prompts.yaml`, `services.*.yaml`): compose re-apply and refresh browser. `src/` is bind-mounted, so no rebuild needed.
 - Preserve unrelated keys, comments, and entries while editing.
 - Image-only local variants reuse `asr-service` / `tts-service`. Configure the image through `.env`.
 - The first entry per catalog category is the runtime default; UI-side selection lives in browser localStorage.
-- If only service catalog YAML or `prompt.yaml` changed, refresh the browser before concluding the update failed.
 
 ## Examples
 
 **Switch the default LLM to a different cloud model:**
 
 1. Open the active example's `services.cloud.yaml` and reorder so the target model is the first entry under `llm:` (or `fast-llm:` / `orchestrator-llm:` for Agentic Airline).
-2. Refresh the browser; the catalog reloads without a container restart.
+2. Compose re-apply and refresh browser.
 
 **Add a multilingual persona prompt:**
 
-1. Add the new prompt to `prompt.yaml` (or set `PROMPT_SELECTOR=multilingual_voice_assistant`).
-2. Make sure the active example's catalog has multilingual-capable ASR (`parakeet-rnnt`) and TTS (`magpie-tts`).
-3. Re-apply the active profile because `.env` changed; refresh the browser after catalog or prompt changes.
+1. Add the prompt to the active example's `prompts.yaml`. First entry is the default unless one is marked `default: true`.
+2. Ensure the active example's catalog has multilingual-capable ASR (`parakeet-rnnt`) and TTS (`magpie-tts`).
+3. Compose re-apply and refresh browser.
 
 ## Limitations
 
@@ -70,7 +70,7 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 
 ## Troubleshooting
 
-- **YAML catalog or `prompt.yaml` change does not appear in the UI** -> refresh the browser; built-in entries are cached. Re-apply Compose only if a startup default must be reloaded.
+- **YAML catalog change does not appear in the UI** -> compose re-apply and refresh browser.
 - **`.env` change has no effect on a running container** -> environment is read at container start. Re-apply Compose so the container restarts.
 - **Local LLM/ASR/TTS missing from the Services tab** -> the corresponding sidecar is not deployed or is unreachable. The catalog filters local entries by TCP reachability.
 - **Multilingual responses do not use the right ASR/TTS** -> reorder catalog so a multilingual ASR/TTS sits first, or pick the entry from the UI Services tab.

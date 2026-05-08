@@ -14,9 +14,7 @@ from __future__ import annotations
 import os
 import re
 import uuid
-from pathlib import Path
 
-import yaml
 from dotenv import load_dotenv
 from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
@@ -54,15 +52,13 @@ from utils import (
     parse_env_bool,
     parse_env_int,
     parse_json_dict,
+    resolve_prompt,
 )
 
 load_dotenv(override=True)
 
 FAST_LLM_CATALOG_CATEGORY = "fast-llm"
 CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 20)
-
-_FAST_AGENT_PROMPT_FILE = Path(__file__).parent / "prompts" / "fast_agent.yaml"
-_FAST_AGENT_PROMPT_KEY = "airline_fast_agent"
 
 # Patterns / keywords that imply a lookup or action worth a tool call.
 # Covers domain words, digits, spelled-out numbers / NATO phonetics, and
@@ -88,12 +84,6 @@ _FORCE_TOOL_RE = re.compile(
     r"(?:\b\w\s+){2,}\w\b",
     re.IGNORECASE,
 )
-
-
-def _load_fast_agent_prompt() -> str:
-    """Read the airline fast-agent system prompt from the package-local YAML."""
-    data = yaml.safe_load(_FAST_AGENT_PROMPT_FILE.read_text(encoding="utf-8"))
-    return data[_FAST_AGENT_PROMPT_KEY]["content"]
 
 
 def _apply_chat_history_sliding_window(
@@ -205,7 +195,7 @@ async def bot(runner_args: RunnerArguments) -> None:
     logger.info(f"TTS: server={tts_server}, ssl={tts_ssl}, voice={tts_voice}, text_filter={enable_text_filter}")
 
     # --- Context + aggregators ---
-    system_prompt = _load_fast_agent_prompt()
+    _, system_prompt = resolve_prompt(__file__, body.get("prompt_content", ""), body.get("prompt_key", ""))
     context = LLMContext([{"role": "system", "content": system_prompt}], tools=FAST_TOOLS_SCHEMA)
     preserve_prompt_messages = 1
 

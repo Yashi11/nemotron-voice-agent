@@ -24,6 +24,7 @@ export interface Prompt {
   key: string;
   description: string;
   content: string;
+  default?: boolean;
   builtIn: boolean;
 }
 
@@ -65,10 +66,11 @@ export function useDefaultLLMs(pipelineMode = "") {
   });
 }
 
-export function useDefaultPrompts() {
+export function useDefaultPrompts(pipelineMode = "") {
+  const qs = pipelineMode ? `?pipeline_mode=${encodeURIComponent(pipelineMode)}` : "";
   return useQuery<Prompt[]>({
-    queryKey: ["prompts"],
-    queryFn: () => fetchJson<Prompt[]>("/api/prompts"),
+    queryKey: ["prompts", pipelineMode],
+    queryFn: () => fetchJson<Prompt[]>(`/api/prompts${qs}`),
     select: (data) => data.map((p) => ({ ...p, builtIn: true })),
   });
 }

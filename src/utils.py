@@ -17,8 +17,7 @@ from loguru import logger
 from timeutils import TOOL_HANDLERS as TOOL_HANDLERS  # noqa: F401
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PROMPT_FILE = Path(os.getenv("PROMPT_FILE_PATH", str(PROJECT_ROOT / "prompt.yaml")))
-PROMPT_SELECTOR = os.getenv("PROMPT_SELECTOR", "flowershop")
+PROMPTS_FILENAME = "prompts.yaml"
 
 
 def _services_cloud_path() -> Path:
@@ -51,25 +50,54 @@ def set_active_slots(slots: list[str] | tuple[str, ...] | None) -> None:
         _active_slots = None
 
 
-def resolve_prompt(prompt_content: str = "", prompt_key: str = "") -> str:
-    """Resolve prompt content from client body or prompt.yaml.
+def resolve_prompt_catalog_path(module_file: str | Path) -> Path:
+    """Return the prompts.yaml path beside an example module (``PROMPT_FILE_PATH`` env overrides)."""
+    override = os.getenv("PROMPT_FILE_PATH", "").strip()
+    return Path(override) if override else Path(module_file).resolve().parent / PROMPTS_FILENAME
 
-    Priority: client-provided content > prompt_key lookup > PROMPT_SELECTOR default.
+
+def load_prompt_catalog(module_file: str | Path) -> dict:
+    """Load the prompt catalog beside an example module."""
+    return load_yaml_file(resolve_prompt_catalog_path(module_file))
+
+
+def default_prompt_key(catalog: dict) -> str | None:
+    """First entry marked ``default: true``, else first valid entry, else ``None``."""
+    first_valid = None
+    for key, value in catalog.items():
+        if not isinstance(value, dict) or "content" not in value:
+            continue
+        if value.get("default") is True:
+            return key
+        if first_valid is None:
+            first_valid = key
+    return first_valid
+
+
+def resolve_prompt(
+    module_file: str | Path,
+    prompt_content: str = "",
+    prompt_key: str = "",
+) -> tuple[str, str]:
+    """Resolve ``(key, content)`` from the client body or the example's prompt catalog.
+
+    Priority: client-provided content > ``prompt_key`` > ``PROMPT_SELECTOR`` env > catalog default.
     """
     if prompt_content:
-        logger.info(f"Using client-provided prompt (key={prompt_key or 'custom'})")
-        return prompt_content
+        return prompt_key or "custom", prompt_content
 
-    if not prompt_key:
-        prompt_key = PROMPT_SELECTOR
-    try:
-        content = _load_yaml_entry(PROMPT_FILE, prompt_key)["content"]
-    except KeyError:
-        logger.warning(f"Prompt '{prompt_key}' not found, falling back to '{PROMPT_SELECTOR}'")
-        content = _load_yaml_entry(PROMPT_FILE, PROMPT_SELECTOR)["content"]
-        prompt_key = PROMPT_SELECTOR
-    logger.info(f"Loaded prompt from prompt.yaml [{prompt_key}]")
-    return content
+    catalog_path = resolve_prompt_catalog_path(module_file)
+    catalog = load_yaml_file(catalog_path)
+    fallback = default_prompt_key(catalog)
+    if fallback is None:
+        raise KeyError(f"No prompts with content in {catalog_path}")
+
+    requested = prompt_key or os.getenv("PROMPT_SELECTOR", "").strip() or fallback
+    if requested not in catalog:
+        logger.warning(f"Prompt '{requested}' not found in {catalog_path}; using '{fallback}'")
+        requested = fallback
+    logger.info(f"Loaded prompt from {catalog_path} [{requested}]")
+    return requested, catalog[requested]["content"]
 
 
 def load_yaml_file(filepath: Path) -> dict:
@@ -81,29 +109,6 @@ def load_yaml_file(filepath: Path) -> dict:
         return {}
     data = yaml.safe_load(filepath.read_text(encoding="utf-8"))
     return data if isinstance(data, dict) else {}
-
-
-def _load_yaml_entry(filepath: Path, key: str) -> dict:
-    """Load a top-level entry from a YAML file.
-
-    Args:
-        filepath: Path to the YAML file.
-        key: Top-level key to look up.
-
-    Returns:
-        The dict value for the given key.
-
-    Raises:
-        FileNotFoundError: If the YAML file does not exist.
-        KeyError: If the key is not found in the file.
-    """
-    if not filepath.exists():
-        raise FileNotFoundError(f"YAML file not found: {filepath}")
-    data = yaml.safe_load(filepath.read_text(encoding="utf-8"))
-    if not isinstance(data, dict) or key not in data:
-        available = list(data.keys()) if isinstance(data, dict) else []
-        raise KeyError(f"Key '{key}' not found in {filepath}. Available: {available}")
-    return data[key]
 
 
 def is_nvcf(server: str) -> bool:
