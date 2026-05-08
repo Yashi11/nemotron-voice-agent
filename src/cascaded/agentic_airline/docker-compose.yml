@@ -16,7 +16,7 @@ services:
     environment:
       APP_RUNTIME: container
     volumes:
-      - ../../../prompt.yaml:/app/prompt.yaml:ro
+      - .:/app/src/cascaded/agentic_airline:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

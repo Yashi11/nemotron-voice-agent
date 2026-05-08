@@ -109,7 +109,6 @@ function buildSessionConfig({
   selectedPromptKey,
 }: SessionConfigOptions): Record<string, string> {
   const slots = new Set(selectedExample.slots);
-  const isAgenticAirline = selectedExample.id === "agentic-airline";
   const config: Record<string, string> = { pipeline_mode: selectedExample.key };
 
   if (slots.has("s2s") && selectedS2SServer) config.s2s_server = selectedS2SServer;
@@ -135,7 +134,7 @@ function buildSessionConfig({
   const voiceToSend = selectedVoiceId || selectedTTS?.voiceId;
   if (slots.has("tts") && voiceToSend) config.tts_voice_id = voiceToSend;
 
-  if (selectedPromptKey && !isAgenticAirline) {
+  if (selectedPromptKey) {
     config.prompt_key = selectedPromptKey;
     if (selectedPrompt && !selectedPrompt.builtIn) config.prompt_content = selectedPrompt.content;
   }

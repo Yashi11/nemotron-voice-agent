@@ -44,7 +44,7 @@ The Services tab lists all services exposed by the active catalog (cloud and rea
 
 ## Changing built-in defaults
 
-The first entry in each catalog category is the runtime default. To change defaults, reorder entries (or add a new entry first) in the relevant `services.cloud.yaml` / `services.local.yaml` and refresh the browser. No container restart is required for catalog edits.
+The first entry in each catalog category is the runtime default. To change defaults, reorder entries (or add a new entry first) in the relevant `services.cloud.yaml` / `services.local.yaml`. Host-run development reads these files directly; Docker deployments package them into the application image, so rebuild/redeploy after catalog edits.
 
 ## On-prem catalog
 
@@ -61,7 +61,7 @@ The first entry in each catalog category is the runtime default. To change defau
 
 ## Adding built-in cloud services
 
-Append entries to the relevant `services.cloud.yaml`. Refresh the browser to pick up the change.
+Append entries to the relevant `services.cloud.yaml`. Refresh the browser for host-run development, or rebuild/redeploy Docker to package the change into the image.
 
 ```yaml
 llm:

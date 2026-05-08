@@ -99,13 +99,14 @@ The application is configured through these files:
 | File | Purpose |
 |------|---------|
 | `.env` | API keys and feature flags |
-| `prompt.yaml` | Persona and system prompt presets selectable from the UI |
+| `<example-package>/prompts.yaml` | Example-local persona and system prompt presets selectable from the UI |
 
-Service catalogs are example-local under each example package, for example
-`src/cascaded/generic/services.{cloud,local}.yaml`,
-`src/cascaded/agentic_airline/services.{cloud,local}.yaml`, or
-`src/speech_to_speech/generic/services.cloud.yaml`. In the multi-example selector,
-the active UI selection determines which catalog is loaded.
+Service and prompt catalogs are example-local under each example package, for example
+`src/cascaded/generic/services.{cloud,local}.yaml` with
+`src/cascaded/generic/prompts.yaml`, or
+`src/speech_to_speech/generic/services.cloud.yaml` with
+`src/speech_to_speech/generic/prompts.yaml`. In the multi-example selector,
+the active UI selection determines which catalogs are loaded.
 
 See the [Configuration Guide](docs/02-configuration-guide.md) for details.
 
@@ -126,7 +127,7 @@ npx skills add .
 | Type | Guide | Description |
 |------|-------|-------------|
 | Tutorial | [Getting Started](docs/01-getting-started.md) | Full deployment guide with prerequisites, GPU setup, and step-by-step instructions |
-| How-to | [Configuration Guide](docs/02-configuration-guide.md) | Configuration guide for `.env`, service YAML catalogs, and `prompt.yaml` |
+| How-to | [Configuration Guide](docs/02-configuration-guide.md) | Configuration guide for `.env`, service YAML catalogs, and prompt catalogs |
 | How-to | [Enable Multilingual Voice Agent](docs/how-to/enable-multilingual.md) | Configure prompt-driven multilingual responses with automatic TTS language switching |
 | How-to | [Jetson Thor Deployment](docs/03-jetson-thor.md) | Edge deployment guide for NVIDIA Jetson Thor platform |
 | How-to | [Tune Pipeline Performance](docs/how-to/tune-pipeline-performance.md) | Smart turn detection, chat history, and transport options |

@@ -40,7 +40,7 @@ Major architecture upgrade: new Pipecat-based pipeline with speech-to-speech sup
 - **Cascaded pipeline mode** with separate ASR → LLM → TTS services, selectable from the UI
 - Unified React/Vite client (`client/`) replacing the previous `frontend/` WebRTC and WebSocket UIs
 - `services.yaml` service catalog for configuring LLM, ASR, TTS, and S2S endpoints
-- `prompt.yaml` for persona/system prompt presets selectable from the UI
+- Example-local `prompts.yaml` catalogs for persona/system prompt presets selectable from the UI
 - Docker Compose profiles for flexible deployment:
   - `workstation`: 2 GPUs — ASR + TTS NIMs on GPU 0, NIM LLM on GPU 1
   - `dgxspark`: 1 GPU — ASR + TTS NIMs + vLLM LLM on GPU 0
@@ -63,7 +63,7 @@ Major architecture upgrade: new Pipecat-based pipeline with speech-to-speech sup
 
 - `nvidia-pipecat` Git submodule
 - `frontend/` directory (replaced by `client/`)
-- `config/` directory (replaced by root-level `.env.example`, `services.yaml`, `prompt.yaml`)
+- `config/` directory (replaced by root-level `.env.example` and example-local YAML catalogs)
 - Separate Jetson Docker Compose file
 
 ## [1.0.0] - 2025-03-03

@@ -43,6 +43,12 @@ function getEffectiveSelectedId<T extends ManagedService>(
   return items.find((item) => item.builtIn)?.id || items[0]?.id || "";
 }
 
+function getEffectivePromptKey(selectedKey: string, prompts: Prompt[], loading: boolean): string {
+  if (selectedKey && prompts.some((prompt) => prompt.key === selectedKey)) return selectedKey;
+  if (loading) return "";
+  return prompts.find((prompt) => prompt.default)?.key || prompts[0]?.key || "";
+}
+
 type ManagedServiceCatalogOptions<T extends ManagedService> = {
   defaultItems: T[];
   loading: boolean;
@@ -286,7 +292,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [customTTS, persistTTS]);
 
   // --- Prompt state ---
-  const { data: defaultPrompts = [], isLoading: promptsLoading } = useDefaultPrompts();
+  const { data: defaultPrompts = [], isLoading: promptsLoading } = useDefaultPrompts(serviceCatalogKey);
   const [customPrompts, setCustomPrompts] = useState<Prompt[]>(() => readLSArray<Prompt>(PROMPT_STORAGE, []).map((p) => ({ ...p, builtIn: false })));
   const [selectedPromptKey, setSelectedPromptKey] = useState(() => {
     try { return localStorage.getItem(PROMPT_SELECTION) || ""; } catch { return ""; }
@@ -294,7 +300,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const prompts = useMemo(() => [...defaultPrompts, ...customPrompts], [defaultPrompts, customPrompts]);
 
-  const effectiveSelectedPromptKey = selectedPromptKey || prompts[0]?.key || "";
+  const effectiveSelectedPromptKey = useMemo(
+    () => getEffectivePromptKey(selectedPromptKey, prompts, promptsLoading),
+    [selectedPromptKey, prompts, promptsLoading],
+  );
 
   const persistPrompts = useCallback((next: Prompt[]) => {
     setCustomPrompts(next);

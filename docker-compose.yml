@@ -41,7 +41,7 @@ services:
     environment:
       APP_RUNTIME: container
     volumes:
-      - ./prompt.yaml:/app/prompt.yaml:ro
+      - ./src:/app/src:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

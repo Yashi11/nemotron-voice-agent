@@ -121,7 +121,7 @@ with deployment and configuration:
 | Skill | Purpose |
 | --- | --- |
 | [`deploy`](../../../.agents/skills/deploy/SKILL.md) | hardware-mode selection, NGC login, and root-compose deploy across every profile (`all-examples`, `generic[-*]`, `agentic-airline[-*]`) |
-| [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, `prompt.yaml`, or example-local `services.{cloud,local}.yaml`, then re-apply |
+| [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, example-local `prompts.yaml`, or example-local `services.{cloud,local}.yaml`, then re-apply |
 
 Install them into your coding agent with `npx skills add .` (see the
 [top-level README](../../../README.md#agent-skills)). When deploying only

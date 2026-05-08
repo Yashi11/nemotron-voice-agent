@@ -4,7 +4,6 @@
 import { useState } from "react";
 import { useConnectionState } from "../../hooks/useConnectionState";
 import { useConversationMessages } from "../../hooks/useConversationMessages";
-import { useApp } from "../../context/useApp";
 import { IdleHero } from "./IdleHero";
 import { ConversationPanel } from "./ConversationPanel";
 import { MetricsPanel } from "./MetricsPanel";
@@ -38,18 +37,14 @@ function ConversationContent() {
 
 export function CenterPanel() {
   const [activeTab, setActiveTab] = useState<Tab>("conversation");
-  const { selectedExample } = useApp();
-  const isAgenticAirline = selectedExample?.id === "agentic-airline";
-  const tabs = isAgenticAirline ? ALL_TABS.filter((t) => t.id !== "prompts") : ALL_TABS;
-  const effectiveTab: Tab = isAgenticAirline && activeTab === "prompts" ? "conversation" : activeTab;
 
   return (
     <main className="flex-1 d-flex flex-col overflow-hidden">
       <div className="tab-header">
-        {tabs.map((tab) => (
+        {ALL_TABS.map((tab) => (
           <button
             key={tab.id}
-            className={`tab-btn ${effectiveTab === tab.id ? "active" : ""}`}
+            className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
@@ -57,22 +52,20 @@ export function CenterPanel() {
         ))}
       </div>
 
-      <div className={`flex-1 min-h-0 relative ${effectiveTab !== "conversation" ? "hidden" : ""}`}>
+      <div className={`flex-1 min-h-0 relative ${activeTab !== "conversation" ? "hidden" : ""}`}>
         <div className="conversation-overlay overflow-y-auto scrollbar-custom">
           <ConversationContent />
         </div>
       </div>
-      <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${effectiveTab !== "metrics" ? "hidden" : ""}`}>
+      <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${activeTab !== "metrics" ? "hidden" : ""}`}>
         <MetricsPanel />
       </div>
-      <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${effectiveTab !== "services" ? "hidden" : ""}`}>
+      <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${activeTab !== "services" ? "hidden" : ""}`}>
         <ServicesPanel />
       </div>
-      {!isAgenticAirline && (
-        <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${effectiveTab !== "prompts" ? "hidden" : ""}`}>
-          <PromptsPanel />
-        </div>
-      )}
+      <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${activeTab !== "prompts" ? "hidden" : ""}`}>
+        <PromptsPanel />
+      </div>
     </main>
   );
 }

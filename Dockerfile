@@ -75,7 +75,6 @@ COPY pyproject.toml uv.lock ./
 RUN uv venv --python python3.12 && . .venv/bin/activate && uv sync --frozen
 
 COPY src/ src/
-COPY prompt.yaml ./
 COPY --from=client-builder /client/dist/ client/dist/
 
 EXPOSE 7860

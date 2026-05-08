@@ -1,13 +1,12 @@
 # Apply Configuration Changes
 
-Use this reference after editing `.env`, `prompt.yaml`, or an example-local `services.cloud.yaml` / `services.local.yaml`.
+Use this reference after editing `.env`, an example-local `prompts.yaml`, or an example-local `services.cloud.yaml` / `services.local.yaml`.
 
 ## Default Rule
 
-- `.env` changes require a Compose re-apply because environment variables and startup defaults are read at container start.
-- Service catalog YAML and `prompt.yaml` changes are reloaded by the backend without a container restart, but open browser tabs cache built-in services and prompts. Refresh the browser first.
-- Re-apply the deployment after YAML-only changes only when containers are stopped or startup defaults must be reloaded.
-- Local image overrides such as `ASR_DOCKER_IMAGE`, `ASR_NIM_TAGS`, and `TTS_DOCKER_IMAGE` are `.env` changes. Re-apply Compose. Rebuild the application image (`nemotron-voice-agent:latest`) only when source files or the `Dockerfile` changed.
+- `.env` changes: compose re-apply.
+- YAML catalog changes (`prompts.yaml`, `services.*.yaml`): compose re-apply and refresh browser. `src/` is bind-mounted, so no rebuild needed.
+- `ASR_DOCKER_IMAGE`, `ASR_NIM_TAGS`, `TTS_DOCKER_IMAGE` are `.env` changes that need a compose re-apply.
 
 ## Endpoint Rules
 
@@ -68,7 +67,6 @@ docker compose --profile generic-dgxspark --profile tracing --profile turn up -d
 ## Validation Checklist
 
 - The selected `--profile` matches the example you want active.
-- `PROMPT_SELECTOR` (if set) points to a key that exists in `prompt.yaml`.
 - Multilingual prompt selection is paired with multilingual-capable ASR (`parakeet-rnnt`) and TTS (`magpie-tts`) in the active catalog.
 - For S2S, the active example's `services.cloud.yaml` `s2s` block points at the desired realtime endpoint. Authentication uses `NVIDIA_API_KEY`.
 - If `ENABLE_TRACING=true` with `phoenix:4317`, the `phoenix` service is started through the `tracing` profile.

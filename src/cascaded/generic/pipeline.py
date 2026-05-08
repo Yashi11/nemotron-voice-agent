@@ -44,7 +44,6 @@ from cascaded.shared.multilingual_processor import MultilingualProcessor
 from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 from tracing import IS_TRACING_ENABLED
 from utils import (
-    PROMPT_SELECTOR,
     is_nvcf,
     load_ipa_dictionary,
     load_service_entry,
@@ -66,7 +65,7 @@ def _build_context_messages(base_prompt: str, system_prompt: str = "") -> list[d
       * Some models (e.g. reasoning-control variants) require the system role
         to carry only a control directive and put all instructions in the
         user message. When a non-empty ``system_prompt`` is configured, the
-        prompt.yaml content is placed in a separate ``user`` message.
+        prompt catalog content is placed in a separate ``user`` message.
       * Nano / Super have an empty ``system_prompt``.  Their chat template
         appends tool definitions into the system section alongside whatever
         system content is there, so keeping the assistant instructions in
@@ -179,10 +178,14 @@ def _find_recent_turn_start(messages: list[dict], recent_turns: int) -> int:
 
 async def bot(runner_args: RunnerArguments) -> None:
     """Build and run the NVIDIA cascaded pipeline for a single session."""
-    logger.info(f"Starting generic cascaded pipeline (tools={list(TOOL_HANDLERS)}, prompt={PROMPT_SELECTOR})")
-
     transport = _create_transport(runner_args)
     body = runner_args.body if isinstance(runner_args.body, dict) else {}
+    prompt_key, base_system_content = resolve_prompt(
+        __file__,
+        body.get("prompt_content", ""),
+        body.get("prompt_key", ""),
+    )
+    logger.info(f"Starting generic cascaded pipeline (tools={list(TOOL_HANDLERS)}, prompt={prompt_key})")
     default_llm = load_service_entry("llm", "")
     default_tts = load_service_entry("tts", "")
     default_asr = load_service_entry("asr", "")
@@ -226,7 +229,6 @@ async def bot(runner_args: RunnerArguments) -> None:
         settings=llm_settings,
     )
 
-    prompt_key = body.get("prompt_key", "") or PROMPT_SELECTOR
     tools_enabled = prompt_key == "generic_assistant"
 
     if tools_enabled:
@@ -267,7 +269,6 @@ async def bot(runner_args: RunnerArguments) -> None:
     )
 
     # --- Context ---
-    base_system_content = resolve_prompt(body.get("prompt_content", ""), body.get("prompt_key", ""))
     if lang_codes:
         base_system_content = base_system_content.replace("{lang_codes}", lang_codes)
 

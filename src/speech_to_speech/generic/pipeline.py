@@ -51,7 +51,7 @@ async def bot(runner_args: RunnerArguments) -> None:
     function_id = default_s2s.get("function_id", "")
     api_key = os.getenv("NVIDIA_API_KEY", "")
 
-    instructions = resolve_prompt(body.get("prompt_content", ""), body.get("prompt_key", ""))
+    _, instructions = resolve_prompt(__file__, body.get("prompt_content", ""), body.get("prompt_key", ""))
 
     key_hint = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else api_key
     logger.info(
