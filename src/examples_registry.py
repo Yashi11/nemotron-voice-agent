@@ -15,7 +15,7 @@ from typing import Any, TypedDict
 
 from cascaded.agentic_airline.pipeline import bot as agentic_airline_bot
 from cascaded.generic.pipeline import bot as cascaded_bot
-from speech_to_speech.pipeline import bot as s2s_bot
+from speech_to_speech.generic.pipeline import bot as s2s_bot
 
 
 class ExampleEntry(TypedDict):
@@ -49,7 +49,7 @@ EXAMPLES: dict[str, dict[str, ExampleEntry]] = {
         },
         "agentic-airline": {
             "label": "Agentic Airline",
-            "slots": ["llm", "asr", "tts"],
+            "slots": ["fast-llm", "orchestrator-llm", "booking-server", "asr", "tts"],
             "bot": agentic_airline_bot,
         },
     },

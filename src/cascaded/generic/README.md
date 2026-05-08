@@ -16,7 +16,7 @@ entry point, service catalogs, and example-local compose file.
 | --- | --- |
 | `pipeline.py` | pipecat entry point for the generic example |
 | `tools.py` | example function-calling tool definitions + handlers |
-| `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for `--bot` override runs |
+| `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for standalone and selector runs |
 | `docker-compose.yml` | example-local pipeline app stack (pairs with `cascaded/shared/`) |
 
 ## Running the example
@@ -92,17 +92,16 @@ docker compose \
 | Profile | Pipeline app | Shared backends pulled from `cascaded/shared/` |
 | --- | --- | --- |
 | `generic` | `generic-example` | none (cloud NVCF) |
-| `generic-workstation` | `generic-example-workstation` | `nvidia-llm`, `asr-service`, `tts-service` |
-| `generic-dgxspark` | `generic-example-dgxspark` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
-| `generic-jetson` | `generic-example-jetson` | `nvidia-llm-vllm`, `nemotron-speech` |
+| `generic-workstation` | `generic-example` | `nvidia-llm`, `asr-service`, `tts-service` |
+| `generic-dgxspark` | `generic-example` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
+| `generic-jetson` | `generic-example` | `nvidia-llm-vllm`, `nemotron-speech` |
 
 The UI is served at `https://localhost:7860/`. In the UI, select
 **Cascaded → Generic** before connecting.
 
-The compose path uses the multi-experience server selector and the root
-service catalogs. The package-local `services.cloud.yaml` and
-`services.local.yaml` are selected automatically when the server is
-launched with `--bot cascaded.generic.pipeline:bot`.
+The compose path uses the multi-experience server selector. The package-local
+`services.cloud.yaml` and `services.local.yaml` are selected automatically when
+this example is active in the UI or launched with `--bot cascaded.generic.pipeline:bot`.
 
 ## Import convention
 
@@ -122,7 +121,7 @@ with deployment and configuration:
 | Skill | Purpose |
 | --- | --- |
 | [`deploy`](../../../.agents/skills/deploy/SKILL.md) | hardware-mode selection, NGC login, and root-compose deploy across every profile (`all-examples`, `generic[-*]`, `agentic-airline[-*]`) |
-| [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, root `services.{cloud,local}.yaml`, `prompt.yaml`, or this example's per-example catalogs (auto-selected on `--bot` runs), then re-apply |
+| [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, `prompt.yaml`, or example-local `services.{cloud,local}.yaml`, then re-apply |
 
 Install them into your coding agent with `npx skills add .` (see the
 [top-level README](../../../README.md#agent-skills)). When deploying only
@@ -130,4 +129,3 @@ this example (not the multi-example selector), the root `deploy` skill
 points at
 [`deploy/references/generic-deploy.md`](../../../.agents/skills/deploy/references/generic-deploy.md)
 for the `generic[-*]` profile listing and example-specific verification.
-

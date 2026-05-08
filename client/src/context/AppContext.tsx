@@ -196,7 +196,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedS2SServer, setSelectedS2SServer] = useState("");
 
   // --- LLM state ---
-  const { data: defaultLLMs = [], isLoading: llmsLoading } = useDefaultLLMs();
+  const serviceCatalogKey = selectedExample?.key ?? "";
+
+  const { data: defaultLLMs = [], isLoading: llmsLoading } = useDefaultLLMs(serviceCatalogKey);
   const {
     customItems: customLLMs,
     items: llms,
@@ -223,7 +225,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [customLLMs, persistLLMs]);
 
   // --- ASR state ---
-  const { data: defaultASR = [], isLoading: asrLoading } = useDefaultASR();
+  const { data: defaultASR = [], isLoading: asrLoading } = useDefaultASR(serviceCatalogKey);
   const {
     customItems: customASR,
     items: asrServices,
@@ -252,7 +254,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedVoiceId, setSelectedVoiceId] = useState("");
 
   // --- TTS state ---
-  const { data: defaultTTS = [], isLoading: ttsLoading } = useDefaultTTS();
+  const { data: defaultTTS = [], isLoading: ttsLoading } = useDefaultTTS(serviceCatalogKey);
   const {
     customItems: customTTS,
     items: ttsServices,

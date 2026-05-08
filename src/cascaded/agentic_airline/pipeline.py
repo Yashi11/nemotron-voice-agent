@@ -48,7 +48,6 @@ from cascaded.agentic_airline.tts_filter import AirlineSpeechTextFilter
 from cascaded.shared.audio_recorder import create_audio_recorder
 from tracing import IS_TRACING_ENABLED
 from utils import (
-    get_deployment_platform,
     is_nvcf,
     load_ipa_dictionary,
     load_service_entry,
@@ -59,9 +58,7 @@ from utils import (
 
 load_dotenv(override=True)
 
-DEFAULT_LLM_KEY = os.getenv("DEFAULT_LLM", "")
-DEFAULT_TTS_KEY = os.getenv("DEFAULT_TTS", "")
-DEFAULT_ASR_KEY = os.getenv("DEFAULT_ASR", "")
+FAST_LLM_CATALOG_CATEGORY = "fast-llm"
 CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 20)
 
 _FAST_AGENT_PROMPT_FILE = Path(__file__).parent / "prompts" / "fast_agent.yaml"
@@ -117,14 +114,13 @@ def _apply_chat_history_sliding_window(
 async def bot(runner_args: RunnerArguments) -> None:
     """Build and run the airline agentic pipeline for one session."""
     stream_id = str(uuid.uuid4())
-    platform = get_deployment_platform() or "cloud-nim"
-    logger.info(f"Starting airline agentic pipeline (stream={stream_id}, platform={platform})")
+    logger.info(f"Starting airline agentic pipeline (stream={stream_id})")
 
     transport = _create_transport(runner_args)
     body = runner_args.body if isinstance(runner_args.body, dict) else {}
-    default_llm = load_service_entry("llm", DEFAULT_LLM_KEY)
-    default_tts = load_service_entry("tts", DEFAULT_TTS_KEY)
-    default_asr = load_service_entry("asr", DEFAULT_ASR_KEY)
+    default_fast_llm = load_service_entry(FAST_LLM_CATALOG_CATEGORY, "")
+    default_tts = load_service_entry("tts", "")
+    default_asr = load_service_entry("asr", "")
 
     # --- ASR ---
     asr_server = body.get("asr_server", "") or default_asr.get("server", "grpc.nvcf.nvidia.com:443")
@@ -151,24 +147,10 @@ async def bot(runner_args: RunnerArguments) -> None:
     # --- Fast LLM (Tier-1) ---
     # Resolution order (highest priority first):
     #   1. Per-request body  — lets a client override for one session.
-    #   2. Env var           — server admin sets once, applies to every transport.
-    #   3. services YAML     — repo default via ``DEFAULT_LLM`` selection.
-    # Without the env-override rung, websocket callers (e.g. benchmark.py)
-    # that don't POST ``/api/start`` first had no way to influence things like
-    # ``enable_thinking`` from outside the YAML file.
-    model_id = (
-        body.get("model_id")
-        or os.getenv("FAST_LLM_MODEL")
-        or default_llm.get("model_id", "nvidia/nemotron-3-nano-30b-a3b")
-    )
-    base_url = (
-        body.get("base_url")
-        or os.getenv("FAST_LLM_BASE_URL")
-        or default_llm.get("base_url", "https://integrate.api.nvidia.com/v1")
-    )
-    extra_params_raw = (
-        body.get("extra_params") or os.getenv("FAST_LLM_EXTRA_PARAMS") or default_llm.get("extra_params", "")
-    )
+    #   2. services YAML     — Agentic Airline ``fast-llm`` role defaults.
+    model_id = body.get("model_id") or default_fast_llm.get("model_id", "nvidia/nemotron-3-nano-30b-a3b")
+    base_url = body.get("base_url") or default_fast_llm.get("base_url", "https://integrate.api.nvidia.com/v1")
+    extra_params_raw = body.get("extra_params") or default_fast_llm.get("extra_params", "")
     extra_params = parse_json_dict(extra_params_raw)
     llm_settings = NvidiaLLMSettings(model=model_id)
     if extra_params:

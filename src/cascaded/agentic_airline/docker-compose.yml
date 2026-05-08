@@ -1,73 +1,36 @@
 name: cascaded-agentic-airline
 
-x-agentic-airline-example: &agentic-airline-example
-  build:
-    context: ../../..
-    dockerfile: Dockerfile
-  image: nemotron-voice-agent:latest
-  cpuset: ${PIPECAT_CPUSET:-}
-  command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0", "--bot", "cascaded.agentic_airline.pipeline:bot"]
-  ports:
-    - "7860:7860"
-  env_file:
-    - ../../../.env
-  environment:
-    APP_RUNTIME: container
-    DEFAULT_LLM: ${DEFAULT_LLM:-}
-    DEFAULT_ASR: ${DEFAULT_ASR:-}
-    DEFAULT_TTS: ${DEFAULT_TTS:-}
-    BOOKING_API_URL: "http://booking-server:8001"
-  volumes:
-    - ../../../prompt.yaml:/app/prompt.yaml:ro
-  extra_hosts:
-    - "host.docker.internal:host-gateway"
-  healthcheck:
-    test: ["CMD-SHELL", "curl -fk https://localhost:7860/health || exit 1"]
-    interval: 30s
-    timeout: 10s
-    retries: 3
-    start_period: 30s
-  restart: unless-stopped
-  logging:
-    driver: "json-file"
-    options:
-      max-size: "50m"
-      max-file: "5"
-
 services:
   agentic-airline-example:
-    <<: *agentic-airline-example
-    profiles: ["agentic-airline"]
+    profiles: ["agentic-airline", "agentic-airline-workstation"]
+    build:
+      context: ../../..
+      dockerfile: Dockerfile
+    image: nemotron-voice-agent:latest
+    cpuset: ${PIPECAT_CPUSET:-}
+    command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0", "--bot", "cascaded.agentic_airline.pipeline:bot"]
+    ports:
+      - "7860:7860"
+    env_file:
+      - ../../../.env
     environment:
       APP_RUNTIME: container
-      DEPLOYMENT_PLATFORM: ""
-      DEFAULT_LLM: ${DEFAULT_LLM:-}
-      DEFAULT_ASR: ${DEFAULT_ASR:-}
-      DEFAULT_TTS: ${DEFAULT_TTS:-}
-      BOOKING_API_URL: "http://booking-server:8001"
-    depends_on:
-      booking-server:
-        condition: service_healthy
-
-  agentic-airline-example-workstation:
-    <<: *agentic-airline-example
-    profiles: ["agentic-airline-workstation"]
-    environment:
-      APP_RUNTIME: container
-      DEPLOYMENT_PLATFORM: workstation
-      DEFAULT_LLM: ${DEFAULT_LLM:-}
-      DEFAULT_ASR: ${DEFAULT_ASR:-}
-      DEFAULT_TTS: ${DEFAULT_TTS:-}
-      BOOKING_API_URL: "http://booking-server:8001"
-    depends_on:
-      booking-server:
-        condition: service_healthy
-      nvidia-llm:
-        condition: service_healthy
-      asr-service:
-        condition: service_healthy
-      tts-service:
-        condition: service_healthy
+    volumes:
+      - ../../../prompt.yaml:/app/prompt.yaml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fk https://localhost:7860/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   booking-server:
     profiles: ["all-examples", "agentic-airline", "agentic-airline-workstation"]
@@ -82,6 +45,8 @@ services:
       BOOKING_HOST: "0.0.0.0"
       BOOKING_PORT: "8001"
       BOOKING_DB_PATH: "/app/data/bookings.db"
+    ports:
+      - "${BOOKING_SERVER_PORT:-8001}:8001"
     volumes:
       - booking_data:/app/data
     healthcheck:

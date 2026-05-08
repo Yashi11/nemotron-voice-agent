@@ -31,7 +31,6 @@ import contextlib
 import importlib
 import json
 import os
-import socket
 import sys
 import urllib.request
 import uuid
@@ -62,8 +61,10 @@ from utils import (
     PROJECT_ROOT,
     build_services_api_response,
     filter_session_config,
+    is_endpoint_reachable,
     load_service_entry,
     load_yaml_file,
+    parse_endpoint,
     set_active_slots,
 )
 
@@ -99,13 +100,34 @@ def _deployment_response(
     }
 
 
-def _sanitize_session_config(data: dict) -> dict:
+def _sanitize_session_config(data: dict, fallback_example_key: str = "") -> dict:
     """Sanitize request config and drop prompt overrides for the agentic-airline example."""
+    example = _activate_example_catalog_by_key(str(data.get("pipeline_mode", "")) or fallback_example_key)
     filtered = filter_session_config(data)
-    if examples_registry.find(str(filtered.get("pipeline_mode", "")))["id"] == "agentic-airline":
+    if example["id"] == "agentic-airline":
         filtered.pop("prompt_key", None)
         filtered.pop("prompt_content", None)
     return filtered
+
+
+def _activate_example_catalog(module: Any, example: dict) -> None:
+    """Use package-local service catalogs and slot filtering for a selected example."""
+    module_dir = Path(module.__file__).resolve().parent
+    for env_var, candidate in (
+        ("SERVICES_CLOUD_PATH", module_dir / "services.cloud.yaml"),
+        ("SERVICES_LOCAL_PATH", module_dir / "services.local.yaml"),
+    ):
+        os.environ[env_var] = str(candidate)
+    set_active_slots(example.get("slots") or None)
+
+
+def _activate_example_catalog_by_key(example_key: str = "") -> dict:
+    """Activate the package-local service catalog for a registry example key."""
+    selected = examples_registry.find(example_key)
+    example = examples_registry.metadata(selected)
+    module = importlib.import_module(selected["bot"].__module__)
+    _activate_example_catalog(module, example)
+    return example
 
 
 def _load_bot(spec: str) -> tuple[Callable[..., Any], dict]:
@@ -134,23 +156,16 @@ def _load_bot(spec: str) -> tuple[Callable[..., Any], dict]:
         example.setdefault("slots", [])
         example.setdefault("key", f"{example.get('family', module_path.split('.', 1)[0])}/{example.get('id', attr)}")
 
-    module_dir = Path(module.__file__).resolve().parent
-    for env_var, candidate in (
-        ("SERVICES_CLOUD_PATH", module_dir / "services.cloud.yaml"),
-        ("SERVICES_LOCAL_PATH", module_dir / "services.local.yaml"),
-    ):
-        if candidate.is_file():
-            os.environ[env_var] = str(candidate)
-    set_active_slots(example.get("slots") or None)
+    _activate_example_catalog(module, example)
 
     return bot_fn, example
 
 
-def _resolve_config(session_id: str = "", **query_params: str) -> dict:
+def _resolve_config(session_id: str = "", fallback_example_key: str = "", **query_params: str) -> dict:
     """Merge stored session config with query overrides; sanitize and hydrate from YAML."""
     base = _session_configs.pop(session_id, {}) if session_id else {}
     base.update({k: v for k, v in query_params.items() if v})
-    return _sanitize_session_config({k: v for k, v in base.items() if v})
+    return _sanitize_session_config({k: v for k, v in base.items() if v}, fallback_example_key=fallback_example_key)
 
 
 def _get_default_tts_selection() -> tuple[str, str]:
@@ -174,9 +189,9 @@ def _get_default_llm_selection() -> tuple[str, str]:
     )
 
 
-def _store_session_config(data: dict) -> str:
+def _store_session_config(data: dict, fallback_example_key: str = "") -> str:
     session_id = uuid.uuid4().hex[:12]
-    _session_configs[session_id] = _sanitize_session_config(data)
+    _session_configs[session_id] = _sanitize_session_config(data, fallback_example_key=fallback_example_key)
     return session_id
 
 
@@ -232,26 +247,20 @@ def _should_skip_tts_prewarm(example: dict) -> bool:
     return example.get("id") == "agentic-airline"
 
 
-def _service_host_port(server: str, default_port: int = 443) -> tuple[str, int]:
-    """Parse a service address into host/port for a lightweight reachability check."""
-    value = server.strip()
-    parsed = urlparse(value if "://" in value else f"//{value}")
-    host = parsed.hostname or ""
-    if not host:
+def _service_host_port(server: str) -> tuple[str, int]:
+    """Parse a service address into host/port, raising on invalid input."""
+    parsed = parse_endpoint(server)
+    if parsed is None:
         raise RuntimeError(f"Invalid service address: {server or '(empty)'}")
-    return host, parsed.port or default_port
+    return parsed
 
 
 def _check_service_port(label: str, server: str) -> None:
-    host, port = _service_host_port(server)
-    try:
-        with socket.create_connection((host, port), timeout=_CONNECT_HEALTH_TIMEOUT_SECS):
-            return
-    except OSError as exc:
+    if not is_endpoint_reachable(server):
         raise RuntimeError(
             f"Selected {label} service is not reachable at {server}. "
             f"Check that the {label} service is running and healthy."
-        ) from exc
+        )
 
 
 def _http_host(host: str) -> str:
@@ -301,8 +310,7 @@ def _local_llm_health_url(base_url: str, model_id: str) -> tuple[str, bool]:
         return f"{scheme}://nvidia-llm-vllm:8000/health", False
 
     if normalized_host in _LOCAL_SERVICE_HOSTS and port == 18000:
-        platform = os.getenv("DEPLOYMENT_PLATFORM", "").strip().lower()
-        is_vllm = platform in {"dgxspark", "jetson"} or "30b-a3b" in model_id.lower()
+        is_vllm = "30b-a3b" in model_id.lower() or "nvfp4" in model_id.lower()
         health_path = "/health" if is_vllm else _NIM_READY_PATH
         return f"{scheme}://{http_host}:18000{health_path}", False
 
@@ -444,14 +452,17 @@ def create_app(
     forced_bot_fn: Callable[..., Any] | None = None
     selected_example = examples_registry.find(example_key)
     deployment = examples_registry.metadata(selected_example)
+    fallback_example_key = deployment["key"]
     selector_options = (
         examples_registry.all_selector_options() if all_examples else examples_registry.selector_options()
     )
     if bot_spec:
         forced_bot_fn, deployment = _load_bot(bot_spec)
+        fallback_example_key = deployment["key"]
         logger.info(f"Loaded bot override: {bot_spec} -> deployment={deployment}")
     elif example_key:
         forced_bot_fn = selected_example["bot"]
+        _activate_example_catalog_by_key(deployment["key"])
         logger.info(f"Loaded example: {deployment['key']} -> deployment={deployment}")
 
     handler = SmallWebRTCRequestHandler(host=host)
@@ -495,18 +506,18 @@ def create_app(
     @app.post("/api/session-config")
     async def create_session_config(request: Request):
         """Store pipeline config server-side, return a short session_id."""
-        config = _sanitize_session_config(await request.json())
+        config = _sanitize_session_config(await request.json(), fallback_example_key=fallback_example_key)
         if (failure := await _readiness_check_or_503(config, "session config")) is not None:
             return failure
-        return {"session_id": _store_session_config(config)}
+        return {"session_id": _store_session_config(config, fallback_example_key=fallback_example_key)}
 
     @app.post("/api/start")
     async def start_bot(request: Request):
         """Run readiness checks before starting a WebRTC session."""
-        config = _sanitize_session_config(await request.json())
+        config = _sanitize_session_config(await request.json(), fallback_example_key=fallback_example_key)
         if (failure := await _readiness_check_or_503(config, "WebRTC start")) is not None:
             return failure
-        session_id = _store_session_config(config)
+        session_id = _store_session_config(config, fallback_example_key=fallback_example_key)
         return {"webrtcUrl": f"/api/offer?session_id={session_id}"}
 
     # ---- WebRTC signaling ----
@@ -518,12 +529,14 @@ def create_app(
         session_id: str = Query(default=""),
         pipeline_mode: str = Query(default=""),
     ):
-        config = _resolve_config(session_id, pipeline_mode=pipeline_mode)
+        config = _resolve_config(session_id, fallback_example_key=fallback_example_key, pipeline_mode=pipeline_mode)
         bot_fn = _select_bot(config.get("pipeline_mode", "cascaded"), forced_bot_fn)
+        example = _resolve_example(config)
 
         async def on_connection(connection: SmallWebRTCConnection):
             body = dict(request.request_data) if isinstance(request.request_data, dict) else {}
             body.update(config)
+            _activate_example_catalog_by_key(example["key"])
             runner_args = SmallWebRTCRunnerArguments(webrtc_connection=connection, body=body)
             background_tasks.add_task(bot_fn, runner_args)
 
@@ -547,7 +560,7 @@ def create_app(
     ):
         stream_id = session_id or "-"
         with logger.contextualize(stream_id=stream_id):
-            config = _resolve_config(session_id, pipeline_mode=pipeline_mode)
+            config = _resolve_config(session_id, fallback_example_key=fallback_example_key, pipeline_mode=pipeline_mode)
             if not session_id:
                 try:
                     await _ensure_services_ready_for_connection(config, _resolve_example(config))
@@ -558,6 +571,7 @@ def create_app(
 
             await websocket.accept()
             bot_fn = _select_bot(config.get("pipeline_mode", "cascaded"), forced_bot_fn)
+            _activate_example_catalog_by_key(_resolve_example(config)["key"])
 
             runner_args = SimpleNamespace(
                 websocket=websocket,
@@ -592,7 +606,8 @@ def create_app(
     # ---- Service catalog (services.cloud.yaml or services.local.yaml) ----
 
     @app.get("/api/services")
-    async def get_services():
+    async def get_services(pipeline_mode: str = Query(default="")):
+        _activate_example_catalog_by_key(pipeline_mode or fallback_example_key)
         return build_services_api_response()
 
     # ---- TTS config (voices & languages from the TTS service) ----

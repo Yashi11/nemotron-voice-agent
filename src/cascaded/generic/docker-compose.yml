@@ -1,94 +1,33 @@
 name: cascaded-generic
 
-x-generic-example: &generic-example
-  build:
-    context: ../../..
-    dockerfile: Dockerfile
-  image: nemotron-voice-agent:latest
-  cpuset: ${PIPECAT_CPUSET:-}
-  command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0", "--bot", "cascaded.generic.pipeline:bot"]
-  ports:
-    - "7860:7860"
-  env_file:
-    - ../../../.env
-  environment:
-    APP_RUNTIME: container
-    DEFAULT_LLM: ${DEFAULT_LLM:-}
-    DEFAULT_ASR: ${DEFAULT_ASR:-}
-    DEFAULT_TTS: ${DEFAULT_TTS:-}
-  volumes:
-    - ../../../prompt.yaml:/app/prompt.yaml:ro
-  extra_hosts:
-    - "host.docker.internal:host-gateway"
-  healthcheck:
-    test: ["CMD-SHELL", "curl -fk https://localhost:7860/health || exit 1"]
-    interval: 30s
-    timeout: 10s
-    retries: 3
-    start_period: 30s
-  restart: unless-stopped
-  logging:
-    driver: "json-file"
-    options:
-      max-size: "50m"
-      max-file: "5"
-
 services:
   generic-example:
-    <<: *generic-example
-    profiles: ["generic"]
+    profiles: ["generic", "generic-jetson", "generic-dgxspark", "generic-workstation"]
+    build:
+      context: ../../..
+      dockerfile: Dockerfile
+    image: nemotron-voice-agent:latest
+    cpuset: ${PIPECAT_CPUSET:-}
+    command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0", "--bot", "cascaded.generic.pipeline:bot"]
+    ports:
+      - "7860:7860"
+    env_file:
+      - ../../../.env
     environment:
       APP_RUNTIME: container
-      DEPLOYMENT_PLATFORM: ""
-      DEFAULT_LLM: ${DEFAULT_LLM:-}
-      DEFAULT_ASR: ${DEFAULT_ASR:-}
-      DEFAULT_TTS: ${DEFAULT_TTS:-}
-
-  generic-example-jetson:
-    <<: *generic-example
-    profiles: ["generic-jetson"]
-    environment:
-      APP_RUNTIME: container
-      DEPLOYMENT_PLATFORM: jetson
-      DEFAULT_LLM: ${DEFAULT_LLM:-}
-      DEFAULT_ASR: ${DEFAULT_ASR:-}
-      DEFAULT_TTS: ${DEFAULT_TTS:-}
-    depends_on:
-      nvidia-llm-vllm:
-        condition: service_healthy
-      nemotron-speech:
-        condition: service_healthy
-
-  generic-example-dgxspark:
-    <<: *generic-example
-    profiles: ["generic-dgxspark"]
-    environment:
-      APP_RUNTIME: container
-      DEPLOYMENT_PLATFORM: dgxspark
-      DEFAULT_LLM: ${DEFAULT_LLM:-}
-      DEFAULT_ASR: ${DEFAULT_ASR:-}
-      DEFAULT_TTS: ${DEFAULT_TTS:-}
-    depends_on:
-      nvidia-llm-vllm:
-        condition: service_healthy
-      asr-service:
-        condition: service_healthy
-      tts-service:
-        condition: service_healthy
-
-  generic-example-workstation:
-    <<: *generic-example
-    profiles: ["generic-workstation"]
-    environment:
-      APP_RUNTIME: container
-      DEPLOYMENT_PLATFORM: workstation
-      DEFAULT_LLM: ${DEFAULT_LLM:-}
-      DEFAULT_ASR: ${DEFAULT_ASR:-}
-      DEFAULT_TTS: ${DEFAULT_TTS:-}
-    depends_on:
-      nvidia-llm:
-        condition: service_healthy
-      asr-service:
-        condition: service_healthy
-      tts-service:
-        condition: service_healthy
+    volumes:
+      - ../../../prompt.yaml:/app/prompt.yaml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fk https://localhost:7860/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"

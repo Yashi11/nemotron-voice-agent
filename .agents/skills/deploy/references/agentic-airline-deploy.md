@@ -1,6 +1,6 @@
 # Agentic Airline Cascaded Example — Deployment Reference
 
-Use this reference from the `deploy` skill when deploying only the cascaded/agentic_airline example — a fast in-call LLM with state-runner orchestration for booking/rebook/cancel flows, alongside a SQLite-backed `booking-server` (port 8001). The root `deploy` skill covers env, NGC login, and platform selection that this reference assumes is already done.
+Use this reference from the `deploy` skill when deploying only the cascaded/agentic_airline example — a fast in-call LLM with state-runner orchestration for booking/rebook/cancel flows, alongside a SQLite-backed `booking-server` (port 8001).
 
 ## When to use
 
@@ -8,13 +8,11 @@ Deploying only the airline example, not the multi-example selector — use `--pr
 
 This example always brings up a `booking-server` alongside the voice pipeline. Booking flows fail silently if it is not healthy.
 
-Available profiles: `agentic-airline` (cloud NVCF) and `agentic-airline-workstation` (local NIM ASR/TTS/LLM). No `dgxspark` or `jetson` variant exists for this example.
+Available profiles: `agentic-airline` (cloud NVCF) and `agentic-airline-workstation` (local NIM ASR/TTS/LLM). No `dgxspark` or `jetson` variant exists.
 
-Per-example catalogs at `src/cascaded/agentic_airline/services.{cloud,local}.yaml` are auto-selected for the example container on startup; edit those instead of the root catalogs (see `configure-pipeline`).
+Per-example catalogs at `src/cascaded/agentic_airline/services.{cloud,local}.yaml` are auto-selected on container startup and when Agentic Airline is the active UI example.
 
 ## Compose deploy
-
-The root `docker-compose.yml` already includes `cascaded/shared/` and the airline example compose. Deploy from the repo root with the right profile:
 
 Cloud (NVCF):
 
@@ -28,14 +26,14 @@ Workstation (local NIM ASR/TTS/LLM):
 docker compose --profile agentic-airline-workstation up -d
 ```
 
-Both profiles bring up `agentic-airline-example[-workstation]` + `booking-server`. Set `DEPLOYMENT_PLATFORM=workstation` in `.env` for the workstation profile; leave it unset for cloud.
+Both profiles bring up `agentic-airline-example` + `booking-server`.
 
 Tear down with the same profile. Add `-v` only when stale booking data must be dropped (clears the `booking_data` volume).
 
 ## Verify
 
 - UI at `https://<host>:7860/`. Locked to airline; no example picker.
-- Voice pipeline logs: `docker compose logs --tail 200 agentic-airline-example[-workstation]`.
+- Voice pipeline logs: `docker compose logs --tail 200 agentic-airline-example`.
 - Booking backend logs: `docker compose logs --tail 200 booking-server`.
 - Booking health: `curl -fk http://localhost:8001/health` from the host or `curl -f http://booking-server:8001/health` from inside the compose network.
 

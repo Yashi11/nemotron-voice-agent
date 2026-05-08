@@ -64,11 +64,6 @@ This guide covers deploying the Nemotron Voice Agent on Jetson Thor using Docker
 4. Start the full stack — vLLM (Nemotron Nano), Riva (ASR + TTS), and the Pipecat pipeline — all via Docker Compose:
 
     ```bash
-    # .env
-    DEPLOYMENT_PLATFORM=jetson
-    ```
-
-    ```bash
     docker compose --profile generic-jetson up -d
     ```
 
