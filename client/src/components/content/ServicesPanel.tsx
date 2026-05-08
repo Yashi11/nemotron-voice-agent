@@ -178,16 +178,30 @@ function LLMServiceRow({ svc, isActive, canRemove, onSelect }: { svc: LLMService
   );
 }
 
-/* ── Read-only row for S2S ── */
+/* ── Read-only row for catalog-owned services ── */
 
-function ReadOnlyServiceRow({ entry }: { entry: ServiceEntry }) {
+function ReadOnlyServiceRow({ entry, isLocked = false }: { entry: ServiceEntry; isLocked?: boolean }) {
   const server = entry.server ? String(entry.server) : "";
+  const baseUrl = entry.base_url ? String(entry.base_url) : "";
+  const modelId = entry.model_id ? String(entry.model_id) : "";
+  const extraParams = entry.extra_params ? String(entry.extra_params) : "";
+  const timeoutSecs = entry.timeout_secs ? String(entry.timeout_secs) : "";
+  const isSelected = entry.selected === true;
   return (
-    <div className="svc-row">
+    <div className={`svc-row${isSelected ? " svc-row--active" : ""}${isLocked ? " svc-row--disabled" : ""}`}>
       <div className="svc-row__info">
         <span className="svc-row__name">{entry.name}</span>
         {server && <span className="svc-row__detail svc-row__url">{server}</span>}
+        {baseUrl && <span className="svc-row__detail svc-row__url">{baseUrl}</span>}
+        {modelId && <span className="svc-row__detail">Model: {modelId}</span>}
+        {extraParams && <span className="svc-row__detail">Extra params: {extraParams}</span>}
+        {timeoutSecs && <span className="svc-row__detail">Timeout: {timeoutSecs}s</span>}
       </div>
+      {isSelected && (
+        <div className="svc-row__actions">
+          <span className="prompt-card__badge">Active</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -239,118 +253,132 @@ export function ServicesPanel() {
     asrServices, asrLoading, selectedASRId, selectASR, addASR, updateASR, removeASR,
     ttsServices, ttsLoading, selectedTTSId, selectTTS, addTTS, updateTTS, removeTTS,
   } = useApp();
-  const { data: catalog } = useServiceCatalog();
+  const { data: catalog } = useServiceCatalog(selectedExample?.key ?? "");
   const { isLocked } = useConnectionState();
 
   const [addingLLM, setAddingLLM] = useState(false);
   const [addingASR, setAddingASR] = useState(false);
   const [addingTTS, setAddingTTS] = useState(false);
 
-  if (selectedExample?.family === "speech-to-speech") {
-    const s2sModels = catalog?.s2s ?? [];
-    const s2sGroups = groupServicesBySource(s2sModels);
-    return (
-      <div className="services-panel p-4">
-        <ServiceSection title="S2S Services">
-          {s2sModels.length === 0 && <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>No S2S services configured</p>}
-          {s2sGroups.map((group) => (
-            <ServiceSourceGroup key={group.key} title={group.title}>
-              {group.items.map((entry) => <ReadOnlyServiceRow key={entry.id} entry={entry} />)}
-            </ServiceSourceGroup>
-          ))}
-        </ServiceSection>
-      </div>
-    );
-  }
-
   const llmCustomCount = llms.filter((s) => !s.builtIn).length;
   const asrCustomCount = asrServices.filter((s) => !s.builtIn).length;
   const ttsCustomCount = ttsServices.filter((s) => !s.builtIn).length;
+  const slotList = selectedExample?.slots ?? [];
   const llmGroups = groupServicesBySource(llms);
   const asrGroups = groupServicesBySource(asrServices);
   const ttsGroups = groupServicesBySource(ttsServices);
 
+  const renderCatalogSection = (slot: string) => {
+    const groups = groupServicesBySource(catalog?.[slot] ?? []);
+    const title = `${slot.split("-").map((part) => (part.toUpperCase() === "LLM" ? "LLM" : part[0]?.toUpperCase() + part.slice(1))).join(" ")} Services`;
+    return (
+      <ServiceSection key={slot} title={title}>
+        {groups.length === 0 && <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>No services configured</p>}
+        {groups.map((group) => (
+          <ServiceSourceGroup key={group.key} title={group.title}>
+            {group.items.map((entry) => <ReadOnlyServiceRow key={entry.id} entry={entry} isLocked={isLocked} />)}
+          </ServiceSourceGroup>
+        ))}
+      </ServiceSection>
+    );
+  };
+
+  const renderSlot = (slot: string) => {
+    if (slot === "llm") {
+      return (
+        <ServiceSection key={slot} title="LLM Services" onAdd={() => setAddingLLM(!addingLLM)}>
+          {llmsLoading && <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Loading...</p>}
+          {addingLLM && (
+            <SimpleAddForm
+              fields={[
+                { label: "Server URL", key: "baseUrl", required: true },
+                { label: "Model ID", key: "modelId", required: true },
+                { label: "System prompt (optional)", key: "systemPrompt" },
+                { label: "Extra params JSON (optional)", key: "extraParams" },
+              ]}
+              onAdd={(v) => { addLLM(v.name, v.modelId, v.baseUrl, v.systemPrompt ?? "", v.extraParams ?? ""); setAddingLLM(false); }}
+              onCancel={() => setAddingLLM(false)}
+            />
+          )}
+          {llmGroups.map((group) => (
+            <ServiceSourceGroup key={group.key} title={group.title}>
+              {group.items.map((svc) => (
+                <LLMServiceRow key={svc.id} svc={svc} isActive={selectedLLMId === svc.id} canRemove={!svc.builtIn && llmCustomCount > 0} onSelect={isLocked ? undefined : selectLLM} />
+              ))}
+            </ServiceSourceGroup>
+          ))}
+        </ServiceSection>
+      );
+    }
+
+    if (slot === "asr") {
+      return (
+        <ServiceSection key={slot} title="ASR Services" onAdd={() => setAddingASR(!addingASR)}>
+          {asrLoading && <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Loading...</p>}
+          {addingASR && (
+            <SimpleAddForm
+              fields={[
+                { label: "Server (gRPC endpoint)", key: "server", required: true },
+                { label: "Model (optional)", key: "model" },
+                { label: "Function ID (optional)", key: "functionId" },
+              ]}
+              onAdd={(v) => { const svc = addASR(v.name, v.server, v.model || undefined); if (v.functionId) updateASR(svc.id, { functionId: v.functionId }); setAddingASR(false); }}
+              onCancel={() => setAddingASR(false)}
+            />
+          )}
+          {asrGroups.map((group) => (
+            <ServiceSourceGroup key={group.key} title={group.title}>
+              {group.items.map((svc) => (
+                <SimpleServiceRow
+                  key={svc.id} svc={svc} isActive={selectedASRId === svc.id}
+                  canRemove={!svc.builtIn && asrCustomCount > 0}
+                  fields={[{ label: "Server", key: "server" }, { label: "Model", key: "model" }, { label: "Function ID", key: "functionId" }]}
+                  onSelect={isLocked ? undefined : selectASR} onUpdate={updateASR} onRemove={removeASR}
+                />
+              ))}
+            </ServiceSourceGroup>
+          ))}
+        </ServiceSection>
+      );
+    }
+
+    if (slot === "tts") {
+      return (
+        <ServiceSection key={slot} title="TTS Services" onAdd={() => setAddingTTS(!addingTTS)}>
+          {ttsLoading && <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Loading...</p>}
+          {addingTTS && (
+            <SimpleAddForm
+              fields={[
+                { label: "Server (gRPC endpoint)", key: "server", required: true },
+                { label: "Voice ID (optional)", key: "voiceId" },
+                { label: "Function ID (optional)", key: "functionId" },
+              ]}
+              onAdd={(v) => { const svc = addTTS(v.name, v.server, v.voiceId || undefined); if (v.functionId) updateTTS(svc.id, { functionId: v.functionId }); setAddingTTS(false); }}
+              onCancel={() => setAddingTTS(false)}
+            />
+          )}
+          {ttsGroups.map((group) => (
+            <ServiceSourceGroup key={group.key} title={group.title}>
+              {group.items.map((svc) => (
+                <SimpleServiceRow
+                  key={svc.id} svc={svc} isActive={selectedTTSId === svc.id}
+                  canRemove={!svc.builtIn && ttsCustomCount > 0}
+                  fields={[{ label: "Server", key: "server" }, { label: "Voice ID", key: "voiceId" }, { label: "Function ID", key: "functionId" }]}
+                  onSelect={isLocked ? undefined : selectTTS} onUpdate={updateTTS} onRemove={removeTTS}
+                />
+              ))}
+            </ServiceSourceGroup>
+          ))}
+        </ServiceSection>
+      );
+    }
+
+    return renderCatalogSection(slot);
+  };
+
   return (
     <div className="services-panel p-4">
-      {/* ── LLM ── */}
-      <ServiceSection title="LLM Services" onAdd={() => setAddingLLM(!addingLLM)}>
-        {llmsLoading && <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Loading...</p>}
-        {addingLLM && (
-          <SimpleAddForm
-            fields={[
-              { label: "Server URL", key: "baseUrl", required: true },
-              { label: "Model ID", key: "modelId", required: true },
-              { label: "System prompt (optional)", key: "systemPrompt" },
-              { label: "Extra params JSON (optional)", key: "extraParams" },
-            ]}
-            onAdd={(v) => { addLLM(v.name, v.modelId, v.baseUrl, v.systemPrompt ?? "", v.extraParams ?? ""); setAddingLLM(false); }}
-            onCancel={() => setAddingLLM(false)}
-          />
-        )}
-        {llmGroups.map((group) => (
-          <ServiceSourceGroup key={group.key} title={group.title}>
-            {group.items.map((svc) => (
-              <LLMServiceRow key={svc.id} svc={svc} isActive={selectedLLMId === svc.id} canRemove={!svc.builtIn && llmCustomCount > 0} onSelect={isLocked ? undefined : selectLLM} />
-            ))}
-          </ServiceSourceGroup>
-        ))}
-      </ServiceSection>
-
-      {/* ── ASR ── */}
-      <ServiceSection title="ASR Services" onAdd={() => setAddingASR(!addingASR)}>
-        {asrLoading && <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Loading...</p>}
-        {addingASR && (
-          <SimpleAddForm
-            fields={[
-              { label: "Server (gRPC endpoint)", key: "server", required: true },
-              { label: "Model (optional)", key: "model" },
-              { label: "Function ID (optional)", key: "functionId" },
-            ]}
-            onAdd={(v) => { const svc = addASR(v.name, v.server, v.model || undefined); if (v.functionId) updateASR(svc.id, { functionId: v.functionId }); setAddingASR(false); }}
-            onCancel={() => setAddingASR(false)}
-          />
-        )}
-        {asrGroups.map((group) => (
-          <ServiceSourceGroup key={group.key} title={group.title}>
-            {group.items.map((svc) => (
-              <SimpleServiceRow
-                key={svc.id} svc={svc} isActive={selectedASRId === svc.id}
-                canRemove={!svc.builtIn && asrCustomCount > 0}
-                fields={[{ label: "Server", key: "server" }, { label: "Model", key: "model" }, { label: "Function ID", key: "functionId" }]}
-                onSelect={isLocked ? undefined : selectASR} onUpdate={updateASR} onRemove={removeASR}
-              />
-            ))}
-          </ServiceSourceGroup>
-        ))}
-      </ServiceSection>
-
-      {/* ── TTS ── */}
-      <ServiceSection title="TTS Services" onAdd={() => setAddingTTS(!addingTTS)}>
-        {ttsLoading && <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>Loading...</p>}
-        {addingTTS && (
-          <SimpleAddForm
-            fields={[
-              { label: "Server (gRPC endpoint)", key: "server", required: true },
-              { label: "Voice ID (optional)", key: "voiceId" },
-              { label: "Function ID (optional)", key: "functionId" },
-            ]}
-            onAdd={(v) => { const svc = addTTS(v.name, v.server, v.voiceId || undefined); if (v.functionId) updateTTS(svc.id, { functionId: v.functionId }); setAddingTTS(false); }}
-            onCancel={() => setAddingTTS(false)}
-          />
-        )}
-        {ttsGroups.map((group) => (
-          <ServiceSourceGroup key={group.key} title={group.title}>
-            {group.items.map((svc) => (
-              <SimpleServiceRow
-                key={svc.id} svc={svc} isActive={selectedTTSId === svc.id}
-                canRemove={!svc.builtIn && ttsCustomCount > 0}
-                fields={[{ label: "Server", key: "server" }, { label: "Voice ID", key: "voiceId" }, { label: "Function ID", key: "functionId" }]}
-                onSelect={isLocked ? undefined : selectTTS} onUpdate={updateTTS} onRemove={removeTTS}
-              />
-            ))}
-          </ServiceSourceGroup>
-        ))}
-      </ServiceSection>
+      {slotList.map(renderSlot)}
     </div>
   );
 }

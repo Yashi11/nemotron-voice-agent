@@ -9,13 +9,25 @@
 # directly on the host, it rewrites these endpoints to `localhost`.
 
 workstation:
-  llm:
+  fast-llm:
     nemotron-nano:
-      name: "Nemotron 3 Nano Workstation"
+      name: "Nemotron 3 Nano 30B A3B"
       model_id: "nvidia/nemotron-3-nano"
       base_url: "http://nvidia-llm:8000/v1"
       system_prompt: ""
       extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+  orchestrator-llm:
+    nemotron-nano:
+      name: "Nemotron 3 Nano 30B A3B"
+      model_id: "nvidia/nemotron-3-nano"
+      base_url: "http://nvidia-llm:8000/v1"
+      system_prompt: ""
+      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+      timeout_secs: 15
+  booking-server:
+    default:
+      name: "Booking Server"
+      server: "http://booking-server:8001"
   tts:
     magpie-tts:
       name: "Magpie TTS"

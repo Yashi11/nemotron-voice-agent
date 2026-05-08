@@ -45,7 +45,6 @@ from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 from tracing import IS_TRACING_ENABLED
 from utils import (
     PROMPT_SELECTOR,
-    get_deployment_platform,
     is_nvcf,
     load_ipa_dictionary,
     load_service_entry,
@@ -57,14 +56,7 @@ from utils import (
 )
 
 load_dotenv(override=True)
-DEFAULT_LLM_KEY = os.getenv("DEFAULT_LLM", "")
-DEFAULT_TTS_KEY = os.getenv("DEFAULT_TTS", "")
-DEFAULT_ASR_KEY = os.getenv("DEFAULT_ASR", "")
 CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 10)
-
-
-def _parse_extra_params(raw: str) -> dict:
-    return parse_json_dict(raw, label="extra_params")
 
 
 def _build_context_messages(base_prompt: str, system_prompt: str = "") -> list[dict]:
@@ -187,17 +179,13 @@ def _find_recent_turn_start(messages: list[dict], recent_turns: int) -> int:
 
 async def bot(runner_args: RunnerArguments) -> None:
     """Build and run the NVIDIA cascaded pipeline for a single session."""
-    platform = get_deployment_platform() or "cloud-nim"
-    logger.info(
-        f"Starting generic cascaded pipeline (tools={list(TOOL_HANDLERS)}, "
-        f"prompt={PROMPT_SELECTOR}, platform={platform})"
-    )
+    logger.info(f"Starting generic cascaded pipeline (tools={list(TOOL_HANDLERS)}, prompt={PROMPT_SELECTOR})")
 
     transport = _create_transport(runner_args)
     body = runner_args.body if isinstance(runner_args.body, dict) else {}
-    default_llm = load_service_entry("llm", DEFAULT_LLM_KEY)
-    default_tts = load_service_entry("tts", DEFAULT_TTS_KEY)
-    default_asr = load_service_entry("asr", DEFAULT_ASR_KEY)
+    default_llm = load_service_entry("llm", "")
+    default_tts = load_service_entry("tts", "")
+    default_asr = load_service_entry("asr", "")
 
     # --- ASR ---
     asr_server = body.get("asr_server", "") or default_asr.get("server", "grpc.nvcf.nvidia.com:443")
@@ -221,7 +209,7 @@ async def bot(runner_args: RunnerArguments) -> None:
     model_id = body.get("model_id", "") or default_llm.get("model_id", "nvidia/nemotron-3-nano-30b-a3b")
     base_url = body.get("base_url", "") or default_llm.get("base_url", "https://integrate.api.nvidia.com/v1")
     system_prompt = body.get("system_prompt", "")
-    extra_params = _parse_extra_params(body.get("extra_params", ""))
+    extra_params = parse_json_dict(body.get("extra_params", ""), label="extra_params")
 
     logger.info(
         f"LLM: model={model_id}, base_url={base_url}, "

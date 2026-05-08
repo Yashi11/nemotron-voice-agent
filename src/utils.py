@@ -6,7 +6,10 @@
 import ipaddress
 import json
 import os
+import socket
+import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import yaml
 from loguru import logger
@@ -19,26 +22,12 @@ PROMPT_SELECTOR = os.getenv("PROMPT_SELECTOR", "flowershop")
 
 
 def _services_cloud_path() -> Path:
-    return Path(os.getenv("SERVICES_CLOUD_PATH", str(PROJECT_ROOT / "services.cloud.yaml")))
+    return Path(os.getenv("SERVICES_CLOUD_PATH", str(PROJECT_ROOT / "src/cascaded/generic/services.cloud.yaml")))
 
 
 def _services_local_path() -> Path:
-    return Path(os.getenv("SERVICES_LOCAL_PATH", str(PROJECT_ROOT / "services.local.yaml")))
+    return Path(os.getenv("SERVICES_LOCAL_PATH", str(PROJECT_ROOT / "src/cascaded/generic/services.local.yaml")))
 
-
-_LOCAL_DEPLOY_PLATFORMS = frozenset({"jetson", "dgxspark", "workstation"})
-_SERVICE_CATEGORIES = ("llm", "vlm", "tts", "asr", "s2s")
-_DEFAULT_SERVICE_ENV_VARS = {
-    "llm": "DEFAULT_LLM",
-    "tts": "DEFAULT_TTS",
-    "asr": "DEFAULT_ASR",
-}
-_DEFAULT_ASR_DOCKER_IMAGE = "nvcr.io/nim/nvidia/nemotron-asr-streaming:1.0.0"
-_ASR_IMAGE_TO_LOCAL_KEY = {
-    "nemotron-asr-streaming": "nemotron-speech",
-    "parakeet-1-1b-ctc-en-us": "parakeet-ctc",
-    "parakeet-1-1b-rnnt-multilingual": "parakeet-rnnt",
-}
 
 _SLOT_CONFIG_KEYS: dict[str, frozenset[str]] = {
     "llm": frozenset({"llm_id", "model_id", "base_url", "system_prompt", "extra_params"}),
@@ -48,12 +37,18 @@ _SLOT_CONFIG_KEYS: dict[str, frozenset[str]] = {
 }
 _SLOT_AGNOSTIC_KEYS: frozenset[str] = frozenset({"pipeline_mode", "prompt_key", "prompt_content"})
 _active_slots: frozenset[str] | None = None
+_active_slot_order: tuple[str, ...] | None = None
 
 
 def set_active_slots(slots: list[str] | tuple[str, ...] | None) -> None:
     """Declare which example slots are active; ``None`` disables filtering."""
-    global _active_slots
-    _active_slots = frozenset(slots) if slots else None
+    global _active_slots, _active_slot_order
+    if slots:
+        _active_slot_order = tuple(slots)
+        _active_slots = frozenset(_active_slot_order)
+    else:
+        _active_slot_order = None
+        _active_slots = None
 
 
 def resolve_prompt(prompt_content: str = "", prompt_key: str = "") -> str:
@@ -117,14 +112,9 @@ def is_nvcf(server: str) -> bool:
 
 
 def _normalize_services_catalog(data: object) -> dict:
-    """Normalize a services catalog to the expected category layout."""
+    """Normalize a services catalog into ``{category: {key: entry}}``."""
     src = data if isinstance(data, dict) else {}
-    return {cat: dict(section) if isinstance(section := src.get(cat), dict) else {} for cat in _SERVICE_CATEGORIES}
-
-
-def get_deployment_platform() -> str:
-    """Return the normalized deployment platform, or ``""`` for remote/NVCF."""
-    return os.getenv("DEPLOYMENT_PLATFORM", "").strip().lower()
+    return {category: dict(section) for category, section in src.items() if isinstance(section, dict)}
 
 
 def _is_container_runtime() -> bool:
@@ -144,6 +134,7 @@ def _rewrite_endpoint_for_host_runtime(field: str, value: str) -> str:
             value.replace("tts-service:50051", "localhost:50151")
             .replace("asr-service:50052", "localhost:50152")
             .replace("nemotron-speech:50051", "localhost:50051")
+            .replace("booking-server:8001", "localhost:8001")
             .replace("host.docker.internal", "localhost")
         )
 
@@ -173,61 +164,130 @@ def _rewrite_local_runtime_endpoints(catalog: dict) -> dict:
     }
 
 
-def _resolve_section_default_key(section: dict, category: str, explicit_key: str = "") -> str:
-    """Pick the effective default key for a category: explicit > ``DEFAULT_*`` env > ``""``."""
-    explicit_key = explicit_key.strip()
+def _section_default_key(section: dict, explicit_key: str = "") -> str:
+    """Return ``explicit_key`` when present, else the first key in ``section``."""
     if explicit_key and explicit_key in section:
         return explicit_key
-    env_var = _DEFAULT_SERVICE_ENV_VARS.get(category, "")
-    configured_key = os.getenv(env_var, "").strip() if env_var else ""
-    if configured_key and configured_key in section:
-        return configured_key
-    return ""
+    return next(iter(section), "")
 
 
-def _configured_local_asr_key() -> str:
-    image = (os.getenv("ASR_DOCKER_IMAGE", "").strip() or _DEFAULT_ASR_DOCKER_IMAGE).lower()
-    for image_name, catalog_key in _ASR_IMAGE_TO_LOCAL_KEY.items():
-        if image_name in image:
-            return catalog_key
-    return ""
+_REACHABILITY_TIMEOUT_SECS = 0.3
+_REACHABILITY_CACHE_TTL_SECS = 5.0
+_reachability_cache: dict[str, tuple[float, bool]] = {}
 
 
-def _filter_local_asr_for_deployed_image(catalog: dict) -> dict:
-    asr_section = catalog.get("asr", {})
-    if not isinstance(asr_section, dict) or len(asr_section) <= 1:
-        return catalog
-    configured_key = _configured_local_asr_key()
-    if configured_key not in asr_section:
-        logger.warning("ASR_DOCKER_IMAGE does not match a local ASR catalog entry; showing all local ASR entries")
-        return catalog
-    return {**catalog, "asr": {configured_key: asr_section[configured_key]}}
+def parse_endpoint(server: str) -> tuple[str, int] | None:
+    """Parse ``server`` (host[:port] or URL) into ``(host, port)``.
+
+    Returns ``None`` when the address cannot be parsed.
+    """
+    if not server:
+        return None
+    parsed = urlparse(server if "://" in server else f"//{server}")
+    host = parsed.hostname
+    if not host:
+        return None
+    port = parsed.port
+    if port is None:
+        port = 443 if parsed.scheme == "https" else 80
+    return host, port
+
+
+def is_endpoint_reachable(server: str) -> bool:
+    """Return whether ``server`` accepts a TCP connection.
+
+    Cached for ``_REACHABILITY_CACHE_TTL_SECS`` seconds per address so a single
+    ``/api/services`` request does not probe each endpoint multiple times.
+    """
+    address = parse_endpoint(server)
+    if address is None:
+        return False
+    cache_key = f"{address[0]}:{address[1]}"
+    cached = _reachability_cache.get(cache_key)
+    now = time.monotonic()
+    if cached and now - cached[0] < _REACHABILITY_CACHE_TTL_SECS:
+        return cached[1]
+    try:
+        with socket.create_connection(address, timeout=_REACHABILITY_TIMEOUT_SECS):
+            ok = True
+    except OSError:
+        ok = False
+    _reachability_cache[cache_key] = (now, ok)
+    return ok
+
+
+def _filter_reachable_entries(catalog: dict) -> dict:
+    """Drop catalog entries whose endpoint is not reachable from this runtime."""
+    filtered: dict = {}
+    for category, section in catalog.items():
+        if not isinstance(section, dict):
+            filtered[category] = section
+            continue
+        kept = {
+            key: entry
+            for key, entry in section.items()
+            if not isinstance(entry, dict)
+            or is_endpoint_reachable(str(entry.get("server") or entry.get("base_url") or ""))
+        }
+        filtered[category] = kept
+    return filtered
 
 
 def _load_cloud_services_catalog() -> dict:
-    """Load cloud service entries."""
+    """Load cloud service entries from ``services.cloud.yaml``."""
     return _normalize_services_catalog(load_yaml_file(_services_cloud_path()))
 
 
-def _load_local_services_catalog(platform: str) -> dict:
-    """Load the local catalog for a specific platform.
+def _load_local_services_catalog() -> dict:
+    """Load all platform sections from ``services.local.yaml`` into one catalog.
 
-    Entries must be nested under a platform key (``workstation`` / ``dgxspark``
-    / ``jetson``), each containing ``llm`` / ``asr`` / ``tts`` / ``s2s`` maps.
+    Identical entries across platforms are deduplicated; conflicting entries are
+    suffixed with the platform name so each variant remains addressable.
     """
-    platform_data = load_yaml_file(_services_local_path()).get(platform)
-    if not isinstance(platform_data, dict):
-        logger.warning(f"services.local.yaml has no section for platform={platform!r}")
+    local_path = _services_local_path()
+    if not local_path.is_file():
         return _normalize_services_catalog({})
-    return _rewrite_local_runtime_endpoints(_normalize_services_catalog(platform_data))
+    data = load_yaml_file(local_path)
+    if not isinstance(data, dict):
+        return _normalize_services_catalog({})
+    merged: dict = {}
+    for platform_name, platform_data in data.items():
+        if not isinstance(platform_data, dict):
+            continue
+        for category, section in platform_data.items():
+            if not isinstance(section, dict):
+                continue
+            cat_merged = merged.setdefault(category, {})
+            for key, entry in section.items():
+                if key not in cat_merged:
+                    cat_merged[key] = entry
+                elif cat_merged[key] != entry:
+                    cat_merged[f"{key}-{platform_name}"] = entry
+    return _rewrite_local_runtime_endpoints(_normalize_services_catalog(merged))
+
+
+def _merge_services_catalogs(*catalogs: dict) -> dict:
+    """Merge service catalogs by category and key (later catalogs win on conflicts)."""
+    merged: dict = {}
+    for catalog in catalogs:
+        for category, section in catalog.items():
+            if not isinstance(section, dict):
+                continue
+            target = merged.setdefault(category, {})
+            target.update(section)
+    return merged
 
 
 def _load_effective_services_catalog() -> dict:
-    """Load the active service catalog for the configured deployment mode."""
-    platform = get_deployment_platform()
-    if platform in _LOCAL_DEPLOY_PLATFORMS:
-        return _load_local_services_catalog(platform)
-    return _load_cloud_services_catalog()
+    """Return the merged catalog combining cloud and reachable local entries.
+
+    Local entries win on shared keys when their endpoint is reachable, so the
+    pipeline picks the deployed local service. When the local endpoint is not
+    reachable it is dropped, and the cloud entry takes effect.
+    """
+    cloud = _load_cloud_services_catalog()
+    local = _filter_reachable_entries(_load_local_services_catalog())
+    return _merge_services_catalogs(cloud, local)
 
 
 # Whitelist of keys accepted on session-config / offer bodies. Anything else
@@ -310,7 +370,7 @@ def hydrate_config_from_catalog(config: dict) -> None:
             value = entry.get(yaml_field, "")
             if value in ("", None):
                 config.pop(body_field, None)
-            elif isinstance(value, (dict, list)):
+            elif isinstance(value, dict | list):
                 config[body_field] = json.dumps(value)
             else:
                 config[body_field] = value if isinstance(value, str) else str(value)
@@ -343,15 +403,12 @@ def _load_catalog_entry_by_id(category: str, entry_id: str) -> dict:
     if not entry_id or entry_id.startswith("custom-") or ":" not in entry_id:
         return {}
     source, key = entry_id.split(":", 1)
-    if not key or category not in _SERVICE_CATEGORIES:
+    if not key:
         return {}
     if source == "cloud-nim":
         catalog = _load_cloud_services_catalog()
     elif source == "self-hosted":
-        platform = get_deployment_platform()
-        if platform not in _LOCAL_DEPLOY_PLATFORMS:
-            return {}
-        catalog = _load_local_services_catalog(platform)
+        catalog = _load_local_services_catalog()
     else:
         return {}
     entry = catalog.get(category, {}).get(key)
@@ -361,21 +418,17 @@ def _load_catalog_entry_by_id(category: str, entry_id: str) -> dict:
 def load_service_entry(category: str, key: str) -> dict:
     """Load a catalog entry by category and key from the effective catalog.
 
-    Preference order: explicit key, deploy-time ``DEFAULT_*`` override, first
-    entry in the category.
+    Falls back to the first entry in the category when the explicit ``key`` is
+    not present (or empty).
     """
     data = _load_effective_services_catalog()
     section = data.get(category, {})
     if not isinstance(section, dict) or not section:
         return {}
-    if key in section:
-        return dict(section[key])
-    default_key = _resolve_section_default_key(section, category, explicit_key=key)
-    if default_key in section:
-        if key:
-            logger.warning(f"Service key '{key}' not found in category '{category}', using fallback '{default_key}'")
-        return dict(section[default_key])
-    return next(iter(section.values()), {})
+    default_key = _section_default_key(section, key)
+    if key and default_key != key:
+        logger.warning(f"Service key '{key}' not found in category '{category}', using fallback '{default_key}'")
+    return dict(section[default_key]) if default_key in section else {}
 
 
 def _build_services_api_entries(section: dict, category: str, source: str) -> list[dict]:
@@ -383,10 +436,10 @@ def _build_services_api_entries(section: dict, category: str, source: str) -> li
     if not isinstance(section, dict):
         return []
 
-    default_key = _resolve_section_default_key(section, category)
+    selected_key = _section_default_key(section)
     ordered_items = list(section.items())
-    if default_key in section:
-        ordered_items.sort(key=lambda item: item[0] != default_key)
+    if selected_key in section:
+        ordered_items.sort(key=lambda item: item[0] != selected_key)
 
     return [
         {
@@ -395,28 +448,33 @@ def _build_services_api_entries(section: dict, category: str, source: str) -> li
             "builtIn": True,
             "source": source,
             **{k: v for k, v in val.items() if k != "name"},
+            "selected": key == selected_key,
         }
         for key, val in ordered_items
         if isinstance(val, dict)
     ]
 
 
+def _services_api_categories(*catalogs: dict) -> tuple[str, ...]:
+    """Return service categories ordered by the active example's ``slots``."""
+    ordered: list[str] = list(_active_slot_order or ())
+    for catalog in catalogs:
+        ordered.extend(category for category in catalog if category not in ordered)
+    return tuple(ordered)
+
+
 def build_services_api_response() -> dict:
-    """Build the payload for ``GET /api/services`` with cloud and active local entries."""
-    platform = get_deployment_platform()
-    is_local = platform in _LOCAL_DEPLOY_PLATFORMS
+    """Build the payload for ``GET /api/services`` with cloud and reachable local entries."""
     cloud_data = _load_cloud_services_catalog()
-    local_data = _load_local_services_catalog(platform) if is_local else {}
-    if is_local:
-        local_data = _filter_local_asr_for_deployed_image(local_data)
+    local_data = _filter_reachable_entries(_load_local_services_catalog())
     result: dict = {}
-    for category in _SERVICE_CATEGORIES:
+    for category in _services_api_categories(cloud_data, local_data):
         if _active_slots is not None and category not in _active_slots:
             result[category] = []
             continue
         cloud_entries = _build_services_api_entries(cloud_data.get(category, {}), category, "cloud-nim")
         local_entries = _build_services_api_entries(local_data.get(category, {}), category, "self-hosted")
-        result[category] = local_entries + cloud_entries if is_local else cloud_entries + local_entries
+        result[category] = local_entries + cloud_entries
     return result
 
 

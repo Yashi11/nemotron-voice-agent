@@ -40,14 +40,17 @@ function normalizeServiceSource(source: unknown): BuiltInServiceSource | undefin
   return source === "cloud-nim" || source === "self-hosted" ? source : undefined;
 }
 
-const serviceCatalogQueryOptions = {
-  queryKey: ["services"] as const,
-  queryFn: () => fetchJson<ServiceCatalog>("/api/services"),
-};
+function serviceCatalogQueryOptions(pipelineMode = "") {
+  const qs = pipelineMode ? `?pipeline_mode=${encodeURIComponent(pipelineMode)}` : "";
+  return {
+    queryKey: ["services", pipelineMode] as const,
+    queryFn: () => fetchJson<ServiceCatalog>(`/api/services${qs}`),
+  };
+}
 
-export function useDefaultLLMs() {
+export function useDefaultLLMs(pipelineMode = "") {
   return useQuery({
-    ...serviceCatalogQueryOptions,
+    ...serviceCatalogQueryOptions(pipelineMode),
     select: (catalog): LLMService[] =>
       (catalog.llm ?? []).map((e) => ({
         id: e.id,
@@ -81,9 +84,9 @@ export interface SimpleService {
   source?: BuiltInServiceSource;
 }
 
-export function useDefaultASR() {
+export function useDefaultASR(pipelineMode = "") {
   return useQuery({
-    ...serviceCatalogQueryOptions,
+    ...serviceCatalogQueryOptions(pipelineMode),
     select: (catalog): SimpleService[] =>
       (catalog.asr ?? []).map((e) => ({
         id: e.id,
@@ -97,9 +100,9 @@ export function useDefaultASR() {
   });
 }
 
-export function useDefaultTTS() {
+export function useDefaultTTS(pipelineMode = "") {
   return useQuery({
-    ...serviceCatalogQueryOptions,
+    ...serviceCatalogQueryOptions(pipelineMode),
     select: (catalog): SimpleService[] =>
       (catalog.tts ?? []).map((e) => ({
         id: e.id,
@@ -133,12 +136,7 @@ export interface ServiceEntry {
   [key: string]: unknown;
 }
 
-export interface ServiceCatalog {
-  llm: ServiceEntry[];
-  tts: ServiceEntry[];
-  asr: ServiceEntry[];
-  s2s: ServiceEntry[];
-}
+export type ServiceCatalog = Record<string, ServiceEntry[]>;
 
 export interface DeploymentOption {
   family: string;
@@ -194,8 +192,8 @@ export function useIceServers() {
   });
 }
 
-export function useServiceCatalog() {
-  return useQuery(serviceCatalogQueryOptions);
+export function useServiceCatalog(pipelineMode = "") {
+  return useQuery(serviceCatalogQueryOptions(pipelineMode));
 }
 
 export function useTTSConfig(server?: string, voiceId?: string) {

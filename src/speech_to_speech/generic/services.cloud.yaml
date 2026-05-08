@@ -1,0 +1,9 @@
+# Cloud (NVCF) service catalog for the Generic Speech-to-Speech example.
+
+# ── Speech-to-Speech Services ──
+s2s:
+  nemotron-voice-chat:
+    name: "Nemotron Voice Chat"
+    server: "wss://grpc.nvcf.nvidia.com/v1/realtime"
+    model: "nemotron-voicechat"
+    function_id: "42c86b5f-545a-4b2f-a83b-90fd71da9912"

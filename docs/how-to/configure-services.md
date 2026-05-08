@@ -1,23 +1,15 @@
 # Configure Services
 
-The Nemotron Voice Agent uses a service catalog to manage LLM, ASR, TTS, and S2S endpoints. Built-in entries come from [`services.cloud.yaml`](../../services.cloud.yaml) (remote / NVCF) or [`services.local.yaml`](../../services.local.yaml) (on-prem). Set `DEPLOYMENT_PLATFORM` in `.env` to `workstation`, `dgxspark`, or `jetson` when you want the local catalog; leave it unset for remote/NVCF mode. You can also add services at runtime from the UI or switch them from the UI dropdowns.
+The Nemotron Voice Agent uses example-local service catalogs to manage LLM, ASR, TTS, S2S, and example-specific services (e.g. Agentic Airline `fast-llm`, `orchestrator-llm`, `booking-server`). Built-in entries come from each example's `services.cloud.yaml` (remote / NVCF) and `services.local.yaml` (Compose-managed sidecars). The active UI example determines which catalog is loaded.
 
-## Which catalog is active
+## How catalog selection works
 
-The `--profile` flag selects both the example (Generic vs. Agentic Airline) and the platform. The Generic example is shown below; substitute `agentic-airline` / `agentic-airline-workstation` for the Agentic Airline example.
+- Each example owns its catalog at `<example-package>/services.cloud.yaml` (remote / NVCF) and optional `<example-package>/services.local.yaml` (Compose-managed sidecars).
+- The cloud catalog is always loaded.
+- The local catalog is merged on top, but only entries whose endpoint is reachable on TCP are exposed in the UI and used by the pipeline.
+- The same `--profile` works whether you run cloud-only or with local sidecars; nothing else needs to be set.
 
-| `.env` setting | Launch command | Catalog file |
-|----------------|----------------|--------------|
-| `DEPLOYMENT_PLATFORM` unset | `docker compose --profile generic up -d` | [`services.cloud.yaml`](../../services.cloud.yaml) |
-| `DEPLOYMENT_PLATFORM=workstation` | `docker compose --profile generic-workstation up -d` | [`services.local.yaml`](../../services.local.yaml) (`workstation:` section) |
-| `DEPLOYMENT_PLATFORM=dgxspark` | `docker compose --profile generic-dgxspark up -d` | [`services.local.yaml`](../../services.local.yaml) (`dgxspark:` section) |
-| `DEPLOYMENT_PLATFORM=jetson` | `docker compose --profile generic-jetson up -d` | [`services.local.yaml`](../../services.local.yaml) (`jetson:` section) |
-
-Always keep `DEPLOYMENT_PLATFORM` in `.env` aligned with the `--profile` you launch. The same `.env` setting is honored for non-Docker (`uv run`) workflows.
-
-## Available Services (cloud catalog)
-
-The default [`services.cloud.yaml`](../../services.cloud.yaml) includes:
+## Available services (Generic Cascaded cloud)
 
 ### LLM
 
@@ -46,41 +38,30 @@ The default [`services.cloud.yaml`](../../services.cloud.yaml) includes:
 |-------|-----|-------------|
 | [Nemotron Voice Chat](https://build.nvidia.com/nvidia/nemotron-voicechat) | `nemotron-voice-chat` | Direct voice-to-voice pipeline |
 
-On-prem defaults live in [`services.local.yaml`](../../services.local.yaml); edit hostnames and keys to match your stack.
+## Switching services in the UI
 
-## Switching Services via the UI
+The Services tab lists all services exposed by the active catalog (cloud and reachable local entries). Click an entry to make it the active selection for that category. Selections persist in browser localStorage. Custom services added through the UI also live in localStorage.
 
-The client UI includes dropdowns for LLM, ASR, and TTS services. Select any service from the dropdown to switch during a session. The change takes effect on the next conversation turn.
+## Changing built-in defaults
 
-## Adding Custom Services via the UI
+The first entry in each catalog category is the runtime default. To change defaults, reorder entries (or add a new entry first) in the relevant `services.cloud.yaml` / `services.local.yaml` and refresh the browser. No container restart is required for catalog edits.
 
-You can add custom services directly from the UI's **Services** tab without editing any files or restarting the server. Custom services added in the UI are stored in the browser's localStorage and persist across sessions.
+## On-prem catalog
 
-## Changing Default Services
+`services.local.yaml` groups entries under platform sections (`workstation`, `dgxspark`, `jetson`) for documentation. The backend merges all sections automatically; reachability filtering exposes only the deployed sidecars.
 
-Edit the `.env` file only when you want to override the deployment defaults. If a configured key is missing from the active catalog, the backend falls back to the first built-in entry in that category:
+| Compose endpoint | Host-run rewrite |
+|---|---|
+| `http://nvidia-llm:8000/v1` | `http://localhost:18000/v1` |
+| `http://nvidia-llm-vllm:8000/v1` | `http://localhost:18000/v1` |
+| `tts-service:50051` | `localhost:50151` |
+| `asr-service:50052` | `localhost:50152` |
+| `nemotron-speech:50051` | `localhost:50051` |
+| `booking-server:8001` | `localhost:8001` |
 
-```bash
-DEFAULT_LLM=nemotron-nano
-DEFAULT_TTS=magpie-tts
-DEFAULT_ASR=nemotron-speech
-```
+## Adding built-in cloud services
 
-## On-prem catalog (`services.local.yaml`)
-
-Edit [`services.local.yaml`](../../services.local.yaml) for Jetson, DGX Spark, or workstation deployments. The shipped file groups entries under `workstation:`, `dgxspark:`, and `jetson:` and keeps only the available built-ins for each deployment:
-
-- `workstation`: `http://nvidia-llm:8000/v1`, `asr-service:50052`, `tts-service:50051`
-- `dgxspark`: `http://nvidia-llm-vllm:8000/v1`, `asr-service:50052`, `tts-service:50051`
-- `jetson`: `http://nvidia-llm-vllm:8000/v1`, `nemotron-speech:50051` (compose-managed Riva serves ASR and TTS on the same port)
-
-Edit [`services.local.yaml`](../../services.local.yaml) directly for your deployment.
-
-## Adding built-in services (cloud)
-
-To add NVCF-oriented built-in options for cloud deployments, edit [`services.cloud.yaml`](../../services.cloud.yaml). Changes are picked up without rebuilding the image when the file is bind-mounted; refresh the browser if the UI caches the catalog.
-
-### LLM Example
+Append entries to the relevant `services.cloud.yaml`. Refresh the browser to pick up the change.
 
 ```yaml
 llm:
@@ -92,8 +73,6 @@ llm:
     extra_params: ""
 ```
 
-### ASR Example
-
 ```yaml
 asr:
   my-custom-asr:
@@ -102,8 +81,6 @@ asr:
     model: "my-asr-model"
     function_id: ""
 ```
-
-### TTS Example
 
 ```yaml
 tts:
@@ -114,22 +91,15 @@ tts:
     function_id: ""
 ```
 
-## Using Local NIM Services
+## Local NIM services
 
-When deploying with Docker Compose profiles, ASR, TTS, and LLM services run on your hardware. Set `DEPLOYMENT_PLATFORM` in `.env` so the backend loads the matching section from [`services.local.yaml`](../../services.local.yaml), then start the matching profile:
-
-```bash
-# .env
-DEPLOYMENT_PLATFORM=workstation   # or dgxspark / jetson
-```
+Start the matching profile; the catalog will pick them up automatically.
 
 ```bash
 docker compose --profile generic-workstation up -d
 docker compose --profile generic-dgxspark up -d
 docker compose --profile generic-jetson up -d
-
-# Agentic Airline example (workstation)
 docker compose --profile agentic-airline-workstation up -d
 ```
 
-Running `docker compose --profile generic up -d` (or `docker compose --profile agentic-airline up -d`) with `DEPLOYMENT_PLATFORM` unset stays cloud-only and loads [`services.cloud.yaml`](../../services.cloud.yaml).
+`--profile generic` and `--profile agentic-airline` stay cloud-only and use only `services.cloud.yaml`.

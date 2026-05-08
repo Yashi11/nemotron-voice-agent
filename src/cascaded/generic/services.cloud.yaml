@@ -47,11 +47,3 @@ asr:
     server: "grpc.nvcf.nvidia.com:443"
     model: "parakeet-1.1b-rnnt-multilingual-asr"
     function_id: "71203149-d3b7-4460-8231-1be2543a1fca"
-
-# ── Speech-to-Speech Services ──
-s2s:
-  nemotron-voice-chat:
-    name: "Nemotron Voice Chat"
-    server: "wss://grpc.nvcf.nvidia.com/v1/realtime"
-    model: "nemotron-voicechat"
-    function_id: "42c86b5f-545a-4b2f-a83b-90fd71da9912"

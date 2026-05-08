@@ -1,10 +1,10 @@
 # Configure TTS Settings
 
-The Text-to-Speech (TTS) system supports multiple voices and languages using the [NVIDIA Magpie TTS model](https://build.nvidia.com/nvidia/magpie-tts-multilingual/modelcard). TTS services are defined in [`services.cloud.yaml`](../../services.cloud.yaml) or [`services.local.yaml`](../../services.local.yaml), and voices can be changed from the UI.
+The Text-to-Speech (TTS) system supports multiple voices and languages using the [NVIDIA Magpie TTS model](https://build.nvidia.com/nvidia/magpie-tts-multilingual/modelcard). TTS services are defined in the selected example's `services.cloud.yaml` or `services.local.yaml`, and voices can be changed from the UI.
 
 ## Default Configuration
 
-The default cloud TTS service is defined in `services.cloud.yaml`:
+The default cloud TTS service is defined in the selected example's `services.cloud.yaml`:
 
 ```yaml
 tts:
@@ -39,11 +39,7 @@ workstation:
 
 ## Changing the Default TTS Service
 
-Edit the `.env` file only if you want to override the default TTS key. Any override must match a key in the active catalog for your deployment; otherwise the first built-in TTS entry is used:
-
-```bash
-DEFAULT_TTS=magpie-tts
-```
+The first entry in the `tts:` block of the active catalog is the runtime default. Reorder entries in the example's `services.cloud.yaml` / `services.local.yaml` to change which TTS is selected on startup.
 
 ## Pronunciation Correction (IPA)
 

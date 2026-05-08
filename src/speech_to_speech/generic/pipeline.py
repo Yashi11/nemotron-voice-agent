@@ -37,7 +37,7 @@ from pipecat.transports.base_transport import TransportParams
 import speech_to_speech.nemotron_compat  # noqa: F401 — monkey-patches Pipecat event parser
 from speech_to_speech.nvcf_realtime import NVCFRealtimeLLMService
 from tracing import IS_TRACING_ENABLED
-from utils import get_deployment_platform, load_service_entry, resolve_prompt
+from utils import load_service_entry, resolve_prompt
 
 load_dotenv(override=True)
 
@@ -45,7 +45,6 @@ load_dotenv(override=True)
 async def bot(runner_args: RunnerArguments) -> None:
     """Build and run the S2S pipeline for a single session."""
     body = runner_args.body if isinstance(runner_args.body, dict) else {}
-    platform = get_deployment_platform() or "cloud-nim"
     default_s2s = load_service_entry("s2s", "")
 
     base_url = body.get("s2s_server", "") or default_s2s.get("server", "wss://grpc.nvcf.nvidia.com/v1/realtime")
@@ -56,8 +55,7 @@ async def bot(runner_args: RunnerArguments) -> None:
 
     key_hint = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else api_key
     logger.info(
-        f"Starting S2S pipeline — platform: {platform}, endpoint: {base_url}, "
-        f"function_id: {function_id or '(none)'}, api_key: {key_hint}"
+        f"Starting S2S pipeline — endpoint: {base_url}, function_id: {function_id or '(none)'}, api_key: {key_hint}"
     )
 
     transport = _create_transport(runner_args)

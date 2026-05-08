@@ -15,10 +15,10 @@ programmer errors (malformed body, server bug) surface loudly.
 Base URL resolution follows the same dual-mode pattern as the service
 catalog rewriter in :mod:`utils`:
 
-* ``BOOKING_API_URL`` env var wins when set (manual override).
-* ``APP_RUNTIME=container`` (set by docker-compose) defaults to the
-  in-network hostname ``http://booking-server:8001``.
-* Otherwise (host / uv direct runs) defaults to ``http://localhost:8001``.
+* The active service catalog entry wins when present.
+* ``APP_RUNTIME=container`` (set by docker-compose) falls back to the in-network
+  hostname ``http://booking-server:8001``.
+* Otherwise (host / uv direct runs) falls back to ``http://localhost:8001``.
 
 One shared :class:`httpx.AsyncClient` per stream for connection pooling.
 """
@@ -29,6 +29,8 @@ import os
 
 import httpx
 from loguru import logger
+
+from utils import load_service_entry
 
 _HOST_DEFAULT_BASE_URL = "http://localhost:8001"
 _CONTAINER_DEFAULT_BASE_URL = "http://booking-server:8001"
@@ -48,7 +50,8 @@ def _get_client() -> httpx.AsyncClient:
     """Lazily construct the shared async client. Reused across streams."""
     global _client
     if _client is None:
-        base_url = os.environ.get("BOOKING_API_URL") or _default_base_url()
+        booking_server = load_service_entry("booking-server", "")
+        base_url = booking_server.get("server") or _default_base_url()
         _client = httpx.AsyncClient(base_url=base_url, timeout=_DEFAULT_TIMEOUT)
         logger.info(f"booking_client connected to {base_url}")
     return _client

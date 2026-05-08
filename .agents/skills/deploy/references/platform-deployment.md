@@ -13,7 +13,6 @@ echo "$NGC_API_KEY" | docker login nvcr.io -u '$oauthtoken' --password-stdin
 Required `.env` keys:
 - All modes: `NVIDIA_API_KEY`
 - `dgxspark` / `jetson`: `HF_TOKEN`
-- Local modes: `DEPLOYMENT_PLATFORM=workstation|dgxspark|jetson`
 
 ## Workstation
 

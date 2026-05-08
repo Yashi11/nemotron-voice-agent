@@ -15,9 +15,8 @@ metadata:
 - Use Docker Compose for deployment.
 - Preserve existing `.env`; create it only if missing.
 - Use `configure-pipeline` for `.env`, catalog, or prompt changes.
-- Local profiles are platform-specific: `*-workstation`, `*-dgxspark`, and `*-jetson` are not interchangeable. Keep the profile suffix, `DEPLOYMENT_PLATFORM`, and detected hardware aligned.
-- Cloud-only profiles (`all-examples`, `generic`, `agentic-airline`) use remote/NVCF services and can run on any platform with Docker.
-- For multilingual setup, deploy the target profile first, then use `configure-pipeline` to set the prompt and ASR/TTS defaults.
+- Local profiles are platform-specific: `*-workstation`, `*-dgxspark`, and `*-jetson` are not interchangeable. Pick the suffix that matches detected hardware.
+- Cloud-only profiles (`all-examples`, `generic`, `agentic-airline`) use remote/NVCF services and run on any host with Docker.
 
 ## Deploy
 
@@ -48,7 +47,6 @@ Required keys: `NVIDIA_API_KEY` for all modes; `HF_TOKEN` for `dgxspark` and `je
 - Selector app: `all-examples` (cloud/NVCF only)
 - Generic: `generic`, `generic-workstation`, `generic-dgxspark`, `generic-jetson`
 - Agentic Airline: `agentic-airline`, `agentic-airline-workstation` (no DGX Spark / Jetson local profile)
-- For local profiles, set `DEPLOYMENT_PLATFORM=workstation|dgxspark|jetson` in `.env`.
 - For local profiles, log in to `nvcr.io`.
 
 5. Start:
@@ -63,10 +61,10 @@ Use `--build` only after source or `Dockerfile` changes.
 
 ```bash
 docker compose ps
-# Service name depends on profile: all-examples, generic-example[-suffix],
-# or agentic-airline-example[-workstation].
 docker compose logs --tail 200 <example-service>
 ```
+
+Service name follows the profile (`all-examples`, `generic-example`, or `agentic-airline-example`).
 
 ## References
 

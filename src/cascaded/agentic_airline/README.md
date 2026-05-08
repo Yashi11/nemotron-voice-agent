@@ -20,7 +20,7 @@ service catalogs, prompts, and example-local compose file.
 | `tools/` | fast-LLM tools plus booking-backend client |
 | `policy/` | deterministic fare / IRROPS policy tables |
 | `prompts/` | airline fast-agent prompt |
-| `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for `--bot` override runs |
+| `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for standalone and selector runs |
 | `docker-compose.yml` | example-local pipeline + booking backend stack |
 
 ## Running the example
@@ -37,17 +37,14 @@ Then start the voice server in another terminal:
 uv run python3 src/server.py --bot cascaded.agentic_airline.pipeline:bot
 ```
 
-The booking client defaults to `http://localhost:8001` for host runs and
-`http://booking-server:8001` for compose runs (selected via `APP_RUNTIME`,
-matching the dual-mode pattern in `utils.py`). Set `BOOKING_API_URL` to
-override either default.
+The booking client reads its base URL from the active service catalog
+(`booking-server` entry). On host runs, the catalog rewrites
+`http://booking-server:8001` to `http://localhost:8001` automatically.
 
 Or with the example-local compose files. The shared model services
 (`nvidia-llm`, `asr-service`, `tts-service`) live in
 `src/cascaded/shared/docker-compose.yml`, so any workstation run **must**
-pass both compose files via `-f` — running the airline compose alone
-will fail with `service "agentic-airline-example-workstation"
-depends on undefined service "nvidia-llm"`.
+pass both compose files via `-f`.
 
 Cloud (NVCF) — no shared services needed, only the airline compose:
 
@@ -86,10 +83,9 @@ the workstation profile additionally brings up the shared `nvidia-llm`,
 UI is served at `https://localhost:7860/`. The app is locked to the airline
 example by its `--bot cascaded.agentic_airline.pipeline:bot` startup command.
 
-The compose path uses the multi-experience server selector and the root
-service catalogs. The package-local `services.cloud.yaml` and
-`services.local.yaml` are selected automatically when the server is
-launched with `--bot cascaded.agentic_airline.pipeline:bot`.
+The compose path uses the multi-experience server selector. The package-local
+`services.cloud.yaml` and `services.local.yaml` are selected automatically when
+this example is active in the UI or launched with `--bot cascaded.agentic_airline.pipeline:bot`.
 
 ## Import convention
 
@@ -109,7 +105,7 @@ with deployment and configuration:
 | Skill | Purpose |
 | --- | --- |
 | [`deploy`](../../../.agents/skills/deploy/SKILL.md) | hardware-mode selection, NGC login, and root-compose deploy across every profile (`all-examples`, `generic[-*]`, `agentic-airline[-*]`) |
-| [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, root `services.{cloud,local}.yaml`, `prompt.yaml`, or this example's per-example catalogs (auto-selected on `--bot` runs), then re-apply |
+| [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, `prompt.yaml`, or example-local `services.{cloud,local}.yaml`, then re-apply |
 
 Install them into your coding agent with `npx skills add .` (see the
 [top-level README](../../../README.md#agent-skills)). When deploying only

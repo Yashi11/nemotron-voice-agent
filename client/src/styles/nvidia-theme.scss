@@ -727,7 +727,7 @@ body {
 .device-button {
   cursor: pointer;
   transition: all var(--transition-base);
-  
+
   &:hover {
     background: var(--bg-card-hover);
     border-color: var(--border-default);
@@ -1234,8 +1234,9 @@ body {
 }
 
 .svc-row {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
   padding: 10px 12px;
@@ -1260,6 +1261,9 @@ body {
     flex-direction: column;
     gap: 2px;
     min-width: 0;
+    width: 100%;
+    // Reserve room for the top-right action/active badge cluster.
+    padding-right: 92px;
   }
 
   &__name {
@@ -1299,6 +1303,9 @@ body {
   }
 
   &__actions {
+    position: absolute;
+    top: 10px;
+    right: 12px;
     display: flex;
     gap: 4px;
     flex-shrink: 0;
@@ -1516,4 +1523,3 @@ body {
   from { opacity: 1; }
   to { opacity: 0; }
 }
-

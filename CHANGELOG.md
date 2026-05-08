@@ -12,17 +12,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CUDA MPS SM-split and disjoint CPU pinning for Thor's shared GPU and LPDDR5X bus: `VLLM_MPS_THREAD_PCT` / `RIVA_MPS_THREAD_PCT` and `VLLM_CPUSET` / `RIVA_CPUSET` / `PIPECAT_CPUSET`; `scripts/start-mps.sh` and `scripts/stop-mps.sh` manage the daemon
 - Grouped service UI (Self-hosted / NVIDIA Cloud / Custom) in the LLM/ASR/TTS selectors, driven by namespaced service IDs returned by `/api/services`
 - `APP_RUNTIME=container` marker set by `docker-compose.yml`; when absent the backend rewrites Compose-reachable endpoints in `services.local.yaml` to `localhost` so host-native runs (`uv run`) work without editing the catalog
+- TCP reachability filter on `/api/services`: only deployed local services appear in the UI; cloud entries always show
+- Pre-commit hook config (`uv run ruff check`, `uv run ruff format`, `npm run lint`) and Agentic Airline `fast-llm` / `orchestrator-llm` / `booking-server` role catalog categories
+- Speech-to-Speech now has its own example-local catalog under `src/speech_to_speech/generic/`
 
 ### Changed
 
 - Jetson ASR/TTS endpoint moves from `host.docker.internal:50051` to the `nemotron-speech:50051` compose service; host-run Pipecat rewrites it to `localhost:50051` automatically
-- Service catalog split: `services.cloud.yaml` (remote / NVCF) and `services.local.yaml` (nested under `workstation` / `dgxspark` / `jetson`); the active catalog is selected from `DEPLOYMENT_PLATFORM`, and an unset/invalid `DEFAULT_LLM` / `DEFAULT_ASR` / `DEFAULT_TTS` falls back to the first entry in the active catalog
+- Service catalogs are example-local: each example owns `services.cloud.yaml` and `services.local.yaml`. The local catalog is merged on top of the cloud catalog when its endpoints are reachable; selection no longer relies on a `DEPLOYMENT_PLATFORM` flag
+- Pipelines pick the first entry per catalog category as the runtime default; UI selection persists in browser localStorage
 - S2S pipeline now authenticates with `NVIDIA_API_KEY` only; the former `S2S_API_KEY` env fallback (with OpenAI compatibility) has been removed
 
 ### Removed
 
 - `LLM_INTERLEAVING` env flag and `NvidiaInterleavedLLMService`: MPS + CPU pinning replace the need for strict sentence-bounded interleaving
 - `S2S_API_KEY` environment variable
+- `DEPLOYMENT_PLATFORM`, `DEFAULT_LLM`, `DEFAULT_ASR`, `DEFAULT_TTS`, `BOOKING_API_URL`, `FAST_LLM_*`, and `ORCHESTRATOR_LLM_*` env vars; configuration now lives entirely in the example service catalogs
+- Root-level `services.cloud.yaml` / `services.local.yaml` (replaced by example-local catalogs)
 
 ## [2.0.0] - 2026-03-25
 

@@ -94,14 +94,18 @@ For detailed setup instructions and troubleshooting, proceed to [Getting Started
 
 ## Configuration
 
-The application is configured through these root files:
+The application is configured through these files:
 
 | File | Purpose |
 |------|---------|
-| `.env` | API keys, default service selections, and feature flags |
-| `services.cloud.yaml` | Cloud (NVCF) service catalog when not using an on-prem platform profile |
-| `services.local.yaml` | On-prem catalog used when `DEPLOYMENT_PLATFORM` is set to `workstation`, `dgxspark`, or `jetson` |
+| `.env` | API keys and feature flags |
 | `prompt.yaml` | Persona and system prompt presets selectable from the UI |
+
+Service catalogs are example-local under each example package, for example
+`src/cascaded/generic/services.{cloud,local}.yaml`,
+`src/cascaded/agentic_airline/services.{cloud,local}.yaml`, or
+`src/speech_to_speech/generic/services.cloud.yaml`. In the multi-example selector,
+the active UI selection determines which catalog is loaded.
 
 See the [Configuration Guide](docs/02-configuration-guide.md) for details.
 

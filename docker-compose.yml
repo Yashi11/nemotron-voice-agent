@@ -25,45 +25,37 @@ include:
   - path: src/cascaded/generic/docker-compose.yml
   - path: src/cascaded/agentic_airline/docker-compose.yml
 
-x-all-examples: &all-examples
-  build:
-    context: .
-    dockerfile: Dockerfile
-  image: nemotron-voice-agent:latest
-  cpuset: ${PIPECAT_CPUSET:-}
-  command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0", "--all-examples"]
-  ports:
-    - "${PIPELINE_APP_PORT:-7860}:7860"
-  env_file:
-    - .env
-  environment:
-    APP_RUNTIME: container
-    DEPLOYMENT_PLATFORM: ""
-    DEFAULT_LLM: ${DEFAULT_LLM:-}
-    DEFAULT_ASR: ${DEFAULT_ASR:-}
-    DEFAULT_TTS: ${DEFAULT_TTS:-}
-    BOOKING_API_URL: "http://booking-server:8001"
-  volumes:
-    - ./prompt.yaml:/app/prompt.yaml:ro
-  extra_hosts:
-    - "host.docker.internal:host-gateway"
-  healthcheck:
-    test: ["CMD-SHELL", "curl -fk https://localhost:7860/health || exit 1"]
-    interval: 30s
-    timeout: 10s
-    retries: 3
-    start_period: 30s
-  restart: unless-stopped
-  logging:
-    driver: "json-file"
-    options:
-      max-size: "50m"
-      max-file: "5"
-
 services:
   all-examples:
-    <<: *all-examples
     profiles: ["all-examples"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nemotron-voice-agent:latest
+    cpuset: ${PIPECAT_CPUSET:-}
+    command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0", "--all-examples"]
+    ports:
+      - "${PIPELINE_APP_PORT:-7860}:7860"
+    env_file:
+      - .env
+    environment:
+      APP_RUNTIME: container
+    volumes:
+      - ./prompt.yaml:/app/prompt.yaml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fk https://localhost:7860/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   # OpenTelemetry trace collector & UI (opt-in via ENABLE_TRACING).
   phoenix:

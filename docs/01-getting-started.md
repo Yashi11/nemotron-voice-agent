@@ -82,23 +82,9 @@ Before you begin, ensure you have the following:
 
 ## Optional: Deploy with Local NIM Profiles
 
-For local GPU deployments, set `DEPLOYMENT_PLATFORM` in `.env` so the backend loads the matching section of `services.local.yaml`, then start the matching Docker Compose profile:
+Local NIM ASR/TTS/LLM sidecars run alongside the example container when you launch a local profile. The backend exposes them automatically once the containers are reachable; no extra `.env` flag is required.
 
-```bash
-# In .env
-DEPLOYMENT_PLATFORM=workstation   # or dgxspark / jetson
-```
-
-The platform value is the bare name; local deployments use the example-prefixed profiles (e.g. `generic-workstation`, `generic-dgxspark`, `generic-jetson`, `agentic-airline-workstation`). The `all-examples` selector profile stays cloud/NVCF-only.
-
-DGX Spark also requires `HF_TOKEN` for the vLLM model download. If the selected Magpie TTS image is staging or private, use a `NVIDIA_API_KEY` with access to that image:
-
-```bash
-# In .env for DGX Spark
-DEPLOYMENT_PLATFORM=dgxspark
-HF_TOKEN=hf_...
-NVIDIA_API_KEY=nvapi-...
-```
+DGX Spark and Jetson additionally need `HF_TOKEN` for the vLLM model download. If the Magpie TTS image is staging or private, use a `NVIDIA_API_KEY` with access to that image.
 
 ```bash
 # Generic example — full local deployment (2 GPUs required)
@@ -114,7 +100,7 @@ docker compose --profile generic-jetson up -d
 docker compose --profile agentic-airline-workstation up -d
 ```
 
-Run with `--profile generic` (or `--profile agentic-airline`) and `DEPLOYMENT_PLATFORM` unset to stay remote/NVCF. Always keep `DEPLOYMENT_PLATFORM` in `.env` aligned with the `--profile` you launch.
+Run with `--profile generic` (or `--profile agentic-airline`) to stay cloud/NVCF only.
 
 For Jetson-specific setup, refer to [Jetson Thor Deployment](03-jetson-thor.md).
 

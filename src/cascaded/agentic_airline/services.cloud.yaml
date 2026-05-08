@@ -4,8 +4,8 @@
 # On-prem (`DEPLOYMENT_PLATFORM=workstation`): see `services.local.yaml`.
 # Jetson and DGX Spark are not supported for the Agentic Airline use case.
 
-# ── LLM Services (Cascaded pipeline) ──
-llm:
+# ── Agentic Airline role-specific LLM defaults ──
+fast-llm:
   nemotron-nano:
     name: "Nemotron 3 Nano 30B A3B"
     model_id: "nvidia/nemotron-3-nano-30b-a3b"
@@ -13,12 +13,14 @@ llm:
     system_prompt: ""
     extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
 
-  nemotron-super:
-    name: "Nemotron 3 Super 120B A12B"
-    model_id: "nvidia/nemotron-3-super-120b-a12b"
+orchestrator-llm:
+  nemotron-nano:
+    name: "Nemotron 3 Nano 30B A3B"
+    model_id: "nvidia/nemotron-3-nano-30b-a3b"
     base_url: "https://integrate.api.nvidia.com/v1"
     system_prompt: ""
     extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+    timeout_secs: 15
 
 # ── TTS Services (Cascaded pipeline) ──
 tts:

@@ -1,14 +1,14 @@
 # Configuration Guide
 
-The Nemotron Voice Agent is configured through a small set of files at the repository root. Use the following guides to customize specific features.
+The Nemotron Voice Agent is configured through a small set of root and example-local files. Use the following guides to customize specific features.
 
 ## Configuration Files
 
 | File | Purpose |
 |------|---------|
-| [`.env.example`](../.env.example) | API keys, default service selections, and feature flags |
-| [`services.cloud.yaml`](../services.cloud.yaml) | Cloud (NVCF) service catalog for plain `docker compose up -d` |
-| [`services.local.yaml`](../services.local.yaml) | On-prem catalog used when `DEPLOYMENT_PLATFORM` is set to `workstation`, `dgxspark`, or `jetson` |
+| [`.env.example`](../.env.example) | API keys and feature flags |
+| `<example-package>/services.cloud.yaml` | Example-local cloud (NVCF) service catalog |
+| `<example-package>/services.local.yaml` | Example-local on-prem catalog merged automatically when sidecars are reachable |
 | [`prompt.yaml`](../prompt.yaml) | Persona and system prompt presets selectable from the UI |
 
 ## How-To Guides
