@@ -14,8 +14,6 @@ from urllib.parse import urlparse
 import yaml
 from loguru import logger
 
-from timeutils import TOOL_HANDLERS as TOOL_HANDLERS  # noqa: F401
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_FILENAME = "prompts.yaml"
 TOOLS_FILENAME = "tools.yaml"
