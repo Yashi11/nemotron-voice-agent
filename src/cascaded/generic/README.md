@@ -15,7 +15,10 @@ entry point, service catalogs, and example-local compose file.
 | Path | Role |
 | --- | --- |
 | `pipeline.py` | pipecat entry point for the generic example |
-| `tools.py` | example function-calling tool definitions + handlers |
+| `prompts.yaml` | example-local prompt catalog; each entry may list `tools_available` to gate function calling per prompt |
+| `tools.yaml` | OpenAI function-calling schemas, keyed by tool name |
+| `tool_handlers.py` | async handlers for each schema in `tools.yaml`, exposed via the `TOOL_HANDLERS` registry |
+| `tools.py` | builds a filtered `ToolsSchema` from `tools.yaml` for the tool names a prompt requests, skipping entries without a matching handler |
 | `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for standalone and selector runs |
 | `docker-compose.yml` | example-local pipeline app stack (pairs with `cascaded/shared/`) |
 

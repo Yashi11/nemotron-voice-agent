@@ -677,6 +677,24 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  // Show at most four rows; anything longer scrolls.
+  max-height: 9rem;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--text-muted);
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
 .tools-row {
