@@ -1,0 +1,29 @@
+get_current_time:
+  type: function
+  function:
+    name: get_current_time
+    description: Returns the exact current local time. Use this whenever the user asks what time it is.
+    parameters:
+      type: object
+      properties: {}
+      required: []
+
+get_current_date:
+  type: function
+  function:
+    name: get_current_date
+    description: Returns today's exact date and day of the week. Use this whenever the user asks what date or day it is.
+    parameters:
+      type: object
+      properties: {}
+      required: []
+
+get_timezone:
+  type: function
+  function:
+    name: get_timezone
+    description: Returns the system timezone. Use this whenever the user asks about their timezone or location.
+    parameters:
+      type: object
+      properties: {}
+      required: []

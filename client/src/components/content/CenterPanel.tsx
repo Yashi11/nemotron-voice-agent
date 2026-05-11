@@ -9,14 +9,16 @@ import { ConversationPanel } from "./ConversationPanel";
 import { MetricsPanel } from "./MetricsPanel";
 import { ServicesPanel } from "./ServicesPanel";
 import { PromptsPanel } from "./PromptsPanel";
+import { ToolsPanel } from "./ToolsPanel";
 
-type Tab = "conversation" | "metrics" | "services" | "prompts";
+type Tab = "conversation" | "metrics" | "services" | "prompts" | "tools";
 
 const ALL_TABS: { id: Tab; label: string }[] = [
   { id: "conversation", label: "CONVERSATION" },
   { id: "metrics", label: "METRICS" },
   { id: "services", label: "SERVICES" },
   { id: "prompts", label: "PROMPTS" },
+  { id: "tools", label: "TOOLS" },
 ];
 
 function ConversationContent() {
@@ -65,6 +67,9 @@ export function CenterPanel() {
       </div>
       <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${activeTab !== "prompts" ? "hidden" : ""}`}>
         <PromptsPanel />
+      </div>
+      <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${activeTab !== "tools" ? "hidden" : ""}`}>
+        <ToolsPanel />
       </div>
     </main>
   );

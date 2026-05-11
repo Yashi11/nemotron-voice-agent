@@ -6,6 +6,7 @@ import { PipelineModeSelector } from "../PipelineModeSelector";
 import { PipelineExampleSelector } from "../PipelineExampleSelector";
 import { TransportSelector } from "../TransportSelector";
 import { PromptSelector } from "../PromptSelector";
+import { ToolsSection } from "../ToolsSection";
 import { VoiceSettings } from "../VoiceSettings";
 
 export function StatusPanel() {
@@ -18,6 +19,7 @@ export function StatusPanel() {
       <PipelineExampleSelector />
       <TransportSelector />
       <PromptSelector />
+      {!isS2S && <ToolsSection />}
       {!isS2S && <VoiceSettings />}
     </aside>
   );
