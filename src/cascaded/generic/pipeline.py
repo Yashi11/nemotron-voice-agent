@@ -38,7 +38,7 @@ from pipecat.utils.context.llm_context_summarization import (
     LLMContextSummarizationUtil,
 )
 
-from cascaded.generic.tools import _TOOLS_SCHEMA, TOOL_HANDLERS
+from cascaded.generic.tools import TOOL_HANDLERS, build_tools_schema
 from cascaded.shared.audio_recorder import create_audio_recorder
 from cascaded.shared.multilingual_processor import MultilingualProcessor
 from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
@@ -52,6 +52,7 @@ from utils import (
     parse_env_int,
     parse_json_dict,
     resolve_prompt,
+    resolve_tools_available,
 )
 
 load_dotenv(override=True)
@@ -229,14 +230,16 @@ async def bot(runner_args: RunnerArguments) -> None:
         settings=llm_settings,
     )
 
-    tools_enabled = prompt_key == "generic_assistant"
+    tools_available = resolve_tools_available(__file__, prompt_key)
+    tools_schema, registered_tools = build_tools_schema(__file__, tools_available)
+    tools_enabled = tools_schema is not None
 
     if tools_enabled:
-        for name, handler in TOOL_HANDLERS.items():
-            llm.register_function(name, handler)
+        for name in registered_tools:
+            llm.register_function(name, TOOL_HANDLERS[name])
             logger.info(f"Registered tool handler: {name}")
     else:
-        logger.info(f"Tool calling disabled for prompt_key={prompt_key!r} (enabled only for 'generic_assistant')")
+        logger.info(f"Tool calling disabled for prompt_key={prompt_key!r} (no tools_available in prompts.yaml)")
 
     # --- TTS ---
     tts_server = body.get("tts_server", "") or default_tts.get("server", "grpc.nvcf.nvidia.com:443")
@@ -279,7 +282,7 @@ async def bot(runner_args: RunnerArguments) -> None:
     # the request payload; omitting it (NOT_GIVEN) leads to hallucinated
     # answers for time/date/timezone queries instead of tool calls.
     if tools_enabled:
-        context = LLMContext(messages, tools=_TOOLS_SCHEMA, tool_choice="auto")
+        context = LLMContext(messages, tools=tools_schema, tool_choice="auto")
     else:
         context = LLMContext(messages)
     preserve_prompt_messages = len(messages)

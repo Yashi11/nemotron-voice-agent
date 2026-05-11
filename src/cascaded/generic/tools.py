@@ -1,49 +1,56 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-"""Tool definitions, schemas, and handlers for the cascaded pipeline."""
+"""Tool schema loading and handlers for the generic cascaded pipeline."""
 
+from pathlib import Path
+
+from loguru import logger
 from pipecat.adapters.schemas.tools_schema import AdapterType, ToolsSchema
 
 from utils import TOOL_HANDLERS as TOOL_HANDLERS  # noqa: F401
+from utils import load_tools_catalog
 
-# ---------------------------------------------------------------------------
-# Tool definitions  (OpenAI function-calling schema)
-# ---------------------------------------------------------------------------
 
-_NO_PARAMS: dict = {"type": "object", "properties": {}, "required": []}
+def build_tools_schema(module_file: str | Path, tool_names: list[str]) -> tuple[ToolsSchema | None, list[str]]:
+    """Build a ToolsSchema for ``tool_names`` from the example's ``tools.yaml``.
 
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_current_time",
-            "description": ("Returns the exact current local time. Use this whenever the user asks what time it is."),
-            "parameters": _NO_PARAMS,
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_current_date",
-            "description": (
-                "Returns today's exact date and day of the week. "
-                "Use this whenever the user asks what date or day it is."
-            ),
-            "parameters": _NO_PARAMS,
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_timezone",
-            "description": (
-                "Returns the system timezone. Use this whenever the user asks about their timezone or location."
-            ),
-            "parameters": _NO_PARAMS,
-        },
-    },
-]
+    A tool is included only when (a) the YAML entry exists, (b) the entry's
+    ``function.name`` equals the catalog key, and (c) a handler is registered
+    in ``TOOL_HANDLERS``. This prevents the schema from advertising callable
+    tools that the pipeline cannot fulfil. Failed entries are logged and
+    skipped.
 
-# AdapterType.OPENAI passes the list through to NvidiaLLMService (OpenAI-compatible).
-_TOOLS_SCHEMA = ToolsSchema(standard_tools=[], custom_tools={AdapterType.OPENAI: TOOLS})
+    Returns ``(schema, registered_names)`` so callers can register handlers
+    for exactly the tools that made it into the schema.
+    """
+    if not tool_names:
+        return None, []
+
+    catalog = load_tools_catalog(module_file)
+    if not catalog:
+        logger.warning("Tools catalog not found beside example module; tool calling disabled")
+        return None, []
+
+    tools: list[dict] = []
+    registered: list[str] = []
+    for name in tool_names:
+        entry = catalog.get(name)
+        if not isinstance(entry, dict):
+            logger.warning(f"Tool '{name}' not found in tools.yaml; skipping")
+            continue
+        fn = entry.get("function") if isinstance(entry.get("function"), dict) else {}
+        schema_name = fn.get("name")
+        if schema_name != name:
+            logger.warning(f"Tool '{name}' has mismatched function.name={schema_name!r} in tools.yaml; skipping")
+            continue
+        if name not in TOOL_HANDLERS:
+            logger.warning(f"Tool '{name}' has no registered handler; skipping")
+            continue
+        tools.append(entry)
+        registered.append(name)
+
+    if not tools:
+        return None, []
+
+    return ToolsSchema(standard_tools=[], custom_tools={AdapterType.OPENAI: tools}), registered

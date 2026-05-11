@@ -65,6 +65,7 @@ from utils import (
     is_endpoint_reachable,
     load_prompt_catalog,
     load_service_entry,
+    load_tools_catalog,
     parse_endpoint,
     set_active_slots,
 )
@@ -601,10 +602,29 @@ def create_app(
                 "content": val.get("content", ""),
                 "default": key == default_key,
                 "builtIn": True,
+                "tools": [t for t in (val.get("tools_available") or []) if isinstance(t, str)],
             }
             for key, val in catalog.items()
             if isinstance(val, dict) and "content" in val
         ]
+
+    @app.get("/api/tools")
+    async def get_tools(pipeline_mode: str = Query(default="")):
+        _, module = _example_with_module(pipeline_mode or fallback_example_key)
+        catalog = load_tools_catalog(module.__file__)
+        tools: list[dict] = []
+        for name, entry in catalog.items():
+            if not isinstance(entry, dict):
+                continue
+            fn = entry.get("function") if isinstance(entry.get("function"), dict) else {}
+            tools.append(
+                {
+                    "name": name,
+                    "description": fn.get("description", ""),
+                    "parameters": fn.get("parameters", {}),
+                }
+            )
+        return tools
 
     # ---- Service catalog (services.cloud.yaml or services.local.yaml) ----
 

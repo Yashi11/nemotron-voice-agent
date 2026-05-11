@@ -7,7 +7,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { useDeployment, useDefaultLLMs, useDefaultPrompts, useDefaultASR, useDefaultTTS, type DeploymentOption, type LLMService, type Prompt, type SimpleService } from "../api";
+import { useDeployment, useDefaultLLMs, useDefaultPrompts, useDefaultASR, useDefaultTTS, useDefaultTools, type DeploymentOption, type LLMService, type Prompt, type SimpleService, type Tool } from "../api";
 import { readLSArray, readLSString, writeLSString, writeLSJson, removeLSKey } from "../utils";
 import { AppContext } from "./app-context";
 
@@ -165,6 +165,9 @@ export interface AppState {
   updatePrompt: (key: string, description: string, content: string) => void;
   removePrompt: (key: string) => void;
   selectedPrompt: Prompt | undefined;
+
+  tools: Tool[];
+  toolsLoading: boolean;
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -333,6 +336,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const selectedPrompt = useMemo(() => prompts.find((p) => p.key === effectiveSelectedPromptKey), [prompts, effectiveSelectedPromptKey]);
 
+  // --- Tools (read-only catalog from active example's tools.yaml) ---
+  const { data: tools = [], isLoading: toolsLoading } = useDefaultTools(serviceCatalogKey);
+
   const value = useMemo<AppState>(() => ({
     selectedExample, selectExample, deploymentOptions,
     deploymentSelectable,
@@ -343,12 +349,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ttsServices, ttsLoading, selectedTTSId: effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,
     selectedVoiceId, setSelectedVoiceId,
     prompts, promptsLoading, selectedPromptKey: effectiveSelectedPromptKey, selectPrompt, addPrompt, updatePrompt, removePrompt, selectedPrompt,
+    tools, toolsLoading,
   }), [selectedExample, selectExample, deploymentOptions, deploymentSelectable, selectedTransport, setTransport, selectedS2SServer,
        llms, llmsLoading, effectiveSelectedLLMId, selectLLM, addLLM, updateLLM, removeLLM, selectedLLM,
        asrServices, asrLoading, effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
        ttsServices, ttsLoading, effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,
        selectedVoiceId,
-       prompts, promptsLoading, effectiveSelectedPromptKey, selectPrompt, addPrompt, updatePrompt, removePrompt, selectedPrompt]);
+       prompts, promptsLoading, effectiveSelectedPromptKey, selectPrompt, addPrompt, updatePrompt, removePrompt, selectedPrompt,
+       tools, toolsLoading]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

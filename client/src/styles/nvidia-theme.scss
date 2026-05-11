@@ -670,6 +670,43 @@ body {
   text-transform: uppercase;
 }
 
+.tools-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tools-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  padding: var(--space-1) 0;
+
+  &.is-active {
+    color: var(--text-primary);
+  }
+}
+
+.tools-indicator {
+  display: inline-flex;
+  width: 1em;
+  justify-content: center;
+  color: var(--text-muted);
+
+  .tools-row.is-active & {
+    color: #76b900;
+  }
+}
+
+.tools-name {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
 .status-row {
   display: flex;
   justify-content: space-between;

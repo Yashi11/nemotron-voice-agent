@@ -18,6 +18,7 @@ from timeutils import TOOL_HANDLERS as TOOL_HANDLERS  # noqa: F401
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_FILENAME = "prompts.yaml"
+TOOLS_FILENAME = "tools.yaml"
 
 
 def _services_cloud_path() -> Path:
@@ -59,6 +60,35 @@ def resolve_prompt_catalog_path(module_file: str | Path) -> Path:
 def load_prompt_catalog(module_file: str | Path) -> dict:
     """Load the prompt catalog beside an example module."""
     return load_yaml_file(resolve_prompt_catalog_path(module_file))
+
+
+def resolve_tools_catalog_path(module_file: str | Path) -> Path:
+    """Return the tools.yaml path beside an example module (``TOOLS_FILE_PATH`` env overrides)."""
+    override = os.getenv("TOOLS_FILE_PATH", "").strip()
+    return Path(override) if override else Path(module_file).resolve().parent / TOOLS_FILENAME
+
+
+def load_tools_catalog(module_file: str | Path) -> dict:
+    """Load the tools catalog beside an example module."""
+    return load_yaml_file(resolve_tools_catalog_path(module_file))
+
+
+def resolve_tools_available(module_file: str | Path, prompt_key: str) -> list[str]:
+    """Return the list of tool names declared under a prompt's ``tools_available``.
+
+    Returns an empty list when the prompt is missing from the example catalog
+    (e.g. a custom client-supplied prompt) or has no tools declared.
+    """
+    if not prompt_key:
+        return []
+    catalog = load_prompt_catalog(module_file)
+    entry = catalog.get(prompt_key)
+    if not isinstance(entry, dict):
+        return []
+    raw = entry.get("tools_available")
+    if not isinstance(raw, list):
+        return []
+    return [name for name in raw if isinstance(name, str)]
 
 
 def default_prompt_key(catalog: dict) -> str | None:
@@ -103,11 +133,16 @@ def resolve_prompt(
 def load_yaml_file(filepath: Path) -> dict:
     """Load and return the contents of a YAML file as a dict.
 
-    Returns an empty dict if the file doesn't exist or is empty.
+    Returns an empty dict if the file is absent, unreadable, malformed, or
+    the parsed value is not a mapping.
     """
     if not filepath.is_file():
         return {}
-    data = yaml.safe_load(filepath.read_text(encoding="utf-8"))
+    try:
+        data = yaml.safe_load(filepath.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as exc:
+        logger.warning(f"Failed to load YAML from {filepath}: {exc}")
+        return {}
     return data if isinstance(data, dict) else {}
 
 
@@ -176,7 +211,7 @@ def _section_default_key(section: dict, explicit_key: str = "") -> str:
     return next(iter(section), "")
 
 
-_REACHABILITY_TIMEOUT_SECS = 0.3
+_REACHABILITY_TIMEOUT_SECS = 2.0
 _REACHABILITY_CACHE_TTL_SECS = 5.0
 _reachability_cache: dict[str, tuple[float, bool]] = {}
 

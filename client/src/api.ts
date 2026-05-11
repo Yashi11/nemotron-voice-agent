@@ -26,6 +26,13 @@ export interface Prompt {
   content: string;
   default?: boolean;
   builtIn: boolean;
+  tools?: string[];
+}
+
+export interface Tool {
+  name: string;
+  description: string;
+  parameters?: Record<string, unknown>;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -71,7 +78,15 @@ export function useDefaultPrompts(pipelineMode = "") {
   return useQuery<Prompt[]>({
     queryKey: ["prompts", pipelineMode],
     queryFn: () => fetchJson<Prompt[]>(`/api/prompts${qs}`),
-    select: (data) => data.map((p) => ({ ...p, builtIn: true })),
+    select: (data) => data.map((p) => ({ ...p, builtIn: true, tools: p.tools ?? [] })),
+  });
+}
+
+export function useDefaultTools(pipelineMode = "") {
+  const qs = pipelineMode ? `?pipeline_mode=${encodeURIComponent(pipelineMode)}` : "";
+  return useQuery<Tool[]>({
+    queryKey: ["tools", pipelineMode],
+    queryFn: () => fetchJson<Tool[]>(`/api/tools${qs}`),
   });
 }
 

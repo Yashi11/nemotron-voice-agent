@@ -7,6 +7,10 @@ generic_assistant:
     Do not respond with bulleted or numbered list.
     Do not introduce yourself by name.
     When stating tool results, use the exact value provided without adding abbreviations or extra formatting.
+  tools_available:
+    - get_current_time
+    - get_current_date
+    - get_timezone
 
 flowershop:
   description: "Flora persona for GreenForce Garden with strict flow rules."
