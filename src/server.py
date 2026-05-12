@@ -606,6 +606,7 @@ def create_app(
             body.update(config)
             _activate_example_catalog_by_key(example["key"])
             runner_args = SmallWebRTCRunnerArguments(webrtc_connection=connection, body=body)
+            runner_args.pipeline_idle_timeout_secs = parse_env_int("PIPELINE_IDLE_TIMEOUT_SECS", 600, min_value=300)
             background_tasks.add_task(bot_fn, runner_args)
 
         return await handler.handle_web_request(
@@ -645,7 +646,7 @@ def create_app(
                 websocket=websocket,
                 body=config,
                 handle_sigint=False,
-                pipeline_idle_timeout_secs=None,
+                pipeline_idle_timeout_secs=parse_env_int("PIPELINE_IDLE_TIMEOUT_SECS", 600, min_value=300),
             )
             try:
                 await bot_fn(runner_args)
