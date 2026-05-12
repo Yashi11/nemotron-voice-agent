@@ -619,26 +619,29 @@ body {
 .aspect-square { aspect-ratio: 1 / 1; }
 .aspect-4-3 { aspect-ratio: 4 / 3; }
 
-// Scrollbar styling
-.scrollbar-custom {
-  &::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
+// Scrollbar styling — applied globally so every scrollable surface matches.
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
 
-  &::-webkit-scrollbar-track {
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-full);
-  }
+*::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+}
 
-  &::-webkit-scrollbar-thumb {
-    background: var(--border-strong);
-    border-radius: var(--radius-full);
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
 
-    &:hover {
-      background: var(--text-muted);
-    }
+  &:hover {
+    background: var(--text-muted);
   }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) var(--bg-tertiary);
 }
 
 // Status Panel

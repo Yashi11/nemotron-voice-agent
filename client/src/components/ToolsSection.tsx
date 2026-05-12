@@ -14,6 +14,7 @@ export function ToolsSection() {
     return <PanelSection label="TOOLS" loading loadingText="Loading..." />;
   }
   if (tools.length === 0) return null;
+  if (enabled.size === 0) return null;
 
   return (
     <PanelSection label="TOOLS">
