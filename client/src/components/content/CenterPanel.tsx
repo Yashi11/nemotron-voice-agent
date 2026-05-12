@@ -55,20 +55,20 @@ export function CenterPanel() {
       </div>
 
       <div className={`flex-1 min-h-0 relative ${activeTab !== "conversation" ? "hidden" : ""}`}>
-        <div className="conversation-overlay overflow-y-auto scrollbar-custom">
+        <div className="conversation-overlay overflow-y-auto">
           <ConversationContent />
         </div>
       </div>
-      <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${activeTab !== "metrics" ? "hidden" : ""}`}>
+      <div className={`flex-1 min-h-0 overflow-y-auto ${activeTab !== "metrics" ? "hidden" : ""}`}>
         <MetricsPanel />
       </div>
-      <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${activeTab !== "services" ? "hidden" : ""}`}>
+      <div className={`flex-1 min-h-0 overflow-y-auto ${activeTab !== "services" ? "hidden" : ""}`}>
         <ServicesPanel />
       </div>
-      <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${activeTab !== "prompts" ? "hidden" : ""}`}>
+      <div className={`flex-1 min-h-0 overflow-y-auto ${activeTab !== "prompts" ? "hidden" : ""}`}>
         <PromptsPanel />
       </div>
-      <div className={`flex-1 min-h-0 overflow-y-auto scrollbar-custom ${activeTab !== "tools" ? "hidden" : ""}`}>
+      <div className={`flex-1 min-h-0 overflow-y-auto ${activeTab !== "tools" ? "hidden" : ""}`}>
         <ToolsPanel />
       </div>
     </main>
