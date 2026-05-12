@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useApp } from "../../context/useApp";
 import { useConnectionState } from "../../hooks/useConnectionState";
 import type { Prompt } from "../../api";
@@ -12,10 +12,10 @@ function PromptRow({ prompt, isActive, canRemove, disabled }: { prompt: Prompt; 
   const [description, setDescription] = useState(prompt.description);
   const [content, setContent] = useState(prompt.content);
 
-  useEffect(() => {
+  const resetForm = () => {
     setDescription(prompt.description);
     setContent(prompt.content);
-  }, [prompt]);
+  };
 
   const handleSave = () => {
     if (!content.trim()) return;
@@ -24,8 +24,7 @@ function PromptRow({ prompt, isActive, canRemove, disabled }: { prompt: Prompt; 
   };
 
   const handleCancel = () => {
-    setDescription(prompt.description);
-    setContent(prompt.content);
+    resetForm();
     setEditing(false);
   };
 
@@ -55,7 +54,7 @@ function PromptRow({ prompt, isActive, canRemove, disabled }: { prompt: Prompt; 
           {isActive && <span className="prompt-card__badge">Active</span>}
           {!prompt.builtIn && (
             <>
-              <button className="svc-icon-btn" onClick={() => { if (!disabled) setEditing(true); }} disabled={disabled} aria-disabled={disabled} title={disabled ? "Locked during session" : "Edit"}>✎</button>
+              <button className="svc-icon-btn" onClick={() => { if (!disabled) { resetForm(); setEditing(true); } }} disabled={disabled} aria-disabled={disabled} title={disabled ? "Locked during session" : "Edit"}>✎</button>
               {canRemove && <button className="svc-icon-btn svc-icon-btn--remove" onClick={() => { if (!disabled) removePrompt(prompt.key); }} disabled={disabled || !canRemove} aria-disabled={disabled || !canRemove} title={disabled ? "Locked during session" : "Remove"}>−</button>}
             </>
           )}
