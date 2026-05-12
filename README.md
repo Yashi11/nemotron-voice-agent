@@ -2,8 +2,11 @@
 
 # Nemotron Voice Agent
 
-Nemotron Voice Agent provides a comprehensive, end-to-end voice agent blueprint built with NVIDIA Nemotron state-of-the-art open models, as NVIDIA NIM for acceleration and scaling. It is designed to guide developers through the creation of a cascaded pipeline, integrating Nemotron ASR, LLM, and TTS, while solving for the complexities of streaming, interruptible conversations. By leveraging NVIDIA NIM microservices, this developer example enables developers to accelerate the deployment of high-performance voice AI solutions.
+Nemotron Voice Agent provides a comprehensive, end-to-end voice agent blueprint built with NVIDIA Nemotron state-of-the-art open models, as NVIDIA NIM for acceleration and scaling. It is designed to guide developers through the creation of a cascaded pipeline, integrating Nemotron ASR, LLM, and TTS, while solving for the complexities of streaming, interruptible conversations.
 
+Built on the open-source [Pipecat framework](https://github.com/pipecat-ai/pipecat) and leveraging NVIDIA NIM microservices, this example helps teams accelerate the deployment of high-performance voice AI solutions.
+
+![Architecture Diagram](./docs/images/arch.png)
 ---
 
 ## Key Components
@@ -18,7 +21,7 @@ The following are the key components in this blueprint:
 - **NVIDIA Nemotron LLMs**: State-of-the-art LLM models engineered for real-time conversational use cases.
   - [Nemotron 3 Nano 30B A3B](https://build.nvidia.com/nvidia/nemotron-3-nano-30b-a3b/modelcard)
   - [Nemotron 3 Super 120B A12B](https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b/modelcard)
-- **Speech-to-Speech**: Direct voice-to-voice pipeline mode using Nemotron Voice Chat for ultra-low-latency conversations.
+- **NVIDIA Nemotron VoiceChat**: Realtime full duplex speech-to-speech model that jointly performs streaming speech understanding and speech generation. Check [Model Card](https://build.nvidia.com/nvidia/nemotron-voicechat/modelcard) for more details.
 - **Pipeline Orchestration**: Built on top of the Pipecat framework with WebRTC and WebSocket transports, enabling low-latency real-time voice communication.
 
 ---
@@ -29,22 +32,17 @@ Check the following requirements before you begin.
 
 ### Hardware Requirements
 
-**Cloud-only mode** (default): No local GPUs required. ASR, LLM, and TTS services run via NVIDIA cloud APIs.
-
-**Local NIM deployment** (optional Docker Compose profiles):
-
-| Profile | Hardware | Services | Description |
-|---------|----------|----------|-------------|
-| `all-examples` | None (cloud only) | UI selector + booking server | Selector across all registered examples |
-| `generic` / `agentic-airline` | None (cloud only) | Single-example backend | Lock the backend to one cloud example |
-| `generic-workstation` / `agentic-airline-workstation` | 2 GPUs | GPU 0: ASR + TTS NIMs, GPU 1: NIM LLM | Full local deployment for the chosen example |
-| `generic-dgxspark` | 1 GPU, 128 GB unified memory | ASR + TTS NIMs + vLLM LLM | Single-GPU local deployment for the Generic example |
-| `generic-jetson` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) | Edge deployment for the Generic example |
+| Mode | Supported Docker Compose Profiles | Hardware | Services | Description |
+|------|--------------------|----------|----------|-------------|
+| Cloud-only (default) | `all-examples`, `generic`, `agentic-airline` | None | ASR, LLM, and TTS via NVIDIA cloud APIs | No local GPUs required |
+| NVIDIA Workstation and Server GPUs | `generic-workstation`, `agentic-airline-workstation` | 2 GPUs | GPU 0: ASR + TTS NIMs, GPU 1: NIM LLM | Full local deployment for the chosen example |
+| DGX Spark | `generic-dgxspark` | 1 GPU, 128 GB unified memory | ASR + TTS NIMs + vLLM LLM | Single-GPU local deployment for the Generic example |
+| Jetson Thor | `generic-jetson` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) | Edge deployment for the Generic example |
 
 ### Software Requirements
 
 - **NVIDIA NGC**: Valid credentials for NVIDIA NGC. See the [NGC Getting Started Guide](https://docs.nvidia.com/ngc/ngc-overview/index.html#registering-activating-ngc-account).
-- **NVIDIA API Key**: Required for NVIDIA NIM models and NGC container images. Get yours at [build.nvidia.com](https://build.nvidia.com/). DGX Spark Magpie TTS can use a staging NIM image; ensure `NVIDIA_API_KEY` has access to that image.
+- **NVIDIA API Key**: Required for NVIDIA NIM models and NGC container images. Get yours at [build.nvidia.com](https://build.nvidia.com/).
 - **Docker**: With NVIDIA GPU support installed.
 
 ---
@@ -72,8 +70,6 @@ Start the application following these steps.
     ```bash
     printf '%s' "$NVIDIA_API_KEY" | docker login nvcr.io -u '$oauthtoken' --password-stdin
     ```
-
-    For DGX Spark, if you set `TTS_DOCKER_IMAGE` to a staging or private Magpie TTS image, ensure `NVIDIA_API_KEY` has access to that image before logging in.
 
 4. Deploy the application.
 
