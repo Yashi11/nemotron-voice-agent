@@ -39,7 +39,7 @@ HOST="localhost"
 PORT="7860"
 CLIENT_COUNTS="1"
 CLIENT_START_DELAY="1"
-TEST_DURATION="150"
+TEST_DURATION="300"
 COOLDOWN="10"
 REVERSE_BARGE_IN_THRESHOLD="0.4"
 DATASET_DIR="$SCRIPT_DIR/dataset"
@@ -55,7 +55,7 @@ Options:
   --port PORT                          (default: 7860)
   --clients "N1 N2 ..."                Concurrency levels to run (default: "1")
   --client-start-delay SECONDS         Stagger between client connects (default: 1)
-  --test-duration SECONDS              Metric collection window per run  (default: 150)
+  --test-duration SECONDS              Metric collection window per run  (default: 300)
   --cooldown SECONDS                   Pause between sweep levels        (default: 10)
   --reverse-barge-in-threshold SECS    See benchmark.py --help            (default: 0.4)
   --dataset-dir DIR                    16 kHz mono WAVs                  (default: ./dataset)

@@ -40,6 +40,23 @@ root `benchmark` dependency group (shared by every tool under
 when the root `pyproject.toml` is detected, so the commands below work
 straight from a fresh `uv sync --group benchmark`.
 
+### Prompt override for perf runs
+
+If you want a benchmark-specific server prompt, start the Generic example with
+the prompt catalog in this directory:
+
+```bash
+uv run python src/server.py \
+  --example cascaded/generic \
+  --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
+```
+
+This catalog defaults to `prompt_1000_tokens`. Available prompt entries are
+`prompt_200_tokens`, `prompt_1000_tokens`, and `prompt_5000_tokens`.
+
+This keeps the benchmark commands unchanged while the server uses the perf
+prompt catalog.
+
 ## Run
 
 From this directory:

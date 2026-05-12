@@ -19,6 +19,15 @@ Use [`benchmarking_tools/scaling-perf/`](../../benchmarking_tools/scaling-perf/)
     uv run python src/server.py --no-tls
     ```
 
+    To run perf tests against the Generic example with the benchmark prompt catalog:
+
+    ```bash
+    uv run python src/server.py \
+      --no-tls \
+      --example cascaded/generic \
+      --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
+    ```
+
     Or run it under Docker Compose with any of the cloud profiles described in [Getting Started](../01-getting-started.md).
 
 ## Run

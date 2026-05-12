@@ -77,8 +77,8 @@ CHUNK_DURATION_MS = 32
 WS_CONNECT_TIMEOUT = 30
 BOT_INTRO_TIMEOUT = 5
 END_OF_RESPONSE_TIMEOUT = 3.0
-BARGE_IN_DRAIN_TIMEOUT = 0.5
 HARD_DEADLINE_BUFFER = 60
+TURN_RESPONSE_TIMEOUT = 10.0
 SERVER_METRIC_KEYS = (
     "llm_ttft",
     "tts_ttfb",
@@ -172,13 +172,28 @@ class ClientResult:
     Attributes:
         stream_id: WebSocket session identifier (matches the ``client_<i>_<id>``
             output directory name).
-        average_latency: Mean response latency across all timed turns, or
-            ``None`` when no turn completed inside the metric window.
-        individual_latencies: One entry per timed turn (seconds).
-        num_turns: Number of timed turns; ``len(individual_latencies)``.
+        average_latency: Mean of *valid* response latencies (above the reverse
+            barge-in threshold), or ``None`` when no valid turn completed
+            inside the metric window. Used by the aggregator for headline
+            averages and p95.
+        individual_latencies: One entry per timed turn (seconds), including
+            barge-in latencies. Useful for post-hoc analysis.
+        valid_latencies: Subset of ``individual_latencies`` >=
+            ``reverse_barge_in_threshold``; what averages and p95 are computed
+            over.
+        num_turns: Total timed turns recorded during the metric window
+            (``len(individual_latencies)``).
+        num_valid_turns: ``len(valid_latencies)``. The aggregator uses
+            ``num_valid_turns > 0`` as the per-client success gate.
+        failed_turns: Turns whose first bot frame did not arrive inside
+            ``--turn-response-timeout`` after input audio finished and were
+            abandoned without recording a latency.
+        reverse_barge_ins_count: Turns counted as reverse barge-ins
+            (latency below the threshold) inside the metric window.
         glitch_detected: ``True`` when at least one output buffer underrun
             was seen during a timed turn.
         reverse_barge_in_threshold: Echoed-back configuration value (seconds).
+        turn_response_timeout: Echoed-back configuration value (seconds).
         metrics_start_time: Unix epoch when the metric window opened.
         test_duration: Configured length of the metric window (seconds).
         server_metrics: ``{"samples": {...}, "average": {...}, "sample_counts": {...}}``
@@ -192,15 +207,23 @@ class ClientResult:
     stream_id: str
     average_latency: float | None
     individual_latencies: list[float]
+    valid_latencies: list[float]
     num_turns: int
+    num_valid_turns: int
+    failed_turns: int
+    reverse_barge_ins_count: int
     glitch_detected: bool
     reverse_barge_in_threshold: float
+    turn_response_timeout: float
     metrics_start_time: float | None
     test_duration: float
     server_metrics: dict
     rtvi_messages: list[dict[str, Any]]
     timestamp: str
     error: str | None = None
+
+
+type FirstBotFrame = tuple[bytes | None, dt.datetime | None]
 
 
 class PerfClient:
@@ -211,7 +234,12 @@ class PerfClient:
     * connects to ``wss://<host>:<port>/api/ws``,
     * cycles through ``audio_files`` as user utterances (one per turn),
     * pads gaps with silence so the server's VAD detects clean turn ends,
-    * times each real bot response (skipping reverse barge-ins),
+    * times every bot response and flags reverse barge-ins post-hoc
+      (latencies below ``reverse_barge_in_threshold`` are recorded but
+      excluded from valid-latency averages),
+    * abandons turns where no bot frame arrives within
+      ``turn_response_timeout`` after input audio finished and continues to the
+      next turn,
     * records RTVI server-side metric samples (``server_metric_samples``),
     * detects audio glitches (output buffer underruns),
     * returns a :class:`ClientResult` summarizing the session.
@@ -235,6 +263,7 @@ class PerfClient:
         reverse_barge_in_threshold: float,
         audio_output_path: Path | None,
         logger: RunLogger,
+        turn_response_timeout: float = TURN_RESPONSE_TIMEOUT,
     ):
         self.stream_id = stream_id
         self.host = host
@@ -245,10 +274,13 @@ class PerfClient:
         self.session_end_time = session_end_time
         self.test_duration = test_duration
         self.reverse_barge_in_threshold = reverse_barge_in_threshold
+        self.turn_response_timeout = turn_response_timeout
         self.audio_output_path = audio_output_path
         self.logger = logger
 
         self.latency_values: list[float] = []
+        self.valid_latency_values: list[float] = []
+        self.failed_turns = 0
         self.timestamps: dict[str, dt.datetime | None] = {"input_audio_file_end": None}
         self.glitch_detected = False
         self.total_reverse_barge_ins = 0
@@ -525,41 +557,72 @@ class PerfClient:
             except TimeoutError:
                 return wf, chunk_count
 
+    async def _await_first_bot_frame(self, send_task: asyncio.Task, recv_task: asyncio.Task) -> FirstBotFrame:
+        """Wait for the first bot audio frame for a turn.
+
+        Returns ``(None, None)`` when the bot never replies within
+        ``turn_response_timeout`` after the input audio finishes.
+        """
+        data = None
+        utterance_start = None
+        try:
+            done, _ = await asyncio.wait({send_task, recv_task}, return_when=asyncio.FIRST_COMPLETED)
+            if recv_task in done:
+                data = recv_task.result()
+                utterance_start = dt.datetime.now()
+                return data, utterance_start
+
+            await send_task
+            try:
+                data = await asyncio.wait_for(recv_task, timeout=self.turn_response_timeout)
+                utterance_start = dt.datetime.now()
+                return data, utterance_start
+            except TimeoutError:
+                if self.collecting_metrics:
+                    self.failed_turns += 1
+                    await self.logger.log(
+                        f"{self.stream_id} turn timed out: no bot response within "
+                        f"{self.turn_response_timeout:.1f}s after input audio finished"
+                    )
+                return None, None
+        finally:
+            if data is None and not recv_task.done():
+                recv_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await recv_task
+
     async def _process_conversation_turn(self, websocket, audio_file_path: Path, wf):
+        # Single-shot turn flow: send user audio in the background, keep
+        # consuming server messages, then wait up to ``turn_response_timeout``
+        # after end-of-user-audio for the bot's first frame. Barge-in
+        # classification is post-hoc (latency vs.
+        # ``reverse_barge_in_threshold``); only valid latencies (>= threshold)
+        # feed the per-client average and p95.
         self.timestamps["input_audio_file_end"] = None
         await self.logger.log(f"{self.stream_id} turn start using {audio_file_path.name}")
         send_task = asyncio.create_task(self._send_audio_file(websocket, audio_file_path))
-        turn_barge_ins = 0
-        real_latency = None
+        recv_task = asyncio.create_task(self._recv_audio_frame(websocket, timeout=None))
+        data, utterance_start = await self._await_first_bot_frame(send_task, recv_task)
+        if data is None or utterance_start is None:
+            return wf
 
-        while True:
-            data = await self._recv_audio_frame(websocket)
-            utterance_start = dt.datetime.now()
-            input_end = self.timestamps["input_audio_file_end"]
-            is_barge_in = (
-                input_end is None or (utterance_start - input_end).total_seconds() < self.reverse_barge_in_threshold
-            )
-            if is_barge_in:
-                wf, _ = await self._drain_utterance(
-                    websocket,
-                    data,
-                    wf,
-                    detect_glitches=False,
-                    drain_timeout=BARGE_IN_DRAIN_TIMEOUT,
-                )
-                turn_barge_ins += 1
-            else:
-                wf, _ = await self._drain_utterance(websocket, data, wf, detect_glitches=True)
-                real_latency = (utterance_start - input_end).total_seconds()
-                await self.logger.log(f"{self.stream_id} real response latency={real_latency:.3f}s")
-                break
-
+        wf, _ = await self._drain_utterance(websocket, data, wf, detect_glitches=True)
         await send_task
 
-        if self.collecting_metrics and real_latency is not None:
-            self.latency_values.append(real_latency)
-            self.total_reverse_barge_ins += turn_barge_ins
-            await self.logger.log(f"{self.stream_id} turn complete latency={real_latency:.3f}s")
+        input_end = self.timestamps["input_audio_file_end"]
+        latency = (utterance_start - input_end).total_seconds() if input_end is not None else None
+
+        if self.collecting_metrics and latency is not None:
+            self.latency_values.append(latency)
+            if latency < self.reverse_barge_in_threshold:
+                self.total_reverse_barge_ins += 1
+                await self.logger.log(
+                    f"{self.stream_id} turn complete (barge-in) latency={latency:.3f}s "
+                    f"< threshold={self.reverse_barge_in_threshold:.3f}s"
+                )
+            else:
+                self.valid_latency_values.append(latency)
+                await self.logger.log(f"{self.stream_id} turn complete latency={latency:.3f}s")
         return wf
 
     async def _continuous_audio_loop(self, websocket, wf):
@@ -649,11 +712,16 @@ class PerfClient:
 
         result = ClientResult(
             stream_id=self.stream_id,
-            average_latency=average_or_none(self.latency_values),
+            average_latency=average_or_none(self.valid_latency_values),
             individual_latencies=self.latency_values,
+            valid_latencies=self.valid_latency_values,
             num_turns=len(self.latency_values),
+            num_valid_turns=len(self.valid_latency_values),
+            failed_turns=self.failed_turns,
+            reverse_barge_ins_count=self.total_reverse_barge_ins,
             glitch_detected=self.glitch_detected,
             reverse_barge_in_threshold=self.reverse_barge_in_threshold,
+            turn_response_timeout=self.turn_response_timeout,
             metrics_start_time=self.metrics_start_time,
             test_duration=self.test_duration,
             server_metrics={
@@ -669,7 +737,10 @@ class PerfClient:
             f"{self.stream_id} latency breakdown summary",
             [
                 ("client_avg_latency", round3(result.average_latency)),
-                ("client_turns", str(result.num_turns)),
+                ("client_valid_turns", str(result.num_valid_turns)),
+                ("client_total_turns", str(result.num_turns)),
+                ("client_barge_ins", str(result.reverse_barge_ins_count)),
+                ("client_failed_turns", str(result.failed_turns)),
                 ("glitch_detected", str(result.glitch_detected)),
                 ("llm_ttft", round3(server_metric_average.get("llm_ttft"))),
                 ("tts_ttfb", round3(server_metric_average.get("tts_ttfb"))),
@@ -731,12 +802,26 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=float,
         help="Unix epoch seconds when this client should stop (defaults to metrics_start+test_duration)",
     )
-    parser.add_argument("--test-duration", type=float, default=150.0, help="Metric collection window in seconds")
+    parser.add_argument("--test-duration", type=float, default=300.0, help="Metric collection window in seconds")
     parser.add_argument(
         "--reverse-barge-in-threshold",
         type=float,
         default=0.4,
-        help="Seconds after input ends before bot audio counts as the real response",
+        help=(
+            "Latency (seconds) below which a turn is classified as a reverse "
+            "barge-in and excluded from average/p95 reporting. Turns are still "
+            "recorded in individual_latencies for analysis."
+        ),
+    )
+    parser.add_argument(
+        "--turn-response-timeout",
+        type=float,
+        default=TURN_RESPONSE_TIMEOUT,
+        help=(
+            "Per-turn timeout (seconds) waiting for the bot's first audio frame "
+            "after the input audio file finishes sending. On timeout the turn "
+            "is recorded as a failed_turn and the loop moves on to the next turn."
+        ),
     )
     parser.add_argument("--result-path", type=Path, help="Write client result JSON here")
     parser.add_argument("--logger-path", type=Path, help="Write client log here")
@@ -772,7 +857,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
 async def async_main(args: argparse.Namespace) -> int:
     args.output_dir = args.output_dir.resolve()
     args.dataset_dir = args.dataset_dir.resolve()
-
     if not args.dataset_dir.is_dir():
         print(f"Dataset directory not found: {args.dataset_dir}", file=sys.stderr)
         return 2
@@ -803,6 +887,7 @@ async def async_main(args: argparse.Namespace) -> int:
         session_end_time=float(args.session_end_time),
         test_duration=float(args.test_duration),
         reverse_barge_in_threshold=float(args.reverse_barge_in_threshold),
+        turn_response_timeout=float(args.turn_response_timeout),
         audio_output_path=audio_output_path,
         logger=logger,
     )
@@ -825,6 +910,8 @@ async def async_main(args: argparse.Namespace) -> int:
 _SUITE_HEADERS = (
     "Parallel Streams",
     "Successful",
+    "Failures",
+    "No Response",
     "Avg Latency",
     "P95 Latency",
     "Min Latency",
@@ -838,6 +925,8 @@ _SUITE_HEADERS = (
     "Glitches",
 )
 
+_CLIENT_HEADERS = ("Client", *_SUITE_HEADERS[1:])
+
 
 def _calculate_p95(values: list[float]) -> float | None:
     if not values:
@@ -845,6 +934,110 @@ def _calculate_p95(values: list[float]) -> float | None:
     ordered = sorted(values)
     idx = math.ceil(0.95 * len(ordered)) - 1
     return ordered[max(0, min(idx, len(ordered) - 1))]
+
+
+def _client_int(client: dict, key: str, default: int = 0) -> int:
+    try:
+        return int(client.get(key, default) or default)
+    except (TypeError, ValueError):
+        return default
+
+
+def _client_valid_turns(client: dict) -> int:
+    if "num_valid_turns" in client:
+        return _client_int(client, "num_valid_turns")
+    if client.get("average_latency") is not None:
+        return _client_int(client, "num_turns")
+    return 0
+
+
+def _client_has_valid_response(client: dict) -> bool:
+    return client.get("average_latency") is not None and _client_valid_turns(client) > 0
+
+
+def _is_hard_deadline_client(client: dict) -> bool:
+    return str(client.get("error") or "").startswith("Hard deadline reached")
+
+
+def _client_has_core_server_metric(client: dict) -> bool:
+    """Return true when the client observed any core server metric sample."""
+    server_metrics = client.get("server_metrics") or {}
+    sample_counts = server_metrics.get("sample_counts") or {}
+    for key in ("asr_ttfb", "llm_ttft", "tts_ttfb"):
+        try:
+            if int(sample_counts.get(key, 0) or 0) > 0:
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
+
+
+def _client_has_runtime_error(client: dict) -> bool:
+    return bool(client.get("error")) and not _is_hard_deadline_client(client)
+
+
+def _client_is_failed(client: dict) -> bool:
+    return _client_has_runtime_error(client)
+
+
+def _client_is_no_response(client: dict) -> bool:
+    return not _client_is_failed(client) and not _client_has_valid_response(client)
+
+
+def _client_is_successful(client: dict) -> bool:
+    return not _client_is_failed(client) and _client_has_valid_response(client)
+
+
+def _client_valid_latency_values(client: dict) -> list[float]:
+    values = client.get("valid_latencies")
+    if isinstance(values, list):
+        out = []
+        for value in values:
+            if isinstance(value, (int, float)):
+                out.append(float(value))
+        return out
+
+    average_latency = client.get("average_latency")
+    if average_latency is not None and _client_valid_turns(client) > 0:
+        return [float(average_latency)]
+    return []
+
+
+def _client_latency_summary(client: dict) -> dict[str, float | None]:
+    latencies = _client_valid_latency_values(client)
+    return {
+        "avg_latency": average_or_none(latencies),
+        "p95_latency": _calculate_p95(latencies),
+        "min_latency": min(latencies) if latencies else None,
+        "max_latency": max(latencies) if latencies else None,
+    }
+
+
+def _average_latency_columns(clients: Iterable[dict]) -> dict[str, float | None]:
+    summaries = [_client_latency_summary(client) for client in clients]
+    return {
+        key: average_or_none([summary[key] for summary in summaries if summary.get(key) is not None])
+        for key in ("avg_latency", "p95_latency", "min_latency", "max_latency")
+    }
+
+
+def _client_server_metric_average(client: dict, key: str) -> float | None:
+    server_metrics = client.get("server_metrics") or {}
+    value = (server_metrics.get("average") or {}).get(key)
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
+def _client_sort_key(client: dict) -> tuple[int, str]:
+    stream_id = str(client.get("stream_id") or "")
+    parts = stream_id.split("_")
+    if len(parts) > 1:
+        try:
+            return int(parts[1]), stream_id
+        except ValueError:
+            pass
+    return sys.maxsize, stream_id
 
 
 def _weighted_avg(per_client: list[dict], key: str) -> tuple[float | None, int]:
@@ -899,8 +1092,32 @@ def _aggregate_run_dir(run_dir: Path, num_clients: int | None) -> Path:
     if num_clients is None:
         num_clients = len(clients)
 
-    valid = [c for c in clients if c.get("average_latency") is not None and int(c.get("num_turns", 0)) > 0]
-    latencies = [float(c["average_latency"]) for c in valid]
+    hard_deadline = [c for c in clients if _is_hard_deadline_client(c)]
+
+    # Top-level buckets are mutually exclusive:
+    # * failure: real client/runtime error or missing result file,
+    # * no response: client stayed alive but completed no valid in-window turn,
+    # * success: at least one valid completed turn and no real runtime error.
+    # Hard deadlines remain diagnostics; they only affect the top-level bucket
+    # when the client also has a real runtime error or no valid turn.
+    latency_clients = [c for c in clients if _client_has_valid_response(c)]
+    latency_columns = _average_latency_columns(latency_clients)
+
+    barge_in_only = [c for c in clients if _client_valid_turns(c) == 0 and _client_int(c, "num_turns") > 0]
+    hard_deadline_with_valid_response = [c for c in hard_deadline if _client_has_valid_response(c)]
+    hard_deadline_without_valid_response = [c for c in hard_deadline if not _client_has_valid_response(c)]
+    runtime_errors = [c for c in clients if _client_has_runtime_error(c)]
+    no_response = [c for c in clients if _client_is_no_response(c)]
+    metric_only_no_response = [
+        c for c in no_response if not _client_has_valid_response(c) and _client_has_core_server_metric(c)
+    ]
+    failed_client_ids = {str(c.get("stream_id")) for c in runtime_errors if c.get("stream_id")}
+    missing_clients = max(0, num_clients - len(clients))
+    failed_clients = len(failed_client_ids) + missing_clients
+    successful_clients = max(0, num_clients - failed_clients - len(no_response))
+
+    hard_deadline_with_success_signal = hard_deadline_with_valid_response
+    hard_deadline_without_success_signal = hard_deadline_without_valid_response
 
     server_avg: dict[str, float | None] = {}
     server_counts: dict[str, int] = {}
@@ -915,25 +1132,59 @@ def _aggregate_run_dir(run_dir: Path, num_clients: int | None) -> Path:
             "num_clients": num_clients,
             "test_duration": (clients[0].get("test_duration") if clients else None),
             "metrics_start_time": (clients[0].get("metrics_start_time") if clients else None),
+            "reverse_barge_in_threshold": (clients[0].get("reverse_barge_in_threshold") if clients else None),
+            "turn_response_timeout": (clients[0].get("turn_response_timeout") if clients else None),
             "concurrency_mode": "process-per-client",
         },
         "results": {
             "configured_clients": num_clients,
-            "successful_clients": len(valid),
-            "total_turns": sum(int(c.get("num_turns", 0)) for c in valid),
-            "aggregate_average_latency": average_or_none(latencies),
-            "p95_client_latency": _calculate_p95(latencies),
-            "min_client_latency": (min(latencies) if latencies else None),
-            "max_client_latency": (max(latencies) if latencies else None),
+            "successful_clients": successful_clients,
+            "failed_clients": failed_clients,
+            "failed_client_ids": sorted(failed_client_ids),
+            "runtime_error_clients": len(runtime_errors),
+            "runtime_error_client_ids": [c["stream_id"] for c in runtime_errors],
+            "missing_clients": missing_clients,
+            "latency_sample_clients": len(latency_clients),
+            "metric_only_success_clients": 0,
+            "metric_only_no_response_clients": len(metric_only_no_response),
+            "barge_in_only_clients": len(barge_in_only),
+            "no_response_clients": len(no_response),
+            "no_response_client_ids": [c["stream_id"] for c in no_response],
+            "hard_deadline_clients": len(hard_deadline),
+            "hard_deadline_with_valid_response_clients": len(hard_deadline_with_valid_response),
+            "hard_deadline_with_success_signal_clients": len(hard_deadline_with_success_signal),
+            "hard_deadline_successful_clients": len(hard_deadline_with_success_signal),
+            "hard_deadline_no_success_signal_clients": len(hard_deadline_without_success_signal),
+            "hard_deadline_no_valid_response_clients": len(hard_deadline_without_valid_response),
+            "hard_deadline_client_ids": [c["stream_id"] for c in hard_deadline],
+            "hard_deadline_no_valid_response_client_ids": [
+                c["stream_id"] for c in hard_deadline_without_valid_response
+            ],
+            "total_turns": sum(_client_int(c, "num_turns") for c in clients),
+            "total_valid_turns": sum(_client_valid_turns(c) for c in latency_clients),
+            "total_barge_ins": sum(_client_int(c, "reverse_barge_ins_count") for c in clients),
+            "total_failed_turns": sum(_client_int(c, "failed_turns") for c in clients),
+            "aggregate_average_latency": latency_columns["avg_latency"],
+            "p95_client_latency": latency_columns["p95_latency"],
+            "min_client_latency": latency_columns["min_latency"],
+            "max_client_latency": latency_columns["max_latency"],
             "server_metrics": {"average": server_avg, "sample_counts": server_counts},
             "glitch_detection": {
-                "clients_with_glitches": sum(1 for c in valid if c.get("glitch_detected")),
-                "total_clients": len(valid),
-                "affected_client_ids": [c["stream_id"] for c in valid if c.get("glitch_detected")],
+                "clients_with_glitches": sum(1 for c in latency_clients if c.get("glitch_detected")),
+                "total_clients": len(latency_clients),
+                "affected_client_ids": [c["stream_id"] for c in latency_clients if c.get("glitch_detected")],
             },
             "error_detection": {
                 "total_clients": len(clients),
-                "clients_with_errors": sum(1 for c in clients if c.get("error")),
+                "clients_with_errors": len(runtime_errors),
+                "runtime_error_clients": len(runtime_errors),
+                "runtime_error_client_ids": [c["stream_id"] for c in runtime_errors],
+                "hard_deadline_clients": len(hard_deadline),
+                "hard_deadline_successful_clients": len(hard_deadline_with_success_signal),
+                "hard_deadline_with_success_signal_clients": len(hard_deadline_with_success_signal),
+                "hard_deadline_no_success_signal_clients": len(hard_deadline_without_success_signal),
+                "hard_deadline_no_valid_response_clients": len(hard_deadline_without_valid_response),
+                "hard_deadline_client_ids": [c["stream_id"] for c in hard_deadline],
                 "client_error_counts": {c["stream_id"]: 1 for c in clients if c.get("error")},
             },
         },
@@ -952,6 +1203,8 @@ def _row_from_summary(summary: dict[str, Any], num_clients: int) -> dict[str, An
         "parallel_streams": num_clients,
         "successful_streams": r["successful_clients"],
         "configured_streams": r["configured_clients"],
+        "failed_streams": r.get("failed_clients", 0),
+        "no_response_streams": r.get("no_response_clients", 0),
         "avg_latency": r["aggregate_average_latency"],
         "p95_latency": r["p95_client_latency"],
         "min_latency": r["min_client_latency"],
@@ -966,10 +1219,44 @@ def _row_from_summary(summary: dict[str, Any], num_clients: int) -> dict[str, An
     }
 
 
-def _row_to_strings(row: dict[str, Any]) -> list[str]:
+def _client_row_from_result(client: dict[str, Any]) -> dict[str, Any]:
+    failed = _client_is_failed(client)
+    no_response = _client_is_no_response(client)
+    successful = _client_is_successful(client)
+    latency_summary = _client_latency_summary(client)
+    return {
+        "client": str(client.get("stream_id") or "(unknown)"),
+        "successful_streams": 1 if successful else 0,
+        "configured_streams": 1,
+        "failed_streams": 1 if failed else 0,
+        "no_response_streams": 1 if no_response else 0,
+        **latency_summary,
+        "llm_ttft": _client_server_metric_average(client, "llm_ttft"),
+        "tts_ttfb": _client_server_metric_average(client, "tts_ttfb"),
+        "asr_ttfb": _client_server_metric_average(client, "asr_ttfb"),
+        "server_e2e": _client_server_metric_average(client, "server_e2e"),
+        "vad_smart_turn": _client_server_metric_average(client, "vad_smart_turn"),
+        "llm_processing_time": _client_server_metric_average(client, "llm_processing_time"),
+        "audio_glitches": 1 if client.get("glitch_detected") else 0,
+    }
+
+
+def _client_rows_from_summary(summary: dict[str, Any], num_clients: int) -> list[dict[str, Any]]:
+    rows = [_client_row_from_result(client) for client in sorted(summary.get("clients", []), key=_client_sort_key)]
+    average = _row_from_summary(summary, num_clients)
+    average["client"] = "AVERAGE"
+    latency_columns = _average_latency_columns(summary.get("clients", []))
+    average.update(latency_columns)
+    rows.append(average)
+    return rows
+
+
+def _metric_row_to_strings(row: dict[str, Any], label_key: str) -> list[str]:
     return [
-        str(row["parallel_streams"]),
+        str(row[label_key]),
         f"{row['successful_streams']}/{row['configured_streams']}",
+        str(row["failed_streams"]),
+        str(row["no_response_streams"]),
         round3(row["avg_latency"]),
         round3(row["p95_latency"]),
         round3(row["min_latency"]),
@@ -982,6 +1269,14 @@ def _row_to_strings(row: dict[str, Any]) -> list[str]:
         round3(row["llm_processing_time"]),
         str(row["audio_glitches"]),
     ]
+
+
+def _row_to_strings(row: dict[str, Any]) -> list[str]:
+    return _metric_row_to_strings(row, "parallel_streams")
+
+
+def _client_row_to_strings(row: dict[str, Any]) -> list[str]:
+    return _metric_row_to_strings(row, "client")
 
 
 def _aggregate_suite_dir(suite_dir: Path) -> tuple[Path, Path, Path]:
@@ -999,6 +1294,8 @@ def _aggregate_suite_dir(suite_dir: Path) -> tuple[Path, Path, Path]:
     )
 
     rows: list[dict[str, Any]] = []
+    headers = _SUITE_HEADERS
+    stringify_row = _row_to_strings
     if run_dirs:
         for run_dir in run_dirs:
             try:
@@ -1015,19 +1312,21 @@ def _aggregate_suite_dir(suite_dir: Path) -> tuple[Path, Path, Path]:
         if summary_path.exists():
             summary = json.loads(summary_path.read_text(encoding="utf-8"))
             num_clients = int(summary.get("config", {}).get("num_clients") or summary["results"]["configured_clients"])
-            rows.append(_row_from_summary(summary, num_clients))
+            rows = _client_rows_from_summary(summary, num_clients)
+            headers = _CLIENT_HEADERS
+            stringify_row = _client_row_to_strings
 
     tsv = suite_dir / "results.tsv"
     txt = suite_dir / "results.txt"
     js = suite_dir / "results.json"
 
-    str_rows = [_row_to_strings(r) for r in rows]
+    str_rows = [stringify_row(r) for r in rows]
     with tsv.open("w", encoding="utf-8") as f:
-        f.write("\t".join(_SUITE_HEADERS) + "\n")
+        f.write("\t".join(headers) + "\n")
         for row in str_rows:
             f.write("\t".join(row) + "\n")
 
-    txt.write_text("\n".join(_format_table_lines(_SUITE_HEADERS, str_rows)) + "\n", encoding="utf-8")
+    txt.write_text("\n".join(_format_table_lines(headers, str_rows)) + "\n", encoding="utf-8")
     js.write_text(json.dumps(rows, indent=2), encoding="utf-8")
     return tsv, txt, js
 
@@ -1042,6 +1341,8 @@ def _run_aggregate_run(run_dir: Path, num_clients: int | None) -> int:
     print(
         f"run aggregated: {summary_path}  "
         f"successful={r['successful_clients']}/{r['configured_clients']}  "
+        f"failures={r.get('failed_clients', 0)}  "
+        f"no_response={r.get('no_response_clients', 0)}  "
         f"avg_latency={round3(r['aggregate_average_latency'])}s  "
         f"p95={round3(r['p95_client_latency'])}s"
     )
