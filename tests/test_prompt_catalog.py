@@ -19,6 +19,7 @@ if "timeutils" not in sys.modules:
 
 from utils import (
     PROJECT_ROOT,
+    default_prompt_key,
     load_prompt_catalog,
     load_yaml_file,
     resolve_prompt,
@@ -42,10 +43,14 @@ class PromptCatalogTests(unittest.TestCase):
                 "generic_assistant",
                 "multilingual_voice_assistant",
             },
-            PROJECT_ROOT / "src/speech_to_speech/generic/prompts.yaml": {"flowershop"},
+            PROJECT_ROOT / "src/speech_to_speech/generic/prompts.yaml": {"flowershop", "generic"},
         }
         for path, expected in cases.items():
             self.assertEqual(set(load_yaml_file(path).keys()), expected, path)
+
+    def test_perf_prompt_catalog_defaults_to_prompt_1000_tokens(self) -> None:
+        catalog = load_yaml_file(PROJECT_ROOT / "benchmarking_tools/scaling-perf/perf_prompts.yaml")
+        self.assertEqual(default_prompt_key(catalog), "prompt_1000_tokens")
 
     def test_resolves_to_package_local_prompts_yaml(self) -> None:
         module_file = PROJECT_ROOT / "src/cascaded/generic/pipeline.py"

@@ -529,14 +529,18 @@ def parse_json_dict(raw: str, label: str = "JSON") -> dict:
     return {}
 
 
-def parse_env_int(name: str, default: int) -> int:
-    """Parse an integer environment variable with safe fallback."""
+def parse_env_int(name: str, default: int, min_value: int | None = None) -> int:
+    """Parse an integer environment variable with safe fallback and optional minimum."""
     raw = os.getenv(name, str(default))
     try:
-        return int(raw)
+        value = int(raw)
     except ValueError:
         logger.warning(f"Invalid {name}={raw!r}, falling back to default {default}")
-        return default
+        value = default
+    if min_value is not None and value < min_value:
+        logger.warning(f"{name}={value!r} is below minimum {min_value}, clamping")
+        return min_value
+    return value
 
 
 def parse_env_bool(name: str, default: bool = False) -> bool:

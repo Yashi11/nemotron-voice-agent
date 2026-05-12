@@ -17,11 +17,14 @@ Routes:
 Run:
   uv run python src/server.py
   uv run python src/server.py --no-tls
-  uv run python src/server.py --bot cascaded.agentic_airline.pipeline:bot
+  uv run python src/server.py --example cascaded/agentic-airline
+  uv run python src/server.py --example cascaded/generic --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
   uv run python src/server.py --tls-cert c --tls-key k
 """
 
 from dotenv import load_dotenv
+
+from utils import parse_env_int
 
 load_dotenv(override=True)
 
@@ -36,6 +39,7 @@ import urllib.request
 import uuid
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -82,6 +86,65 @@ _SPEECH_READY_ENDPOINTS = {
 }
 _TURN_LISTEN_PORT = 3478
 _INDEX_NO_CACHE_HEADERS = {"Cache-Control": "no-store"}
+
+
+@dataclass(frozen=True)
+class WorkerAppConfig:
+    """App-factory config reconstructed from server CLI args."""
+
+    host: str = "localhost"
+    bot_spec: str = ""
+    example_key: str = ""
+    all_examples: bool = False
+    prompt_file: str = ""
+
+    @classmethod
+    def from_args(cls, args: argparse.Namespace) -> "WorkerAppConfig":
+        """Build a config from an already-parsed argparse namespace."""
+        return cls(
+            host=args.host,
+            bot_spec=args.bot,
+            example_key=args.example,
+            all_examples=bool(args.all_examples),
+            prompt_file=args.prompt_file,
+        )
+
+    @classmethod
+    def from_argv(cls, argv: list[str]) -> "WorkerAppConfig":
+        """Build a config by parsing a raw argv list (used by worker subprocesses)."""
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("--host", type=str, default="localhost")
+        parser.add_argument("--example", type=str, default="")
+        parser.add_argument("--all-examples", action="store_true")
+        parser.add_argument("--bot", type=str, default="")
+        parser.add_argument("--prompt-file", type=str, default="")
+        args, _ = parser.parse_known_args(argv)
+        return cls.from_args(args)
+
+
+def _parse_min_int(value: str, minimum: int = 1) -> int:
+    """Parse an integer CLI argument and enforce a minimum value."""
+    parsed = int(value)
+    if parsed < minimum:
+        raise argparse.ArgumentTypeError(f"must be >= {minimum}")
+    return parsed
+
+
+def _run_single_worker(args: argparse.Namespace, app: FastAPI, ssl_kwargs: dict) -> None:
+    """Run uvicorn with a pre-built app instance."""
+    uvicorn.run(app, host=args.host, port=args.port, **ssl_kwargs)
+
+
+def _run_multi_worker(args: argparse.Namespace, workers: int, ssl_kwargs: dict) -> None:
+    """Run uvicorn in multi-worker mode via the importable app factory."""
+    uvicorn.run(
+        "server:app_factory",
+        host=args.host,
+        port=args.port,
+        workers=workers,
+        factory=True,
+        **ssl_kwargs,
+    )
 
 
 def _deployment_response(
@@ -448,8 +511,12 @@ def create_app(
     bot_spec: str = "",
     example_key: str = "",
     all_examples: bool = False,
+    prompt_file: str = "",
 ) -> FastAPI:
     """Build and return the FastAPI application with all routes."""
+    if prompt_file:
+        os.environ["PROMPT_FILE_PATH"] = prompt_file
+
     forced_bot_fn: Callable[..., Any] | None = None
     selected_example = examples_registry.find(example_key)
     deployment = examples_registry.metadata(selected_example)
@@ -706,10 +773,27 @@ def main():
         help="Registry example key to run, for example cascaded/generic or cascaded/agentic-airline",
     )
     parser.add_argument("--all-examples", action="store_true", help="Expose all registered examples in the UI selector")
-    parser.add_argument("--bot", type=str, default="", help="Optional bot module path, for example pkg.mod:bot")
+    parser.add_argument(
+        "--bot",
+        type=str,
+        default="",
+        help="Deprecated bot module path override; prefer --example for built-in pipelines",
+    )
+    parser.add_argument(
+        "--prompt-file",
+        type=str,
+        default="",
+        help="Optional prompt catalog YAML path to use instead of the active example's local prompts.yaml",
+    )
     parser.add_argument("--no-tls", action="store_true", help="Disable HTTPS (use plain HTTP)")
     parser.add_argument("--tls-cert", type=str, help="Path to TLS certificate file")
     parser.add_argument("--tls-key", type=str, help="Path to TLS key file")
+    parser.add_argument(
+        "--workers",
+        type=lambda value: _parse_min_int(value, 1),
+        default=None,
+        help="Number of workers to use for the server",
+    )
     parser.add_argument("-v", "--verbose", action="count", default=0)
     args = parser.parse_args()
 
@@ -727,7 +811,17 @@ def main():
         ),
     )
 
-    app = create_app(host=args.host, bot_spec=args.bot, example_key=args.example, all_examples=args.all_examples)
+    workers = args.workers if args.workers is not None else parse_env_int("UVICORN_WORKERS", 1, min_value=1)
+
+    app = None
+    if workers == 1:
+        app = create_app(
+            host=args.host,
+            bot_spec=args.bot,
+            example_key=args.example,
+            all_examples=args.all_examples,
+            prompt_file=args.prompt_file,
+        )
 
     ssl_kwargs: dict = {}
     scheme = "http"
@@ -744,12 +838,27 @@ def main():
 
     ui_url = f"{scheme}://{args.host}:{args.port}/"
     if CLIENT_DIST.is_dir():
-        logger.info(f"Server ready -> {ui_url}")
+        logger.info(f"Server ready -> {ui_url} (workers={workers})")
     else:
-        logger.info(f"Server ready (API only) -> {ui_url}")
+        logger.info(f"Server ready (API only) -> {ui_url} (workers={workers})")
         logger.info("Build the client: cd client && npm run build")
 
-    uvicorn.run(app, host=args.host, port=args.port, **ssl_kwargs)
+    if workers > 1:
+        _run_multi_worker(args, workers, ssl_kwargs)
+    else:
+        _run_single_worker(args, app, ssl_kwargs)
+
+
+def app_factory():
+    """Build an app instance for uvicorn multi-worker mode."""
+    config = WorkerAppConfig.from_argv(sys.argv[1:])
+    return create_app(
+        host=config.host,
+        bot_spec=config.bot_spec,
+        example_key=config.example_key,
+        all_examples=config.all_examples,
+        prompt_file=config.prompt_file,
+    )
 
 
 if __name__ == "__main__":
