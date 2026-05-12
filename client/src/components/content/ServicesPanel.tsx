@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useApp } from "../../context/useApp";
 import { useConnectionState } from "../../hooks/useConnectionState";
 import { useServiceCatalog, type LLMService, type SimpleService, type ServiceEntry } from "../../api";
@@ -121,10 +121,10 @@ function LLMServiceRow({ svc, isActive, canRemove, onSelect }: { svc: LLMService
   const [systemPrompt, setSystemPrompt] = useState(svc.systemPrompt);
   const [extraParams, setExtraParams] = useState(svc.extraParams);
 
-  useEffect(() => {
+  const resetForm = () => {
     setName(svc.name); setModelId(svc.modelId); setBaseUrl(svc.baseUrl);
     setSystemPrompt(svc.systemPrompt); setExtraParams(svc.extraParams);
-  }, [svc]);
+  };
 
   const handleSave = () => {
     if (!name.trim() || !modelId.trim() || !baseUrl.trim()) return;
@@ -133,8 +133,7 @@ function LLMServiceRow({ svc, isActive, canRemove, onSelect }: { svc: LLMService
   };
 
   const handleCancel = () => {
-    setName(svc.name); setModelId(svc.modelId); setBaseUrl(svc.baseUrl);
-    setSystemPrompt(svc.systemPrompt); setExtraParams(svc.extraParams);
+    resetForm();
     setEditing(false);
   };
 
@@ -169,7 +168,7 @@ function LLMServiceRow({ svc, isActive, canRemove, onSelect }: { svc: LLMService
         {isActive && <span className="prompt-card__badge">Active</span>}
         {!svc.builtIn && (
           <>
-            <button className="svc-icon-btn" onClick={() => setEditing(true)} title="Edit">✎</button>
+            <button className="svc-icon-btn" onClick={() => { resetForm(); setEditing(true); }} title="Edit">✎</button>
             {canRemove && <button className="svc-icon-btn svc-icon-btn--remove" onClick={() => removeLLM(svc.id)} title="Remove">−</button>}
           </>
         )}
