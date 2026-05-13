@@ -543,6 +543,20 @@ def parse_env_int(name: str, default: int, min_value: int | None = None) -> int:
     return value
 
 
+def parse_env_float(name: str, default: float, min_value: float | None = None) -> float:
+    """Parse a float environment variable with safe fallback and optional minimum."""
+    raw = os.getenv(name, str(default))
+    try:
+        value = float(raw)
+    except ValueError:
+        logger.warning(f"Invalid {name}={raw!r}, falling back to default {default}")
+        value = default
+    if min_value is not None and value < min_value:
+        logger.warning(f"{name}={value!r} is below minimum {min_value}, clamping")
+        return min_value
+    return value
+
+
 def parse_env_bool(name: str, default: bool = False) -> bool:
     """Parse a boolean environment variable, treating empty as unset."""
     raw = (os.getenv(name) or "").strip()

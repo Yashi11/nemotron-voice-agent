@@ -67,6 +67,7 @@ from utils import (
     default_prompt_key,
     filter_session_config,
     is_endpoint_reachable,
+    is_nvcf,
     load_prompt_catalog,
     load_service_entry,
     load_tools_catalog,
@@ -86,6 +87,11 @@ _SPEECH_READY_ENDPOINTS = {
 }
 _TURN_LISTEN_PORT = 3478
 _INDEX_NO_CACHE_HEADERS = {"Cache-Control": "no-store"}
+_MULTI_WORKER_SESSION_CONFIG_MESSAGE = (
+    "Session-config based WebRTC and selector flows are disabled when "
+    "UVICORN_WORKERS is greater than 1. Use a single worker, sticky routing, "
+    "or shared session storage."
+)
 
 
 @dataclass(frozen=True)
@@ -145,6 +151,16 @@ def _run_multi_worker(args: argparse.Namespace, workers: int, ssl_kwargs: dict) 
         factory=True,
         **ssl_kwargs,
     )
+
+
+def _multi_worker_mode_enabled() -> bool:
+    """Return whether the server is running with more than one uvicorn worker."""
+    return parse_env_int("UVICORN_WORKERS", 1, min_value=1) > 1
+
+
+def _multi_worker_session_config_response() -> JSONResponse:
+    """Reject routes that rely on process-local session config in multi-worker mode."""
+    return JSONResponse(status_code=503, content={"info": _MULTI_WORKER_SESSION_CONFIG_MESSAGE})
 
 
 def _deployment_response(
@@ -479,6 +495,21 @@ async def _ensure_tts_ready_for_connection(config: dict, example: dict) -> None:
     ready_url = _local_speech_ready_url("TTS", tts_server)
     if ready_url:
         await _run_http_readiness_check("TTS", tts_server, ready_url, expects_ready_json=True)
+        return
+
+    if not is_nvcf(tts_server):
+        try:
+            await _run_blocking(
+                _check_service_port,
+                "TTS",
+                tts_server,
+                timeout=_CONNECT_HEALTH_TIMEOUT_SECS + 1,
+            )
+            return
+        except TimeoutError as exc:
+            raise RuntimeError(
+                f"Selected TTS service is still starting. Health check timed out after {_CONNECT_HEALTH_TIMEOUT_SECS}s."
+            ) from exc
 
     try:
         is_ready = await _run_blocking(
@@ -574,6 +605,8 @@ def create_app(
     @app.post("/api/session-config")
     async def create_session_config(request: Request):
         """Store pipeline config server-side, return a short session_id."""
+        if _multi_worker_mode_enabled():
+            return _multi_worker_session_config_response()
         config = _sanitize_session_config(await request.json(), fallback_example_key=fallback_example_key)
         if (failure := await _readiness_check_or_503(config, "session config")) is not None:
             return failure
@@ -582,6 +615,8 @@ def create_app(
     @app.post("/api/start")
     async def start_bot(request: Request):
         """Run readiness checks before starting a WebRTC session."""
+        if _multi_worker_mode_enabled():
+            return _multi_worker_session_config_response()
         config = _sanitize_session_config(await request.json(), fallback_example_key=fallback_example_key)
         if (failure := await _readiness_check_or_503(config, "WebRTC start")) is not None:
             return failure
@@ -597,6 +632,8 @@ def create_app(
         session_id: str = Query(default=""),
         pipeline_mode: str = Query(default=""),
     ):
+        if _multi_worker_mode_enabled():
+            return _multi_worker_session_config_response()
         config = _resolve_config(session_id, fallback_example_key=fallback_example_key, pipeline_mode=pipeline_mode)
         bot_fn = _select_bot(config.get("pipeline_mode", "cascaded"), forced_bot_fn)
         example = _resolve_example(config)
@@ -627,6 +664,9 @@ def create_app(
         session_id: str = Query(default=""),
         pipeline_mode: str = Query(default=""),
     ):
+        if session_id and _multi_worker_mode_enabled():
+            await websocket.close(code=1013, reason=_MULTI_WORKER_SESSION_CONFIG_MESSAGE)
+            return
         stream_id = session_id or "-"
         with logger.contextualize(stream_id=stream_id):
             config = _resolve_config(session_id, fallback_example_key=fallback_example_key, pipeline_mode=pipeline_mode)
@@ -813,6 +853,7 @@ def main():
     )
 
     workers = args.workers if args.workers is not None else parse_env_int("UVICORN_WORKERS", 1, min_value=1)
+    os.environ["UVICORN_WORKERS"] = str(workers)
 
     app = None
     if workers == 1:

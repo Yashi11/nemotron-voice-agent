@@ -33,6 +33,8 @@ from pipecat.services.nvidia.llm import NvidiaLLMService, NvidiaLLMSettings
 from pipecat.services.nvidia.stt import NvidiaSTTService
 from pipecat.services.nvidia.tts import NvidiaTTSService, NvidiaTTSSettings
 from pipecat.transports.base_transport import TransportParams
+from pipecat.turns.user_stop import SpeechTimeoutUserTurnStopStrategy
+from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.utils.context.llm_context_summarization import (
     DEFAULT_SUMMARIZATION_PROMPT,
     LLMContextSummarizationUtil,
@@ -49,6 +51,7 @@ from utils import (
     load_service_entry,
     normalize_lang_code,
     parse_env_bool,
+    parse_env_float,
     parse_env_int,
     parse_json_dict,
     resolve_prompt,
@@ -57,6 +60,21 @@ from utils import (
 
 load_dotenv(override=True)
 CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 10)
+
+
+def _build_user_aggregator_params() -> LLMUserAggregatorParams:
+    """Return user-turn configuration, defaulting to Pipecat smart turn."""
+    if not parse_env_bool("USE_SILERO_VAD_TURN_DETECTION", default=False):
+        return LLMUserAggregatorParams()
+
+    stop_secs = parse_env_float("SILERO_VAD_STOP_SECS", 0.5, min_value=0.0)
+    logger.info(f"Using Silero VAD turn detection with stop_secs={stop_secs:.3f}")
+    return LLMUserAggregatorParams(
+        vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=stop_secs)),
+        user_turn_strategies=UserTurnStrategies(
+            stop=[SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.0)],
+        ),
+    )
 
 
 def _build_context_messages(base_prompt: str, system_prompt: str = "") -> list[dict]:
@@ -289,7 +307,7 @@ async def bot(runner_args: RunnerArguments) -> None:
 
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
-        user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2))),
+        user_params=_build_user_aggregator_params(),
     )
     logger.info(
         f"Chat history summarization enabled: recent_turns={CHAT_HISTORY_RECENT_TURNS}, "
