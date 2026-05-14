@@ -18,6 +18,7 @@ service catalogs, prompts, and example-local compose file.
 | `orchestrators/` | declarative state-runner flows for booking / rebook / cancel |
 | `state/` | per-stream scratch memory and canonical entity store |
 | `tools/` | fast-LLM tools plus booking-backend client |
+| `booking_server/` | SQLite-backed booking backend — see [`booking_server/README.md`](booking_server/README.md) for the seeded PNRs, flight catalog, and worked example voice queries |
 | `policy/` | deterministic fare / IRROPS policy tables |
 | `prompts.yaml` | airline fast-agent prompt catalog |
 | `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for standalone and selector runs |
@@ -86,6 +87,16 @@ example by its `--bot cascaded.agentic_airline.pipeline:bot` startup command.
 The compose path uses the multi-experience server selector. The package-local
 `services.cloud.yaml` and `services.local.yaml` are selected automatically when
 this example is active in the UI or launched with `--bot cascaded.agentic_airline.pipeline:bot`.
+
+## Talking to the agent
+
+The booking server seeds a fixed set of PNRs, flights, and routes. To
+know which bookings to quote, which flight numbers to ask about, and
+which voice queries the agent can actually fulfil against this data,
+see [`booking_server/README.md`](booking_server/README.md) — it lists
+the sample PNRs, the cities and date range covered, and worked example
+prompts for every flow (lookup, status, rebook, cancel, book, standby,
+route discovery, activity log).
 
 ## Import convention
 
