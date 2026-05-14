@@ -65,10 +65,11 @@ CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 10)
 def _build_user_aggregator_params() -> LLMUserAggregatorParams:
     """Return user-turn configuration, defaulting to Pipecat smart turn."""
     if not parse_env_bool("USE_SILERO_VAD_TURN_DETECTION", default=False):
-        return LLMUserAggregatorParams()
+        return LLMUserAggregatorParams(
+            vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2)),
+        )
 
     stop_secs = parse_env_float("SILERO_VAD_STOP_SECS", 0.5, min_value=0.0)
-    logger.info(f"Using Silero VAD turn detection with stop_secs={stop_secs:.3f}")
     return LLMUserAggregatorParams(
         vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=stop_secs)),
         user_turn_strategies=UserTurnStrategies(
