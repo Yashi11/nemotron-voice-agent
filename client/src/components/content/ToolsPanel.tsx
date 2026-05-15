@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { useApp } from "../../context/useApp";
 import type { Tool } from "../../api";
 
-function ToolCard({ tool, isActive }: { tool: Tool; isActive: boolean }) {
+function ToolCard({ tool, isActive }: Readonly<{ tool: Tool; isActive: boolean }>) {
   const params = JSON.stringify(tool.parameters ?? {}, null, 2);
   return (
     <div className={`prompt-card${isActive ? " prompt-card--selected" : ""}`}>

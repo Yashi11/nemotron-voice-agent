@@ -12,7 +12,7 @@ interface ConversationPanelProps {
   botTimestamp: string;
 }
 
-export function ConversationPanel({ messages, userStreaming, botStreaming, userTimestamp, botTimestamp }: ConversationPanelProps) {
+export function ConversationPanel({ messages, userStreaming, botStreaming, userTimestamp, botTimestamp }: Readonly<ConversationPanelProps>) {
   return (
     <div className="p-4">
       <ul className="d-flex flex-col gap-2" style={{ listStyle: "none", padding: 0, margin: 0 }}>

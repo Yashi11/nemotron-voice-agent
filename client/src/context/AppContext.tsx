@@ -170,7 +170,7 @@ export interface AppState {
   toolsLoading: boolean;
 }
 
-export function AppProvider({ children }: { children: ReactNode }) {
+export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   const { data: deployment } = useDeployment();
   const deploymentSelectable = deployment ? deployment.selectable : true;
   const deploymentOptions = useMemo(() => deployment?.options ?? [], [deployment]);
@@ -319,7 +319,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addPrompt = useCallback((key: string, description: string, content: string): string | null => {
-    const slug = key.trim().toLowerCase().replace(/\s+/g, "_");
+    const slug = key.trim().toLowerCase().replaceAll(/\s+/g, "_");
     if (prompts.some((p) => p.key === slug)) return `Prompt '${slug}' already exists`;
     persistPrompts([...customPrompts, { key: slug, description, content, builtIn: false }]);
     return null;

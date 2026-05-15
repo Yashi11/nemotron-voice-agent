@@ -36,10 +36,12 @@ type SessionConfigOptions = {
 
 function getConnectionErrorMessage(err: unknown): string {
   const fallback = "Connection failed. Please try again.";
-  const rawMessage =
-    err instanceof Error ? err.message :
-    typeof err === "string" ? err :
-    fallback;
+  let rawMessage = fallback;
+  if (err instanceof Error) {
+    rawMessage = err.message;
+  } else if (typeof err === "string") {
+    rawMessage = err;
+  }
 
   const jsonStart = rawMessage.indexOf("{");
   if (jsonStart >= 0) {
@@ -65,9 +67,9 @@ function isWebRTCTimeoutError(err: unknown): boolean {
 }
 
 async function withWebRTCConnectTimeout(promise: Promise<void>): Promise<void> {
-  let timeoutId = 0;
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timeoutId = window.setTimeout(() => {
+    timeoutId = globalThis.setTimeout(() => {
       const error = new Error("WebRTC connection timed out");
       error.name = WEBRTC_TIMEOUT_ERROR_NAME;
       reject(error);
@@ -77,7 +79,9 @@ async function withWebRTCConnectTimeout(promise: Promise<void>): Promise<void> {
   try {
     await Promise.race([promise, timeout]);
   } finally {
-    window.clearTimeout(timeoutId);
+    if (timeoutId !== undefined) {
+      globalThis.clearTimeout(timeoutId);
+    }
   }
 }
 
@@ -176,8 +180,8 @@ export function Header() {
         if (selectedTransport === "websocket") {
           const sessionId = await createSessionConfig(config);
           const qs = `session_id=${sessionId}`;
-          const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
-          await client.connect({ wsUrl: `${wsProto}//${window.location.host}/api/ws?${qs}` });
+          const wsProto = globalThis.location.protocol === "https:" ? "wss:" : "ws:";
+          await client.connect({ wsUrl: `${wsProto}//${globalThis.location.host}/api/ws?${qs}` });
         } else {
           const webrtcUrl = await createWebRTCSession(config);
           await withWebRTCConnectTimeout(client.connect({ webrtcUrl }));
@@ -194,7 +198,12 @@ export function Header() {
     }
   };
 
-  const buttonText = isConnecting ? "Connecting..." : isConnected ? "Disconnect" : "Connect";
+  let buttonText = "Connect";
+  if (isConnecting) {
+    buttonText = "Connecting...";
+  } else if (isConnected) {
+    buttonText = "Disconnect";
+  }
 
   return (
     <header className="px-4 py-3 border-b">

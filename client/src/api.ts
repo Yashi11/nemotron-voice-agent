@@ -39,7 +39,8 @@ async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status}${body ? `: ${body.slice(0, 200)}` : ""}`);
+    const details = body ? `: ${body.slice(0, 200)}` : "";
+    throw new Error(`HTTP ${res.status}${details}`);
   }
   return res.json();
 }
@@ -234,7 +235,8 @@ export async function createSessionConfig(config: Record<string, string>): Promi
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status}${body ? `: ${body.slice(0, 200)}` : ""}`);
+    const details = body ? `: ${body.slice(0, 200)}` : "";
+    throw new Error(`HTTP ${res.status}${details}`);
   }
   const data = await res.json();
   return data.session_id;
@@ -248,7 +250,8 @@ export async function createWebRTCSession(config: Record<string, string>): Promi
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status}${body ? `: ${body.slice(0, 200)}` : ""}`);
+    const details = body ? `: ${body.slice(0, 200)}` : "";
+    throw new Error(`HTTP ${res.status}${details}`);
   }
 
   const data = await res.json() as { webrtcUrl?: string };

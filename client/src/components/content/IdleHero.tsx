@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-export function IdleHero({ connecting, fadingOut }: { connecting: boolean; fadingOut: boolean }) {
+export function IdleHero({ connecting, fadingOut }: Readonly<{ connecting: boolean; fadingOut: boolean }>) {
   const showSpinner = connecting || fadingOut;
 
   return (
@@ -36,7 +36,7 @@ export function IdleHero({ connecting, fadingOut }: { connecting: boolean; fadin
           <g>
             {[26, 38, 50, 62, 74, 86, 98].map((x, i) => (
               <rect
-                key={i}
+                key={x}
                 x={x - 3}
                 y={48}
                 width="6"

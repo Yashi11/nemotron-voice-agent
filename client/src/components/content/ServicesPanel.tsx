@@ -12,13 +12,13 @@ type SourceGroupedService = { builtIn: boolean; source?: LLMService["source"] };
 
 function SimpleServiceRow({
   svc, isActive, canRemove, fields, onSelect, onUpdate, onRemove,
-}: {
+}: Readonly<{
   svc: SimpleService; isActive: boolean; canRemove: boolean;
   fields: { label: string; key: keyof SimpleService }[];
   onSelect?: (id: string) => void;
   onUpdate: (id: string, updates: Partial<SimpleService>) => void;
   onRemove: (id: string) => void;
-}) {
+}>) {
   const buildForm = () => {
     const next: Record<string, string> = { name: svc.name };
     fields.forEach(({ key }) => { next[key as string] = String(svc[key] ?? ""); });
@@ -37,7 +37,17 @@ function SimpleServiceRow({
 
   if (!svc.builtIn && editing) {
     return (
-      <div className="svc-row svc-row--editing" onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setEditing(false); }}>
+      <div
+        className="svc-row svc-row--editing"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleSave();
+          }
+          if (e.key === "Escape") {
+            setEditing(false);
+          }
+        }}
+      >
         <div className="svc-edit-fields">
           <input className="svc-input" value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="Name" autoFocus />
           {fields.map(({ label, key }) => (
@@ -53,7 +63,19 @@ function SimpleServiceRow({
   }
 
   return (
-    <div className={`svc-row${onSelect ? " svc-row--clickable" : ""}${isActive ? " svc-row--active" : ""}`} onClick={onSelect ? () => onSelect(svc.id) : undefined} style={onSelect ? undefined : { opacity: 0.6, cursor: "default" }}>
+    <div
+      className={`svc-row${onSelect ? " svc-row--clickable" : ""}${isActive ? " svc-row--active" : ""}`}
+      onClick={onSelect ? () => onSelect(svc.id) : undefined}
+      onKeyDown={onSelect ? (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(svc.id);
+        }
+      } : undefined}
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      style={onSelect ? undefined : { opacity: 0.6, cursor: "default" }}
+    >
       <div className="svc-row__info">
         <span className="svc-row__name">{svc.name}</span>
         {svc.server && <span className="svc-row__detail svc-row__url">{svc.server}</span>}
@@ -61,13 +83,14 @@ function SimpleServiceRow({
         {svc.voiceId && <span className="svc-row__detail">voice: {svc.voiceId}</span>}
         {svc.functionId && <span className="svc-row__detail svc-row__sys">function_id: {svc.functionId}</span>}
       </div>
-      <div className="svc-row__actions" onClick={(e) => e.stopPropagation()}>
+      <div className="svc-row__actions">
         {isActive && <span className="prompt-card__badge">Active</span>}
         {!svc.builtIn && (
           <>
             <button
               className="svc-icon-btn"
-              onClick={() => {
+              onClick={(event) => {
+                event.stopPropagation();
                 setForm(buildForm());
                 setEditing(true);
               }}
@@ -75,7 +98,7 @@ function SimpleServiceRow({
             >
               ✎
             </button>
-            {canRemove && <button className="svc-icon-btn svc-icon-btn--remove" onClick={() => onRemove(svc.id)} title="Remove">−</button>}
+            {canRemove && <button className="svc-icon-btn svc-icon-btn--remove" onClick={(event) => { event.stopPropagation(); onRemove(svc.id); }} title="Remove">−</button>}
           </>
         )}
       </div>
@@ -87,11 +110,11 @@ function SimpleServiceRow({
 
 function SimpleAddForm({
   fields, onAdd, onCancel,
-}: {
+}: Readonly<{
   fields: { label: string; key: string; required?: boolean }[];
   onAdd: (values: Record<string, string>) => void;
   onCancel: () => void;
-}) {
+}>) {
   const [form, setForm] = useState<Record<string, string>>({});
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -101,7 +124,17 @@ function SimpleAddForm({
   const handleAdd = () => { if (canSubmit) { onAdd(form); } };
 
   return (
-    <div className="svc-add-form" onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") onCancel(); }}>
+    <div
+      className="svc-add-form"
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          handleAdd();
+        }
+        if (e.key === "Escape") {
+          onCancel();
+        }
+      }}
+    >
       {allFields.map((f) => (
         <input key={f.key} className="svc-input" placeholder={f.label} value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} autoFocus={f.key === "name"} />
       ))}
@@ -112,7 +145,7 @@ function SimpleAddForm({
 
 /* ── LLM service row (unchanged, richer fields) ── */
 
-function LLMServiceRow({ svc, isActive, canRemove, onSelect }: { svc: LLMService; isActive: boolean; canRemove: boolean; onSelect?: (id: string) => void }) {
+function LLMServiceRow({ svc, isActive, canRemove, onSelect }: Readonly<{ svc: LLMService; isActive: boolean; canRemove: boolean; onSelect?: (id: string) => void }>) {
   const { updateLLM, removeLLM } = useApp();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(svc.name);
@@ -139,7 +172,17 @@ function LLMServiceRow({ svc, isActive, canRemove, onSelect }: { svc: LLMService
 
   if (!svc.builtIn && editing) {
     return (
-      <div className="svc-row svc-row--editing" onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") handleCancel(); }}>
+      <div
+        className="svc-row svc-row--editing"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleSave();
+          }
+          if (e.key === "Escape") {
+            handleCancel();
+          }
+        }}
+      >
         <div className="svc-edit-fields">
           <input className="svc-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" autoFocus />
           <input className="svc-input" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="Server URL" />
@@ -156,7 +199,19 @@ function LLMServiceRow({ svc, isActive, canRemove, onSelect }: { svc: LLMService
   }
 
   return (
-    <div className={`svc-row${onSelect ? " svc-row--clickable" : ""}${isActive ? " svc-row--active" : ""}`} onClick={onSelect ? () => onSelect(svc.id) : undefined} style={onSelect ? undefined : { opacity: 0.6, cursor: "default" }}>
+    <div
+      className={`svc-row${onSelect ? " svc-row--clickable" : ""}${isActive ? " svc-row--active" : ""}`}
+      onClick={onSelect ? () => onSelect(svc.id) : undefined}
+      onKeyDown={onSelect ? (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(svc.id);
+        }
+      } : undefined}
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      style={onSelect ? undefined : { opacity: 0.6, cursor: "default" }}
+    >
       <div className="svc-row__info">
         <span className="svc-row__name">{svc.name}</span>
         <span className="svc-row__detail svc-row__url">{svc.baseUrl}</span>
@@ -164,7 +219,7 @@ function LLMServiceRow({ svc, isActive, canRemove, onSelect }: { svc: LLMService
         {svc.systemPrompt && <span className="svc-row__detail svc-row__sys">sys: {svc.systemPrompt}</span>}
         {svc.extraParams && <span className="svc-row__detail svc-row__sys">extra: {svc.extraParams}</span>}
       </div>
-      <div className="svc-row__actions" onClick={(e) => e.stopPropagation()}>
+      <div className="svc-row__actions">
         {isActive && <span className="prompt-card__badge">Active</span>}
         {!svc.builtIn && (
           <>
@@ -179,7 +234,7 @@ function LLMServiceRow({ svc, isActive, canRemove, onSelect }: { svc: LLMService
 
 /* ── Read-only row for catalog-owned services ── */
 
-function ReadOnlyServiceRow({ entry, isLocked = false }: { entry: ServiceEntry; isLocked?: boolean }) {
+function ReadOnlyServiceRow({ entry, isLocked = false }: Readonly<{ entry: ServiceEntry; isLocked?: boolean }>) {
   const server = entry.server ? String(entry.server) : "";
   const baseUrl = entry.base_url ? String(entry.base_url) : "";
   const modelId = entry.model_id ? String(entry.model_id) : "";
@@ -207,7 +262,7 @@ function ReadOnlyServiceRow({ entry, isLocked = false }: { entry: ServiceEntry; 
 
 /* ── Section wrapper ── */
 
-function ServiceSection({ title, children, onAdd }: { title: string; children: React.ReactNode; onAdd?: () => void }) {
+function ServiceSection({ title, children, onAdd }: Readonly<{ title: string; children: React.ReactNode; onAdd?: () => void }>) {
   return (
     <div style={{ marginBottom: "var(--space-6)" }}>
       <div className="services-header">
@@ -221,7 +276,7 @@ function ServiceSection({ title, children, onAdd }: { title: string; children: R
   );
 }
 
-function ServiceSourceGroup({ title, children }: { title: string; children: React.ReactNode }) {
+function ServiceSourceGroup({ title, children }: Readonly<{ title: string; children: React.ReactNode }>) {
   return (
     <div className="svc-group">
       <div className="svc-group__label">{title}</div>

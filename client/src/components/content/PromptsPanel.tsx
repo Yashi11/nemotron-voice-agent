@@ -6,7 +6,7 @@ import { useApp } from "../../context/useApp";
 import { useConnectionState } from "../../hooks/useConnectionState";
 import type { Prompt } from "../../api";
 
-function PromptRow({ prompt, isActive, canRemove, disabled }: { prompt: Prompt; isActive: boolean; canRemove: boolean; disabled?: boolean }) {
+function PromptRow({ prompt, isActive, canRemove, disabled }: Readonly<{ prompt: Prompt; isActive: boolean; canRemove: boolean; disabled?: boolean }>) {
   const { updatePrompt, removePrompt } = useApp();
   const [editing, setEditing] = useState(false);
   const [description, setDescription] = useState(prompt.description);
@@ -30,7 +30,17 @@ function PromptRow({ prompt, isActive, canRemove, disabled }: { prompt: Prompt; 
 
   if (!prompt.builtIn && editing) {
     return (
-      <div className="prompt-card prompt-card--editing" onKeyDown={(e) => { if (e.key === "Escape") handleCancel(); if (e.key === "Enter" && !e.shiftKey && e.target === e.currentTarget) handleSave(); }}>
+      <div
+        className="prompt-card prompt-card--editing"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            handleCancel();
+          }
+          if (e.key === "Enter" && !e.shiftKey && e.target === e.currentTarget) {
+            handleSave();
+          }
+        }}
+      >
         <div className="svc-edit-fields">
           <input className="svc-input" value={prompt.key} disabled title="Key cannot be changed" />
           <input className="svc-input" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" autoFocus />
