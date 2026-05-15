@@ -26,6 +26,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
+from pipecat.processors.aggregators.llm_text_processor import LLMTextProcessor
 from pipecat.processors.frameworks.rtvi import RTVIObserverParams
 from pipecat.processors.frameworks.rtvi.frames import RTVIServerMessageFrame
 from pipecat.runner.types import RunnerArguments
@@ -40,10 +41,18 @@ from pipecat.utils.context.llm_context_summarization import (
     LLMContextSummarizationUtil,
 )
 
+import config_store
 from cascaded.generic.tools import TOOL_HANDLERS, build_tools_schema
 from cascaded.shared.audio_recorder import create_audio_recorder
-from cascaded.shared.multilingual_processor import MultilingualProcessor
+from cascaded.shared.multilingual_processor import (
+    SKIP_TTS_AGGREGATIONS,
+    MultilingualTextAggregator,
+    RTVISpokenTextEmitter,
+    get_lang_codes,
+    make_language_handler,
+)
 from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
+from cascaded.shared.prewarm import prewarm_tts
 from tracing import IS_TRACING_ENABLED
 from utils import (
     is_nvcf,
@@ -60,6 +69,22 @@ from utils import (
 
 load_dotenv(override=True)
 CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 10)
+
+
+async def _build_multilingual_pipeline(
+    tts_server: str,
+    tts_voice: str,
+) -> tuple[MultilingualTextAggregator, LLMTextProcessor, RTVISpokenTextEmitter, str]:
+    """Prewarm the voice catalog and build the bare multilingual processors.
+
+    The language handler is wired after the ``PipelineTask`` is created so it
+    can call ``task.queue_frame`` directly (see ``bot()``).
+    """
+    if not config_store.get("tts"):
+        await asyncio.to_thread(prewarm_tts, tts_server, tts_voice)
+    aggregator = MultilingualTextAggregator()
+    text_processor = LLMTextProcessor(text_aggregator=aggregator)
+    return aggregator, text_processor, RTVISpokenTextEmitter(), get_lang_codes()
 
 
 def _build_user_aggregator_params() -> LLMUserAggregatorParams:
@@ -276,13 +301,21 @@ async def bot(runner_args: RunnerArguments) -> None:
         use_ssl=tts_ssl,
         text_filter=NemotronSpeechTextFilter() if (enable_text_filter and not is_multilingual) else None,
         custom_dictionary=custom_dictionary,
+        skip_aggregator_types=list(SKIP_TTS_AGGREGATIONS) if is_multilingual else [],
     )
 
-    multilingual = None
+    multilingual_aggregator = None
+    multilingual_text_processor = None
+    multilingual_rtvi_emitter = None
     lang_codes = ""
+
     if is_multilingual:
-        multilingual = MultilingualProcessor(tts)
-        lang_codes = multilingual.get_lang_codes()
+        (
+            multilingual_aggregator,
+            multilingual_text_processor,
+            multilingual_rtvi_emitter,
+            lang_codes,
+        ) = await _build_multilingual_pipeline(tts_server, tts_voice)
         logger.info(f"Multilingual mode: {lang_codes or '(no voices discovered)'}")
 
     logger.info(
@@ -296,10 +329,6 @@ async def bot(runner_args: RunnerArguments) -> None:
 
     messages = _build_context_messages(base_system_content, system_prompt)
 
-    # Pass tool_choice="auto" explicitly — the Nano model's prompt-driven tool
-    # selection only kicks in reliably when the adapter sends tool_choice in
-    # the request payload; omitting it (NOT_GIVEN) leads to hallucinated
-    # answers for time/date/timezone queries instead of tool calls.
     if tools_enabled:
         context = LLMContext(messages, tools=tools_schema, tool_choice="auto")
     else:
@@ -323,7 +352,8 @@ async def bot(runner_args: RunnerArguments) -> None:
             stt,
             user_aggregator,
             llm,
-            *([multilingual] if multilingual else []),
+            *([multilingual_text_processor] if multilingual_text_processor else []),
+            *([multilingual_rtvi_emitter] if multilingual_rtvi_emitter else []),
             tts,
             transport.output(),
             *([audio_recorder] if audio_recorder else []),
@@ -391,7 +421,7 @@ async def bot(runner_args: RunnerArguments) -> None:
             logger.info(f"Latency breakdown: {' | '.join(events)}")
 
     rtvi_params = None
-    if multilingual:
+    if is_multilingual:
         rtvi_params = RTVIObserverParams(ignored_sources=[llm])
 
     task = PipelineTask(
@@ -405,6 +435,23 @@ async def bot(runner_args: RunnerArguments) -> None:
         enable_tracing=IS_TRACING_ENABLED,
         rtvi_observer_params=rtvi_params,
     )
+
+    if multilingual_aggregator is not None:
+
+        async def _notify_language_switched(language: str, voice_id: str) -> None:
+            await task.queue_frame(
+                RTVIServerMessageFrame(
+                    data={
+                        "type": "language-switched",
+                        "language": language,
+                        "voice_id": voice_id,
+                    }
+                )
+            )
+
+        multilingual_aggregator.set_on_language(
+            make_language_handler(tts, task, on_language_switched=_notify_language_switched)
+        )
 
     @task.rtvi.event_handler("on_client_ready")
     async def on_client_connected(rtvi):
@@ -437,8 +484,6 @@ async def bot(runner_args: RunnerArguments) -> None:
 
     @task.rtvi.event_handler("on_client_message")
     async def on_client_message(rtvi, message):
-        # RTVIProcessor fires this for `client-message` envelopes on both
-        # WebRTC and WebSocket transports — voice switching must work on both.
         payload = message.data if isinstance(message.data, dict) else {}
         if message.type == "set-voice":
             await _apply_set_voice(payload)

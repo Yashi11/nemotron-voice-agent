@@ -8,10 +8,17 @@ import { PanelSection } from "./PanelSection";
 
 const MULTILINGUAL_PROMPT_KEY = "multilingual_voice_assistant";
 
+function hasMultilingualTerm(value: string): boolean {
+  const normalized = value.toLowerCase();
+  return normalized.includes("rnnt") || normalized.includes("multilingual");
+}
+
 export function PromptSelector() {
   const { isLocked } = useConnectionState();
   const { prompts, promptsLoading, selectedPromptKey, selectPrompt, selectedPrompt, selectedASR, selectedTTS } = useApp();
-  const multilingualReady = selectedASR?.id.endsWith(":parakeet-rnnt") && selectedTTS?.id.endsWith(":magpie-tts");
+  const asrDescriptor = [selectedASR?.id, selectedASR?.name, selectedASR?.model].filter(Boolean).join(" ");
+  const ttsDescriptor = [selectedTTS?.id, selectedTTS?.name, selectedTTS?.voiceId].filter(Boolean).join(" ");
+  const multilingualReady = hasMultilingualTerm(asrDescriptor) && hasMultilingualTerm(ttsDescriptor);
   const visiblePrompts = multilingualReady ? prompts : prompts.filter((p) => p.key !== MULTILINGUAL_PROMPT_KEY);
 
   useEffect(() => {
