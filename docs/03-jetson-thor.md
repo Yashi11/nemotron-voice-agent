@@ -76,7 +76,7 @@ This guide covers deploying the Nemotron Voice Agent on Jetson Thor using Docker
     > docker compose --profile generic-jetson up -d
     > ```
 
-5. Access the application at `https://<jetson-ip>:7860`.
+5. Access the application at `https://<jetson-ip>:7860`, or `http://<jetson-ip>:7860` when `PIPELINE_TLS=false`.
 
     > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
 

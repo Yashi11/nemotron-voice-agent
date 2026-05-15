@@ -73,6 +73,7 @@ Before you begin, ensure you have the following:
     > **Note:** Deployment may take 30–60 minutes on first run.
 
 6. Access the application at `https://<machine-ip>:7860`.
+   HTTPS is enabled by default. Set `PIPELINE_TLS=false` in `.env` to serve plain HTTP at `http://<machine-ip>:7860`.
 
     > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
 
@@ -140,6 +141,12 @@ For development and debugging, you can run the server directly:
     uv run python src/server.py
     ```
 
+    To serve plain HTTP instead of HTTPS, set `PIPELINE_TLS=false` in `.env` or prefix the command:
+
+    ```bash
+    PIPELINE_TLS=false uv run python src/server.py
+    ```
+
     Local server modes:
 
     | Command | UI behavior |
@@ -148,7 +155,7 @@ For development and debugging, you can run the server directly:
     | `uv run python src/server.py --all-examples` | Select any registered example, including `cascaded/agentic-airline` |
     | `uv run python src/server.py --example cascaded/agentic-airline` | Lock the server to one example |
 
-6. Access the application at `https://localhost:7860`.
+6. Access the application at `https://localhost:7860`, or `http://localhost:7860` when `PIPELINE_TLS=false`.
 
 ---
 

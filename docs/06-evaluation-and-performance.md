@@ -56,7 +56,7 @@ Install benchmark dependencies once and start the agent from the **repo root**:
 
 ```bash
 uv sync --group benchmark
-uv run python src/server.py --no-tls
+PIPELINE_TLS=false uv run python src/server.py
 ```
 
 Then, from `benchmarking_tools/Full-Duplex-Bench-Eval/`, point the client at the running server:

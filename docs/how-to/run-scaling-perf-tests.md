@@ -16,14 +16,13 @@ Use [`benchmarking_tools/scaling-perf/`](../../benchmarking_tools/scaling-perf/)
 3. Start the voice-agent server. From the repository root:
 
     ```bash
-    uv run python src/server.py --no-tls
+    PIPELINE_TLS=false uv run python src/server.py
     ```
 
     To run perf tests against the Generic example with the benchmark prompt catalog:
 
     ```bash
-    uv run python src/server.py \
-      --no-tls \
+    PIPELINE_TLS=false uv run python src/server.py \
       --example cascaded/generic \
       --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
     ```

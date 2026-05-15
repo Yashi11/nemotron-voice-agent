@@ -99,8 +99,8 @@ docker compose \
 | `generic-dgxspark` | `generic-example` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
 | `generic-jetson` | `generic-example` | `nvidia-llm-vllm`, `nemotron-speech` |
 
-The UI is served at `https://localhost:7860/`. In the UI, select
-**Cascaded → Generic** before connecting.
+The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
+when `PIPELINE_TLS=false`. In the UI, select **Cascaded → Generic** before connecting.
 
 The compose path uses the multi-experience server selector. The package-local
 `services.cloud.yaml` and `services.local.yaml` are selected automatically when

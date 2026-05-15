@@ -79,7 +79,7 @@ Start the application following these steps.
 
     > **Note:** Deployment may take 30–60 minutes on first run. The default `all-examples` profile starts the cloud/NVCF selector; see the [Getting Started Guide](docs/01-getting-started.md) for locked examples and on-prem profiles.
 
-5. Access the application at `https://<machine-ip>:7860`.
+5. Access the application at `https://<machine-ip>:7860`. Set `PIPELINE_TLS=false` in `.env` to use `http://<machine-ip>:7860`.
 
     > **Note:** Remote clients may need a TURN server for microphone/WebRTC access. See [Optional: Deploy TURN Server for Remote Access](docs/01-getting-started.md#optional-deploy-turn-server-for-remote-access).
     > **Tip:** For the best experience, use a headset, preferably wired.

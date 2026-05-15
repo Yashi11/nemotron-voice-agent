@@ -29,7 +29,7 @@ docker compose --profile <same-profile> down
 
 ## Verify
 
-- UI at `https://<host>:7860/`. Locked to **Cascaded → Generic**.
+- UI at `https://<host>:7860/` by default, or `http://<host>:7860/` when `PIPELINE_TLS=false`. Locked to **Cascaded → Generic**.
 - `docker compose ps` and `docker compose logs --tail 200 generic-example`.
 
 ## Common failures

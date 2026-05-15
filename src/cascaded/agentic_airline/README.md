@@ -81,8 +81,9 @@ docker compose \
 The cloud profile starts `agentic-airline-example` + `booking-server`;
 the workstation profile additionally brings up the shared `nvidia-llm`,
 `asr-service`, and `tts-service` from `cascaded/shared/`. Either way, the
-UI is served at `https://localhost:7860/`. The app is locked to the airline
-example by its `--bot cascaded.agentic_airline.pipeline:bot` startup command.
+UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
+when `PIPELINE_TLS=false`. The app is locked to the airline example by its
+`--bot cascaded.agentic_airline.pipeline:bot` startup command.
 
 The compose path uses the multi-experience server selector. The package-local
 `services.cloud.yaml` and `services.local.yaml` are selected automatically when

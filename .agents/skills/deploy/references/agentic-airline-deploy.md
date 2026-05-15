@@ -32,7 +32,7 @@ Tear down with the same profile. Add `-v` only when stale booking data must be d
 
 ## Verify
 
-- UI at `https://<host>:7860/`. Locked to airline; no example picker.
+- UI at `https://<host>:7860/` by default, or `http://<host>:7860/` when `PIPELINE_TLS=false`. Locked to airline; no example picker.
 - Voice pipeline logs: `docker compose logs --tail 200 agentic-airline-example`.
 - Booking backend logs: `docker compose logs --tail 200 booking-server`.
 - Booking health: `curl -fk http://localhost:8001/health` from the host or `curl -f http://booking-server:8001/health` from inside the compose network.
