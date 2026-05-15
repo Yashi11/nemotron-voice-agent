@@ -14,7 +14,7 @@ interface TTFBChartProps {
   label?: string;
 }
 
-export function TTFBChart({ data, title, label = "TTFB" }: TTFBChartProps) {
+export function TTFBChart({ data, title, label = "TTFB" }: Readonly<TTFBChartProps>) {
   if (data.length < 2) return null;
 
   return (

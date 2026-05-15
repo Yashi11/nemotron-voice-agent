@@ -15,7 +15,7 @@ const formatTime = (timestamp: string) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
 
-export function TranscriptMessage({ role, text, timestamp, streaming }: TranscriptMessageProps) {
+export function TranscriptMessage({ role, text, timestamp, streaming }: Readonly<TranscriptMessageProps>) {
   const roleClass = role === "user" ? "message-user" : "message-bot";
 
   return (

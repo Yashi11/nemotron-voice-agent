@@ -23,13 +23,13 @@ if ! command -v nvidia-cuda-mps-control >/dev/null 2>&1; then
     exit 0
 fi
 
-if [ ! -S "$PIPE_DIR/control" ]; then
+if [[ ! -S "$PIPE_DIR/control" ]]; then
     echo "No MPS control socket at $PIPE_DIR/control; daemon not running."
     exit 0
 fi
 
 # The daemon runs as root (see start-mps.sh); stopping it requires root too.
-if [ "$(id -u)" -ne 0 ]; then
+if [[ "$(id -u)" -ne 0 ]]; then
     exec sudo -E bash "$0" "$@"
 fi
 
@@ -42,7 +42,7 @@ for _ in $(seq 1 10); do
 done
 
 if pgrep -x nvidia-cuda-mps-control >/dev/null; then
-    echo "WARN: MPS daemon did not exit cleanly; sending SIGTERM."
+    echo "WARN: MPS daemon did not exit cleanly; sending SIGTERM." >&2
     pkill -TERM -x nvidia-cuda-mps-control || true
     for _ in $(seq 1 10); do
         pgrep -x nvidia-cuda-mps-control >/dev/null || break
@@ -51,7 +51,7 @@ if pgrep -x nvidia-cuda-mps-control >/dev/null; then
 fi
 
 if pgrep -x nvidia-cuda-mps-control >/dev/null; then
-    echo "ERROR: MPS daemon still running after SIGTERM; sending SIGKILL."
+    echo "ERROR: MPS daemon still running after SIGTERM; sending SIGKILL." >&2
     pkill -KILL -x nvidia-cuda-mps-control || true
     sleep 1
 fi

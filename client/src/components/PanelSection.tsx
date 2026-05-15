@@ -10,7 +10,7 @@ interface PanelSectionProps {
   loadingText?: string;
 }
 
-export function PanelSection({ label, children, loading, loadingText = "Loading..." }: PanelSectionProps) {
+export function PanelSection({ label, children, loading, loadingText = "Loading..." }: Readonly<PanelSectionProps>) {
   return (
     <div className="panel-section">
       <p className="panel-label">{label}</p>

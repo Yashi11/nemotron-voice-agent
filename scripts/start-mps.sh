@@ -31,14 +31,14 @@ fi
 # The docker containers (vLLM / Riva) run as root. MPS enforces UID match
 # between server and client, so the daemon must also be root. Re-exec under
 # sudo if needed.
-if [ "$(id -u)" -ne 0 ]; then
+if [[ "$(id -u)" -ne 0 ]]; then
     echo "MPS daemon must run as root for containers (which are UID 0) to connect."
     echo "Re-executing under sudo..."
     exec sudo -E bash "$0" "$@"
 fi
 
 # If stale dirs exist from a previous non-root run, take ownership.
-if [ -e "$PIPE_DIR" ] && [ "$(stat -c %u "$PIPE_DIR")" -ne 0 ]; then
+if [[ -e "$PIPE_DIR" ]] && [[ "$(stat -c %u "$PIPE_DIR")" -ne 0 ]]; then
     echo "Found stale $PIPE_DIR owned by UID $(stat -c %u "$PIPE_DIR"); re-claiming as root."
     chown -R 0:0 "$PIPE_DIR" "$LOG_DIR" 2>/dev/null || true
 fi
@@ -49,7 +49,7 @@ chmod 755 "$PIPE_DIR" "$LOG_DIR"
 export CUDA_MPS_PIPE_DIRECTORY="$PIPE_DIR"
 export CUDA_MPS_LOG_DIRECTORY="$LOG_DIR"
 
-if [ -S "$PIPE_DIR/control" ] && pgrep -x nvidia-cuda-mps-control >/dev/null; then
+if [[ -S "$PIPE_DIR/control" ]] && pgrep -x nvidia-cuda-mps-control >/dev/null; then
     echo "MPS daemon already running (control socket: $PIPE_DIR/control)."
 else
     echo "Starting MPS daemon..."

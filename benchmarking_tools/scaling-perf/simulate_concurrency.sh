@@ -63,6 +63,7 @@ Options:
   --no-save-audio                      Skip per-client output WAVs
   -h, --help                           Show this message
 USAGE
+  return 0
 }
 
 while [[ $# -gt 0 ]]; do
@@ -88,7 +89,10 @@ if [[ ! -d "$DATASET_DIR" ]]; then
 fi
 
 # Single python helper for arithmetic that bash can't easily do (floats).
-py_calc() { "${PY[@]}" -c "$@"; }
+py_calc() {
+  "${PY[@]}" -c "$@"
+  return $?
+}
 
 timestamp="$(date +%Y%m%d_%H%M%S)"
 read -ra CLIENT_COUNTS_ARR <<<"$CLIENT_COUNTS"

@@ -35,12 +35,12 @@ export function useConversationMessages() {
   const userInterimRef = useRef("");
   const userProcessingRef = useRef(false);
   const userStoppedRef = useRef(false);
-  const userFinalizeTimeoutRef = useRef<number | undefined>(undefined);
+  const userFinalizeTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(undefined);
   const userStartTimeRef = useRef("");
 
   const clearUserFinalizeTimeout = useCallback(() => {
     if (userFinalizeTimeoutRef.current === undefined) return;
-    window.clearTimeout(userFinalizeTimeoutRef.current);
+    globalThis.clearTimeout(userFinalizeTimeoutRef.current);
     userFinalizeTimeoutRef.current = undefined;
   }, []);
 
@@ -87,7 +87,7 @@ export function useConversationMessages() {
 
   const scheduleFinalizeUserMessage = useCallback(() => {
     clearUserFinalizeTimeout();
-    userFinalizeTimeoutRef.current = window.setTimeout(finalizeUserMessage, 250);
+    userFinalizeTimeoutRef.current = globalThis.setTimeout(finalizeUserMessage, 250);
   }, [clearUserFinalizeTimeout, finalizeUserMessage]);
 
   useRTVIClientEvent(

@@ -8,7 +8,7 @@ interface StatusRowProps {
   children?: React.ReactNode;
 }
 
-export function StatusRow({ label, value, title, children }: StatusRowProps) {
+export function StatusRow({ label, value, title, children }: Readonly<StatusRowProps>) {
   return (
     <div className="status-row">
       <span>{label}</span>
