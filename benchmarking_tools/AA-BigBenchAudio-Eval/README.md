@@ -35,10 +35,10 @@ Complete [Download](#download) first so `./datasets/bigbench_audio` (or your cho
 Configure the voice agent ([`.env`](../../.env.example) and the selected example's `services.cloud.yaml` / `services.local.yaml`), then start the API from the **nemotron-voice-agent repo root**:
 
 ```bash
-uv run python src/server.py --no-tls
+PIPELINE_TLS=false uv run python src/server.py
 ```
 
-Listens on `http://localhost:7860` by default (HTTPS if you omit `--no-tls`).
+Listens on `http://localhost:7860`. Set `PIPELINE_TLS=true` or unset it to use HTTPS on the same port.
 
 **Preprocess** MP3 → 16 kHz mono WAV:
 

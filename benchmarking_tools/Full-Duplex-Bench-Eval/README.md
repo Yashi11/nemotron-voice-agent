@@ -17,10 +17,10 @@ uv sync --group benchmark
 From the repo root (see [Configuration Guide](../../docs/02-configuration-guide.md) for `.env` and example-local service catalogs):
 
 ```bash
-uv run python src/server.py --no-tls
+PIPELINE_TLS=false uv run python src/server.py
 ```
 
-Defaults to `http://localhost:7860`. Omit `--no-tls` for HTTPS on the same port.
+Defaults to `http://localhost:7860`. Set `PIPELINE_TLS=true` or unset it to use HTTPS on the same port.
 
 ## Client
 

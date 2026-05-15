@@ -16,7 +16,6 @@ Routes:
 
 Run:
   uv run python src/server.py
-  uv run python src/server.py --no-tls
   uv run python src/server.py --example cascaded/agentic-airline
   uv run python src/server.py --example cascaded/generic --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
   uv run python src/server.py --tls-cert c --tls-key k
@@ -24,7 +23,7 @@ Run:
 
 from dotenv import load_dotenv
 
-from utils import parse_env_int
+from utils import parse_env_bool, parse_env_int
 
 load_dotenv(override=True)
 
@@ -826,7 +825,6 @@ def main():
         default="",
         help="Optional prompt catalog YAML path to use instead of the active example's local prompts.yaml",
     )
-    parser.add_argument("--no-tls", action="store_true", help="Disable HTTPS (use plain HTTP)")
     parser.add_argument("--tls-cert", type=str, help="Path to TLS certificate file")
     parser.add_argument("--tls-key", type=str, help="Path to TLS key file")
     parser.add_argument(
@@ -865,9 +863,10 @@ def main():
             prompt_file=args.prompt_file,
         )
 
+    tls_enabled = parse_env_bool("PIPELINE_TLS", default=True)
     ssl_kwargs: dict = {}
     scheme = "http"
-    if not args.no_tls:
+    if tls_enabled:
         if args.tls_cert and args.tls_key:
             ssl_kwargs = {"ssl_certfile": args.tls_cert, "ssl_keyfile": args.tls_key}
         else:
