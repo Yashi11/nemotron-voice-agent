@@ -99,7 +99,7 @@ To optimize latency, first measure end-to-end and per-component latency. Voice a
   - **Streaming TTS**: Start playback before full synthesis.
   - **Local Nemotron Speech TTS**: Achieve 150-200ms with TRT optimized Magpie model.
   - **Chunked Generation**: Process sentences as they are generated.
-  - **Batch Size**: Tune the Magpie model batch size for the deployment shape. The 2-GPU `workstation` profile keeps ASR/TTS on GPU 0 and the LLM on GPU 1, so TTS no longer shares memory with the LLM. Keep the default `batch_size=8` for baseline stability, then benchmark before increasing it. Single-GPU `dgxspark` still shares GPU memory across ASR, TTS, and LLM.
+  - **Batch Size**: Tune the Magpie model batch size for the deployment shape. In single-GPU local profiles, ASR, TTS, and LLM may contend for the same GPU memory budget. Keep the default `batch_size=8` for baseline stability, then benchmark before increasing it.
 
 **Audio Post-processing:**
 - **Contribution**: 50-100ms (normalization, encoding)
