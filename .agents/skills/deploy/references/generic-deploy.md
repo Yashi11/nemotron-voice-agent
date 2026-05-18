@@ -32,6 +32,23 @@ docker compose --profile <same-profile> down
 - UI at `https://<host>:7860/` by default, or `http://<host>:7860/` when `PIPELINE_TLS=false`. Locked to **Cascaded → Generic**.
 - `docker compose ps` and `docker compose logs --tail 200 generic-example`.
 
+## Local LLM NIM profiles
+
+- List profiles before changing LLM precision or tensor parallelism:
+
+```bash
+docker run --rm --gpus all \
+  -e NGC_API_KEY="$NVIDIA_API_KEY" \
+  nvcr.io/nim/nvidia/nemotron-3-nano:1.7.0-variant \
+  list-model-profiles
+```
+
+- For one GPU, use `tp=1`. Higher `tp` values require that many GPUs.
+- Prefer readable tag selection over profile hashes: `NIM_TAGS_SELECTOR=precision=fp8,tp=1`.
+- If using NIM defaults, omit `NIM_KV_CACHE_PERCENT` and `NIM_MAX_MODEL_LEN`, but expect high memory use.
+- If the local LLM hits OOM, lower `NIM_KV_CACHE_PERCENT` or `NIM_MAX_MODEL_LEN`. On multi-GPU hosts, choose a NIM profile with matching `tp` and expose that many GPUs.
+- More details: https://docs.nvidia.com/nim/large-language-models/latest/deployment/model-profiles-and-selection.html
+
 ## Common failures
 
 - **`pull access denied` / `unauthorized`** -> NGC login was not done or expired. See the root `deploy` skill.

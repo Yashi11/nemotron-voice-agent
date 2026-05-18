@@ -37,7 +37,7 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
    - Multilingual prompts must use multilingual-capable ASR and TTS from the active catalog (e.g. `magpie-tts`, `parakeet-rnnt`); verify the keys exist before referencing them.
    - Local catalog endpoints must use Compose service names (`asr-service:50052`, `tts-service:50051`, `nvidia-llm:8000`, `nemotron-speech:50051`, `booking-server:8001`). Host-run backends auto-rewrite to the matching `localhost` ports.
    - ASR/TTS image overrides keep the same Compose service names and ports. For Parakeet CTC/RNNT ASR images, set `ASR_NIM_TAGS=mode=str,vad=silero`. Keep `mode=str` for Nemotron ASR. DGX Spark TTS image overrides keep `server: "tts-service:50051"`.
-   - Workstation local Compose assumes 2 GPUs: ASR/TTS on GPU `0`, NIM LLM on GPU `1`.
+   - Workstation local Compose runs ASR/TTS and NIM LLM on GPU `0` by default. Single-GPU deployments are supported only when at least 80 GB of VRAM is available.
 
 4. Apply and verify using `references/apply-changes.md`.
 
@@ -73,5 +73,6 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 - **YAML catalog change does not appear in the UI** -> compose re-apply and refresh browser.
 - **`.env` change has no effect on a running container** -> environment is read at container start. Re-apply Compose so the container restarts.
 - **Local LLM/ASR/TTS missing from the Services tab** -> the corresponding sidecar is not deployed or is unreachable. The catalog filters local entries by TCP reachability.
+- **Local workstation profile hits OOM** -> lower `NIM_KV_CACHE_PERCENT` or `NIM_MAX_MODEL_LEN`. On multi-GPU hosts, choose a NIM profile with matching `tp` and expose that many GPUs.
 - **Multilingual responses do not use the right ASR/TTS** -> reorder catalog so a multilingual ASR/TTS sits first, or pick the entry from the UI Services tab.
 - **Local image override (`ASR_DOCKER_IMAGE` / `TTS_DOCKER_IMAGE`) image fails to pull** -> log in to `nvcr.io` with a `NVIDIA_API_KEY` that has access to the staging or private image.

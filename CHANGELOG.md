@@ -42,7 +42,7 @@ Major architecture upgrade: new Pipecat-based pipeline with speech-to-speech sup
 - `services.yaml` service catalog for configuring LLM, ASR, TTS, and S2S endpoints
 - Example-local `prompts.yaml` catalogs for persona/system prompt presets selectable from the UI
 - Docker Compose profiles for flexible deployment:
-  - `workstation`: 2 GPUs — ASR + TTS NIMs on GPU 0, NIM LLM on GPU 1
+  - `workstation`: local ASR + TTS + LLM sidecars
   - `dgxspark`: 1 GPU — ASR + TTS NIMs + vLLM LLM on GPU 0
   - `jetson`: 1 GPU — host-side ASR + TTS + vLLM LLM on GPU 0 (later replaced by the compose-managed `nemotron-speech` Riva service)
 - Additional LLM option: Nemotron 3 Super 120B A12B

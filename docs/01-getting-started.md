@@ -20,7 +20,7 @@ Before you begin, ensure you have the following:
 |---------|----------|----------|-------------|
 | `all-examples` | None (cloud only) | UI selector + booking server | Selector across all registered examples |
 | `generic` / `agentic-airline` | None (cloud only) | Single-example backend | Lock the backend to one cloud example |
-| `generic-workstation` / `agentic-airline-workstation` | 2 GPUs | GPU 0: ASR + TTS NIMs, GPU 1: NIM LLM | Full local deployment for the chosen example |
+| `generic-workstation` / `agentic-airline-workstation` | 1 GPU (at least 80 GB VRAM) | ASR + TTS NIMs + NIM LLM | Single-GPU local deployment requiring at least 80 GB VRAM for the chosen example |
 | `generic-dgxspark` | 1 GPU, 128 GB unified memory | ASR + TTS NIMs + vLLM LLM | Single-GPU local deployment for the Generic example |
 | `generic-jetson` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) | Edge deployment for the Generic example |
 
@@ -83,12 +83,16 @@ Before you begin, ensure you have the following:
 
 ## Optional: Deploy with Local NIM Profiles
 
-Local NIM ASR/TTS/LLM sidecars run alongside the example container when you launch a local profile. The backend exposes them automatically once the containers are reachable; no extra `.env` flag is required.
+Local NIM ASR/TTS/LLM sidecars run alongside the example container when you launch a local profile. The backend exposes them automatically once the containers are reachable. No extra `.env` flag is required.
+
+> **OOM troubleshooting:** If the LLM process is killed, the NIM/vLLM runtime reports model-load or OOM errors, or latency degrades under load, use separate GPUs when available. On a two-GPU host, place ASR/TTS on one GPU and the LLM on the other. Otherwise, reduce KV cache / context length (lower memory, less long-context capacity). Lowering batch size or precision can also help. Confirm `NVIDIA_API_KEY` and `HF_TOKEN` are set where required so auth failures are not mistaken for OOM.
+
+Workstation profiles place ASR, TTS, and LLM on one GPU by default. Single-GPU deployments are supported only when at least 80 GB of VRAM is available.
 
 DGX Spark and Jetson additionally need `HF_TOKEN` for the vLLM model download. If the Magpie TTS image is staging or private, use a `NVIDIA_API_KEY` with access to that image.
 
 ```bash
-# Generic example — full local deployment (2 GPUs required)
+# Generic example — full local deployment
 docker compose --profile generic-workstation up -d
 
 # Generic example — DGX Spark
@@ -97,8 +101,17 @@ docker compose --profile generic-dgxspark up -d
 # Generic example — Jetson edge (set HF_TOKEN in .env)
 docker compose --profile generic-jetson up -d
 
-# Agentic Airline example — full local deployment (2 GPUs required)
+# Agentic Airline example — full local deployment
 docker compose --profile agentic-airline-workstation up -d
+```
+
+List compatible LLM NIM profiles for your hardware:
+
+```bash
+docker run --rm --gpus all \
+  -e NGC_API_KEY="$NVIDIA_API_KEY" \
+  nvcr.io/nim/nvidia/nemotron-3-nano:1.7.0-variant \
+  list-model-profiles
 ```
 
 Run with `--profile generic` (or `--profile agentic-airline`) to stay cloud/NVCF only.

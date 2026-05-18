@@ -77,7 +77,7 @@ This populates `output.wav` (and `clean_output.wav` when a `clean_input.wav` is 
 
 **The Nemotron Voice Agent** performance benchmark shows **sub-second End-to-End (E2E) latency**. The setup uses **4x H100 GPUs** (one for Parakeet CTC 1.1B ASR, one for Magpie TTS, and two for Nemotron-3-Nano LLM). All latencies are in seconds.
 
-> **Note:** This benchmark uses a 4-GPU setup to measure scalability. The [minimum deployment requirement](01-getting-started.md#gpu-requirements) is cloud-only (no local GPUs) or 2 GPUs with the `workstation` profile.
+> **Note:** This benchmark uses a 4-GPU setup to measure scalability. The [minimum deployment requirement](01-getting-started.md#gpu-requirements) is cloud-only (no local GPUs) or 1 GPU with roughly 80 GB available VRAM for a local profile.
 
 | Parallel Streams | E2E Latency | ASR Latency | TTS TTFB | LLM TTFT | LLM First-Sentence Latency |
 | --- | --- | --- | --- | --- | --- |

@@ -8,6 +8,9 @@ services:
     environment:
       - NGC_API_KEY=${NVIDIA_API_KEY}
       - NIM_HTTP_API_PORT=8000
+      - NIM_TAGS_SELECTOR=precision=fp8,tp=1
+      - NIM_KV_CACHE_PERCENT=0.45
+      - NIM_MAX_MODEL_LEN=32768
     ports:
       - "18000:8000"
     volumes:
@@ -26,7 +29,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ['1']
+              device_ids: ['0']
               capabilities: [gpu]
     restart: unless-stopped
     logging:
