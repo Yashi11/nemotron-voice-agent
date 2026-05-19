@@ -34,11 +34,22 @@ class EnrichedExample(ExampleEntry):
     key: str
 
 
+class PipelineFamily(TypedDict):
+    """Pipeline family metadata exposed to the client."""
+
+    id: str
+    label: str
+
+
 _DEFAULT_FAMILY = "cascaded"
 _DEFAULT_EXAMPLES = {
     "cascaded": "generic",
     "speech-to-speech": "generic",
 }
+PIPELINE_FAMILIES: tuple[PipelineFamily, ...] = (
+    {"id": "cascaded", "label": "Cascaded"},
+    {"id": "speech-to-speech", "label": "Speech-to-Speech"},
+)
 
 EXAMPLES: dict[str, dict[str, ExampleEntry]] = {
     "cascaded": {
@@ -63,6 +74,17 @@ EXAMPLES: dict[str, dict[str, ExampleEntry]] = {
 }
 
 
+def pipeline_family_ids() -> tuple[str, ...]:
+    """Return valid pipeline family ids."""
+    return tuple(family["id"] for family in PIPELINE_FAMILIES)
+
+
+def pipeline_options(families: tuple[str, ...] | None = None) -> list[PipelineFamily]:
+    """Return client-facing pipeline family metadata."""
+    allowed = set(pipeline_family_ids() if families is None else families)
+    return [family for family in PIPELINE_FAMILIES if family["id"] in allowed]
+
+
 def _effective_key(value: str = "") -> str:
     """Resolve the requested example key; ``DEFAULT_PIPELINE_MODE`` env wins over args."""
     return os.getenv("DEFAULT_PIPELINE_MODE", "").lower() or (value or _DEFAULT_FAMILY).lower()
@@ -77,16 +99,22 @@ def _enrich(family: str, example_id: str, entry: ExampleEntry) -> EnrichedExampl
     return {**entry, "family": family, "id": example_id, "key": f"{family}/{example_id}"}
 
 
-def iter_all() -> Iterator[EnrichedExample]:
+def iter_all(families: tuple[str, ...] | None = None) -> Iterator[EnrichedExample]:
     """Yield every registered example as an enriched flat dict."""
+    allowed = set(pipeline_family_ids() if families is None else families)
     for family, group in EXAMPLES.items():
+        if family not in allowed:
+            continue
         for example_id, entry in group.items():
             yield _enrich(family, example_id, entry)
 
 
-def iter_family_defaults() -> Iterator[EnrichedExample]:
+def iter_family_defaults(families: tuple[str, ...] | None = None) -> Iterator[EnrichedExample]:
     """Yield the configured default example for each family."""
+    allowed = set(pipeline_family_ids() if families is None else families)
     for family, group in EXAMPLES.items():
+        if family not in allowed:
+            continue
         example_id = _DEFAULT_EXAMPLES[family]
         yield _enrich(family, example_id, group[example_id])
 
@@ -119,11 +147,11 @@ def metadata(example: EnrichedExample) -> dict:
     }
 
 
-def selector_options() -> list[dict]:
+def selector_options(families: tuple[str, ...] | None = None) -> list[dict]:
     """Return metadata for the default example in each family."""
-    return [metadata(e) for e in iter_family_defaults()]
+    return [metadata(e) for e in iter_family_defaults(families)]
 
 
-def all_selector_options() -> list[dict]:
+def all_selector_options(families: tuple[str, ...] | None = None) -> list[dict]:
     """Return metadata for every registered example."""
-    return [metadata(e) for e in iter_all()]
+    return [metadata(e) for e in iter_all(families)]

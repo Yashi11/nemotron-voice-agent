@@ -15,10 +15,15 @@ Routes:
   GET       /                - Built client UI (from client/dist/)
 
 Run:
-  uv run python src/server.py
+  uv run python src/server.py                              # both pipeline families and transports
+  PIPELINE_TLS=false uv run python src/server.py           # plain HTTP
+  uv run python src/server.py --tls-cert c --tls-key k     # custom TLS cert/key
   uv run python src/server.py --example cascaded/agentic-airline
   uv run python src/server.py --example cascaded/generic --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
-  uv run python src/server.py --tls-cert c --tls-key k
+  uv run python src/server.py --pipeline cascaded          # Cascaded only
+  uv run python src/server.py --pipeline speech-to-speech  # Speech-to-Speech only
+  uv run python src/server.py --transport webrtc            # WebRTC only
+  uv run python src/server.py --transport websocket         # WebSocket only
 """
 
 from dotenv import load_dotenv
@@ -93,6 +98,13 @@ _MULTI_WORKER_SESSION_CONFIG_MESSAGE = (
 )
 
 
+_TRANSPORT_OPTIONS: tuple[dict[str, str], ...] = (
+    {"id": "webrtc", "label": "WebRTC"},
+    {"id": "websocket", "label": "WebSocket"},
+)
+_TRANSPORTS: tuple[str, ...] = tuple(option["id"] for option in _TRANSPORT_OPTIONS)
+
+
 @dataclass(frozen=True)
 class WorkerAppConfig:
     """App-factory config reconstructed from server CLI args."""
@@ -102,6 +114,8 @@ class WorkerAppConfig:
     example_key: str = ""
     all_examples: bool = False
     prompt_file: str = ""
+    pipelines: tuple[str, ...] = examples_registry.pipeline_family_ids()
+    transports: tuple[str, ...] = _TRANSPORTS
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> "WorkerAppConfig":
@@ -112,6 +126,8 @@ class WorkerAppConfig:
             example_key=args.example,
             all_examples=bool(args.all_examples),
             prompt_file=args.prompt_file,
+            pipelines=tuple(args.pipeline),
+            transports=tuple(args.transport),
         )
 
     @classmethod
@@ -123,6 +139,13 @@ class WorkerAppConfig:
         parser.add_argument("--all-examples", action="store_true")
         parser.add_argument("--bot", type=str, default="")
         parser.add_argument("--prompt-file", type=str, default="")
+        parser.add_argument(
+            "--pipeline",
+            nargs="+",
+            choices=list(examples_registry.pipeline_family_ids()),
+            default=list(examples_registry.pipeline_family_ids()),
+        )
+        parser.add_argument("--transport", nargs="+", choices=list(_TRANSPORTS), default=list(_TRANSPORTS))
         args, _ = parser.parse_known_args(argv)
         return cls.from_args(args)
 
@@ -166,16 +189,21 @@ def _deployment_response(
     active: dict,
     forced_bot_fn: Callable[..., Any] | None,
     options: list[dict],
+    pipelines: tuple[str, ...] = examples_registry.pipeline_family_ids(),
+    transports: tuple[str, ...] = _TRANSPORTS,
 ) -> dict:
     """Build the metadata payload consumed by the client selector page."""
     active_deployment = dict(active)
     active_deployment.setdefault("slots", [])
 
     locked = forced_bot_fn is not None or bool(os.getenv("DEFAULT_PIPELINE_MODE", "").strip())
+    visible_pipelines = (active_deployment["family"],) if locked else pipelines
     return {
         "active": active_deployment,
         "selectable": not locked,
         "options": [active_deployment] if locked else options,
+        "pipelines": examples_registry.pipeline_options(visible_pipelines),
+        "transports": [option for option in _TRANSPORT_OPTIONS if option["id"] in transports],
     }
 
 
@@ -542,6 +570,8 @@ def create_app(
     example_key: str = "",
     all_examples: bool = False,
     prompt_file: str = "",
+    pipelines: tuple[str, ...] = examples_registry.pipeline_family_ids(),
+    transports: tuple[str, ...] = _TRANSPORTS,
 ) -> FastAPI:
     """Build and return the FastAPI application with all routes."""
     if prompt_file:
@@ -552,8 +582,16 @@ def create_app(
     deployment = examples_registry.metadata(selected_example)
     fallback_example_key = deployment["key"]
     selector_options = (
-        examples_registry.all_selector_options() if all_examples else examples_registry.selector_options()
+        examples_registry.all_selector_options(pipelines)
+        if all_examples
+        else examples_registry.selector_options(pipelines)
     )
+    if not selector_options:
+        raise ValueError(f"No pipeline examples available for requested pipeline filter: {', '.join(pipelines)}")
+    if not example_key and deployment["family"] not in set(pipelines):
+        selected_example = examples_registry.find(selector_options[0]["key"])
+        deployment = examples_registry.metadata(selected_example)
+        fallback_example_key = deployment["key"]
     if bot_spec:
         forced_bot_fn, deployment = _load_bot(bot_spec)
         fallback_example_key = deployment["key"]
@@ -597,7 +635,7 @@ def create_app(
 
     @app.get("/api/deployment")
     async def get_deployment():
-        return _deployment_response(deployment, forced_bot_fn, selector_options)
+        return _deployment_response(deployment, forced_bot_fn, selector_options, pipelines, transports)
 
     # ---- Session config (avoids long URLs for prompts / system_prompt) ----
 
@@ -812,7 +850,7 @@ def main():
         default="",
         help="Registry example key to run, for example cascaded/generic or cascaded/agentic-airline",
     )
-    parser.add_argument("--all-examples", action="store_true", help="Expose all registered examples in the UI selector")
+    parser.add_argument("--all-examples", action="store_true", help="Expose selectable examples in the UI selector")
     parser.add_argument(
         "--bot",
         type=str,
@@ -824,6 +862,22 @@ def main():
         type=str,
         default="",
         help="Optional prompt catalog YAML path to use instead of the active example's local prompts.yaml",
+    )
+    parser.add_argument(
+        "--pipeline",
+        nargs="+",
+        choices=list(examples_registry.pipeline_family_ids()),
+        default=list(examples_registry.pipeline_family_ids()),
+        metavar="PIPELINE",
+        help="Pipeline family/families to expose in the UI: cascaded, speech-to-speech (default: both)",
+    )
+    parser.add_argument(
+        "--transport",
+        nargs="+",
+        choices=list(_TRANSPORTS),
+        default=list(_TRANSPORTS),
+        metavar="TRANSPORT",
+        help="Transport(s) to enable in the UI: webrtc, websocket (default: both)",
     )
     parser.add_argument("--tls-cert", type=str, help="Path to TLS certificate file")
     parser.add_argument("--tls-key", type=str, help="Path to TLS key file")
@@ -861,6 +915,8 @@ def main():
             example_key=args.example,
             all_examples=args.all_examples,
             prompt_file=args.prompt_file,
+            pipelines=tuple(args.pipeline),
+            transports=tuple(args.transport),
         )
 
     tls_enabled = parse_env_bool("PIPELINE_TLS", default=True)
@@ -899,6 +955,8 @@ def app_factory():
         example_key=config.example_key,
         all_examples=config.all_examples,
         prompt_file=config.prompt_file,
+        pipelines=config.pipelines,
+        transports=config.transports,
     )
 
 

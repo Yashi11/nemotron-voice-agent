@@ -2,31 +2,25 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 import { useConnectionState } from "../hooks/useConnectionState";
-import { type TransportType } from "../context/AppContext";
 import { useApp } from "../context/useApp";
 import { PanelSection } from "./PanelSection";
 
-const TRANSPORTS: { id: TransportType; label: string }[] = [
-  { id: "webrtc", label: "WebRTC" },
-  { id: "websocket", label: "WebSocket" },
-];
-
 export function TransportSelector() {
   const { isLocked } = useConnectionState();
-  const { selectedTransport, setTransport } = useApp();
+  const { availableTransports, selectedTransport, setTransport } = useApp();
 
   return (
     <PanelSection label="TRANSPORT">
       <div className="transport-options">
-        {TRANSPORTS.map((t) => (
+        {availableTransports.map((transport) => (
           <button
-            key={t.id}
-            className={`transport-btn ${selectedTransport === t.id ? "transport-btn--active" : ""}`}
-            onClick={() => setTransport(t.id)}
-            disabled={isLocked}
-            aria-pressed={selectedTransport === t.id}
+            key={transport.id}
+            className={`transport-btn ${selectedTransport === transport.id ? "transport-btn--active" : ""}`}
+            onClick={() => setTransport(transport.id)}
+            disabled={isLocked || availableTransports.length === 1}
+            aria-pressed={selectedTransport === transport.id}
           >
-            {t.label}
+            {transport.label}
           </button>
         ))}
       </div>

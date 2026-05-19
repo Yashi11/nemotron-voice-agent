@@ -5,19 +5,16 @@ import { usePipecatClient } from "@pipecat-ai/client-react";
 import { useApp } from "../../context/useApp";
 import { StatusRow } from "./StatusRow";
 
-const TRANSPORT_LABELS: Record<string, string> = {
-  webrtc: "WebRTC",
-  websocket: "WebSocket",
-};
-
 export function SessionSection() {
   const client = usePipecatClient();
-  const { selectedTransport } = useApp();
+  const { availableTransports, selectedTransport } = useApp();
+  const selectedTransportLabel =
+    availableTransports.find((transport) => transport.id === selectedTransport)?.label ?? selectedTransport;
 
   return (
     <div className="panel-section">
       <p className="panel-label">SESSION</p>
-      <StatusRow label="Transport" value={TRANSPORT_LABELS[selectedTransport] ?? selectedTransport} />
+      <StatusRow label="Transport" value={selectedTransportLabel} />
       <StatusRow label="RTVI" value={client?.version ?? "---"} />
     </div>
   );
