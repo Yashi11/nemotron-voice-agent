@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import { useConnectionState } from "../../hooks/useConnectionState";
-import { useConversationMessages } from "../../hooks/useConversationMessages";
 import { IdleHero } from "./IdleHero";
 import { ConversationPanel } from "./ConversationPanel";
 import { MetricsPanel } from "./MetricsPanel";
@@ -23,11 +22,10 @@ const ALL_TABS: { id: Tab; label: string }[] = [
 
 function ConversationContent() {
   const { isConnected, isConnecting } = useConnectionState();
-  const conversation = useConversationMessages();
 
   return (
     <>
-      <ConversationPanel {...conversation} />
+      <ConversationPanel />
       {!isConnected && (
         <div className="idle-hero-overlay">
           <IdleHero connecting={isConnecting} fadingOut={false} />

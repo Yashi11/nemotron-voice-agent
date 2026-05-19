@@ -34,6 +34,7 @@ from pipecat.services.nvidia.llm import NvidiaLLMService, NvidiaLLMSettings
 from pipecat.services.nvidia.stt import NvidiaSTTService
 from pipecat.services.nvidia.tts import NvidiaTTSService, NvidiaTTSSettings
 from pipecat.transports.base_transport import TransportParams
+from pipecat.turns.user_mute import MuteUntilFirstBotCompleteUserMuteStrategy
 from pipecat.turns.user_stop import SpeechTimeoutUserTurnStopStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.utils.context.llm_context_summarization import (
@@ -92,11 +93,13 @@ def _build_user_aggregator_params() -> LLMUserAggregatorParams:
     if not parse_env_bool("USE_SILERO_VAD_TURN_DETECTION", default=False):
         return LLMUserAggregatorParams(
             vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2)),
+            user_mute_strategies=[MuteUntilFirstBotCompleteUserMuteStrategy()],
         )
 
     stop_secs = parse_env_float("SILERO_VAD_STOP_SECS", 0.5, min_value=0.0)
     return LLMUserAggregatorParams(
         vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=stop_secs)),
+        user_mute_strategies=[MuteUntilFirstBotCompleteUserMuteStrategy()],
         user_turn_strategies=UserTurnStrategies(
             stop=[SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.0)],
         ),
@@ -435,6 +438,19 @@ async def bot(runner_args: RunnerArguments) -> None:
         enable_tracing=IS_TRACING_ENABLED,
         rtvi_observer_params=rtvi_params,
     )
+
+    @user_aggregator.event_handler("on_user_turn_stopped")
+    async def on_user_turn_stopped(aggregator, strategy, message):
+        await task.queue_frame(
+            RTVIServerMessageFrame(
+                data={
+                    "type": "user-turn-finalized",
+                    "timestamp": getattr(message, "timestamp", None),
+                    "transcript": getattr(message, "content", None),
+                    "user_id": getattr(message, "user_id", None),
+                }
+            )
+        )
 
     if multilingual_aggregator is not None:
 
