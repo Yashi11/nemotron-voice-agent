@@ -35,6 +35,7 @@ from pipecat.services.nvidia.llm import NvidiaLLMService, NvidiaLLMSettings
 from pipecat.services.nvidia.stt import NvidiaSTTService
 from pipecat.services.nvidia.tts import NvidiaTTSService, NvidiaTTSSettings
 from pipecat.transports.base_transport import TransportParams
+from pipecat.turns.user_mute import MuteUntilFirstBotCompleteUserMuteStrategy
 
 from cascaded.agentic_airline.agent.bridge import DeepAgentBridgeService
 from cascaded.agentic_airline.agent.pnr_injector import CurrentPnrInjector
@@ -201,7 +202,10 @@ async def bot(runner_args: RunnerArguments) -> None:
 
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
-        user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2))),
+        user_params=LLMUserAggregatorParams(
+            vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2)),
+            user_mute_strategies=[MuteUntilFirstBotCompleteUserMuteStrategy()],
+        ),
     )
     logger.info(f"Chat history sliding window: limit={CHAT_HISTORY_RECENT_TURNS}")
 
@@ -212,6 +216,19 @@ async def bot(runner_args: RunnerArguments) -> None:
     @assistant_aggregator.event_handler("on_assistant_turn_stopped")
     async def on_assistant_turn_stopped(aggregator, message):
         _apply_chat_history_sliding_window(context, preserve_prompt_messages, CHAT_HISTORY_RECENT_TURNS)
+
+    @user_aggregator.event_handler("on_user_turn_stopped")
+    async def on_user_turn_stopped(aggregator, strategy, message):
+        await task.queue_frame(
+            RTVIServerMessageFrame(
+                data={
+                    "type": "user-turn-finalized",
+                    "timestamp": getattr(message, "timestamp", None),
+                    "transcript": getattr(message, "content", None),
+                    "user_id": getattr(message, "user_id", None),
+                }
+            )
+        )
 
     pnr_injector = CurrentPnrInjector(entity_store=entity_store)
     audio_recorder = create_audio_recorder()
