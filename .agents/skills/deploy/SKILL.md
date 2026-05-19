@@ -44,7 +44,7 @@ test -f .env || cp .env.example .env
 Required keys: `NVIDIA_API_KEY` for all modes; `HF_TOKEN` for `dgxspark` and `jetson`.
 
 4. Select profile:
-- Selector app: `all-examples` (cloud/NVCF only)
+- Selector app: `all-examples` (cloud/NVCF, Cascaded examples)
 - Generic: `generic`, `generic-workstation`, `generic-dgxspark`, `generic-jetson`
 - Agentic Airline: `agentic-airline`, `agentic-airline-workstation` (no DGX Spark / Jetson local profile)
 - For local profiles, log in to `nvcr.io`.

@@ -34,7 +34,7 @@ Check the following requirements before you begin.
 
 | Mode | Supported Docker Compose Profiles | Hardware | Services | Description |
 |------|--------------------|----------|----------|-------------|
-| Cloud-only (default) | `all-examples`, `generic`, `agentic-airline` | None | ASR, LLM, and TTS via NVIDIA cloud APIs | No local GPUs required |
+| Cloud-only (default) | `all-examples`, `generic`, `agentic-airline` | None | ASR, LLM, and TTS via NVIDIA cloud APIs | No local GPUs required. `all-examples` opens the Cascaded selector |
 | NVIDIA Workstation and Server GPUs | `generic-workstation`, `agentic-airline-workstation` | 1 GPU (~80 GB VRAM available) | ASR + TTS NIMs + NIM LLM | Single-GPU local deployment for the chosen example |
 | DGX Spark | `generic-dgxspark` | 1 GPU, 128 GB unified memory | ASR + TTS NIMs + vLLM LLM | Single-GPU local deployment for the Generic example |
 | Jetson Thor | `generic-jetson` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) | Edge deployment for the Generic example |
@@ -77,7 +77,7 @@ Start the application following these steps.
     docker compose --profile all-examples up -d
     ```
 
-    > **Note:** Deployment may take 30–60 minutes on first run. The default `all-examples` profile starts the cloud/NVCF selector. See the [Getting Started Guide](docs/01-getting-started.md) for locked examples and on-prem profiles.
+    > **Note:** Deployment may take 30–60 minutes on first run. The default `all-examples` profile starts the cloud/NVCF Cascaded selector. See the [Getting Started Guide](docs/01-getting-started.md) for locked examples and on-prem profiles.
 
 5. Access the application at `https://<machine-ip>:7860`. Set `PIPELINE_TLS=false` in `.env` to use `http://<machine-ip>:7860`.
 

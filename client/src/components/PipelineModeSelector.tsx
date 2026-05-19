@@ -4,14 +4,9 @@
 import { useConnectionState } from "../hooks/useConnectionState";
 import { useApp } from "../context/useApp";
 
-const FAMILY_LABELS: Record<string, string> = {
-  cascaded: "Cascaded",
-  "speech-to-speech": "Speech-to-Speech",
-};
-
 export function PipelineModeSelector() {
   const { isLocked } = useConnectionState();
-  const { selectedExample, selectExample, deploymentOptions, deploymentSelectable } = useApp();
+  const { selectedExample, selectExample, deploymentOptions, availablePipelines, deploymentSelectable } = useApp();
   const disabled = isLocked || !deploymentSelectable;
 
   // First option per family becomes the family default — clicking the family
@@ -20,22 +15,22 @@ export function PipelineModeSelector() {
   for (const option of deploymentOptions) {
     if (!familyDefaults.has(option.family)) familyDefaults.set(option.family, option.key);
   }
-  const families = Array.from(familyDefaults.keys());
+  const pipelines = availablePipelines.filter((pipeline) => familyDefaults.has(pipeline.id));
 
-  if (families.length <= 1) return null;
+  if (pipelines.length <= 1) return null;
 
   return (
     <div className="panel-section">
       <p className="panel-label">PIPELINE</p>
       <div className="transport-options">
-        {families.map((family) => (
+        {pipelines.map((pipeline) => (
           <button
-            key={family}
-            className={`transport-btn ${selectedExample?.family === family ? "transport-btn--active" : ""}`}
-            onClick={() => selectExample(familyDefaults.get(family)!)}
+            key={pipeline.id}
+            className={`transport-btn ${selectedExample?.family === pipeline.id ? "transport-btn--active" : ""}`}
+            onClick={() => selectExample(familyDefaults.get(pipeline.id)!)}
             disabled={disabled}
           >
-            {FAMILY_LABELS[family] ?? family}
+            {pipeline.label}
           </button>
         ))}
       </div>

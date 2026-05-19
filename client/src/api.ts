@@ -164,10 +164,24 @@ export interface DeploymentOption {
   slots: string[];
 }
 
+export type TransportType = "webrtc" | "websocket";
+
+export interface TransportOption {
+  id: TransportType;
+  label: string;
+}
+
+export interface PipelineOption {
+  id: string;
+  label: string;
+}
+
 export interface DeploymentResponse {
   active: DeploymentOption;
   selectable: boolean;
   options: DeploymentOption[];
+  pipelines: PipelineOption[];
+  transports: TransportOption[];
 }
 
 export interface IceServersResponse {

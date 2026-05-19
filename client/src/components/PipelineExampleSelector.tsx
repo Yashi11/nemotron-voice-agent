@@ -4,13 +4,6 @@
 import { useConnectionState } from "../hooks/useConnectionState";
 import { useApp } from "../context/useApp";
 
-function formatExampleName(id: string): string {
-  return id
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
 export function PipelineExampleSelector() {
   const { isLocked } = useConnectionState();
   const { selectedExample, selectExample, deploymentOptions, deploymentSelectable } = useApp();
@@ -32,7 +25,7 @@ export function PipelineExampleSelector() {
       >
         {examplesInFamily.map((option) => (
           <option key={option.key} value={option.key}>
-            {formatExampleName(option.id)}
+            {option.label}
           </option>
         ))}
       </select>

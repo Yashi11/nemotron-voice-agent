@@ -2,10 +2,10 @@ name: nemotron-voice-agent
 
 # Each example owns a self-contained compose file. The default all-examples
 # profile starts one selector-capable UI/backend that can switch between
-# registered examples from the UI.
+# cascaded examples from the UI.
 #
 #   Default selector:
-#     --profile all-examples          All registered examples via UI selector (cloud/NVCF)
+#     --profile all-examples          Cascaded examples via UI selector (cloud/NVCF)
 #
 #   Cascaded / Generic standalone:
 #     --profile generic              cloud endpoints (NVCF), no local sidecars
@@ -33,7 +33,7 @@ services:
       dockerfile: Dockerfile
     image: nemotron-voice-agent:latest
     cpuset: ${PIPECAT_CPUSET:-}
-    command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0", "--all-examples"]
+    command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0", "--all-examples", "--pipeline", "cascaded"]
     ports:
       - "${PIPELINE_APP_PORT:-7860}:7860"
     env_file:

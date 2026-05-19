@@ -1,6 +1,6 @@
 ---
 name: configure-pipeline
-description: Configure Nemotron Voice Agent runtime via `.env`, example-local `services.{cloud,local}.yaml`, and example-local `prompts.yaml`. Use when changing prompts, tracing, S2S endpoint, audio knobs, or local NIM image overrides.
+description: Configure Nemotron Voice Agent runtime via `.env`, example-local `services.{cloud,local}.yaml`, and example-local `prompts.yaml`. Use when changing prompts, tracing, S2S endpoint, audio knobs, exposed pipelines or transports, or local NIM image overrides.
 version: "1.0.0"
 metadata:
   author: Ashutosh Rautela <arautela@nvidia.com>
@@ -22,6 +22,8 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 - Run commands from the repository root.
 - Limit repository-backed changes to `.env`, example-local `prompts.yaml`, and per-example service catalogs.
 - UI-only prompt or service tests stay in browser localStorage. Redeployment is not required.
+- Exposed UI pipelines are server startup config. Use `--pipeline cascaded` or `--pipeline speech-to-speech`. Omit the flag to expose both.
+- Exposed UI transports are server startup config. Use `--transport webrtc` or `--transport websocket`. Omit the flag to expose both.
 - Use `deploy` for initial deployment, profile selection, or auth troubleshooting.
 
 ## Instructions

@@ -18,7 +18,7 @@ Before you begin, ensure you have the following:
 
 | Profile | Hardware | Services | Description |
 |---------|----------|----------|-------------|
-| `all-examples` | None (cloud only) | UI selector + booking server | Selector across all registered examples |
+| `all-examples` | None (cloud only) | Cascaded UI selector + booking server | Selector across Cascaded examples |
 | `generic` / `agentic-airline` | None (cloud only) | Single-example backend | Lock the backend to one cloud example |
 | `generic-workstation` / `agentic-airline-workstation` | 1 GPU (at least 80 GB VRAM) | ASR + TTS NIMs + NIM LLM | Single-GPU local deployment requiring at least 80 GB VRAM for the chosen example |
 | `generic-dgxspark` | 1 GPU, 128 GB unified memory | ASR + TTS NIMs + vLLM LLM | Single-GPU local deployment for the Generic example |
@@ -61,7 +61,7 @@ Before you begin, ensure you have the following:
     docker compose --profile all-examples up -d
     ```
 
-    This starts one UI/backend plus the Agentic Airline booking server using cloud/NVCF services. Use the UI pipeline selector to switch between registered examples.
+    This starts one UI/backend plus the Agentic Airline booking server using cloud/NVCF services. Use the UI example selector to switch between Cascaded examples.
 
     Standalone cloud profiles are also available when you want to lock the backend to one example:
 
@@ -164,8 +164,10 @@ For development and debugging, you can run the server directly:
 
     | Command | UI behavior |
     |---------|-------------|
-    | `uv run python src/server.py` | Select between the default example for each pipeline family (`cascaded/generic`, `speech-to-speech/generic`) |
-    | `uv run python src/server.py --all-examples` | Select any registered example, including `cascaded/agentic-airline` |
+    | `uv run python src/server.py` | Show the default example for each pipeline family |
+    | `uv run python src/server.py --pipeline cascaded` | Show only the default Cascaded example |
+    | `uv run python src/server.py --all-examples --pipeline cascaded` | Show all Cascaded examples |
+    | `uv run python src/server.py --all-examples` | Show all registered examples across all pipeline families |
     | `uv run python src/server.py --example cascaded/agentic-airline` | Lock the server to one example |
 
 6. Access the application at `https://localhost:7860`, or `http://localhost:7860` when `PIPELINE_TLS=false`.
