@@ -16,9 +16,6 @@ airline domain:
   destinations" is friendlier than letter-by-letter and avoids TTS
   treating three-letter tokens as common-word homophones (``BOS`` →
   "boss", ``ATL`` → "at-el").
-* **Clock times** (``2:30 PM``) → ``2 30 PM`` so the TTS doesn't voice
-  the colon.
-* **Dollar amounts** (``$30``) → ``30 dollars``.
 
 Applied *before* the generic Nemotron cleanup so downstream whitespace /
 punctuation normalization still runs on the substituted output.
@@ -33,7 +30,7 @@ from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 # Every recognized IATA code resolves to a full spoken form — no
 # letter-by-letter fallback, because the TTS is much less predictable on
 # three-letter acronyms than it is on real words.  Unknown codes fall
-# through to per-letter spelling via :func:`_spell_letters`.
+# through to per-letter spelling via :func:`_insert_spaces`.
 _IATA_CITY: dict[str, str] = {
     # Domestic US hubs and common destinations
     "MIA": "Miami",
@@ -77,56 +74,37 @@ _FLIGHT_RE = re.compile(r"\b([A-Z]{2})(\d{2,4})\b")
 # sequences like ``ABC 123`` (which wouldn't match because of the space).
 _PNR_RE = re.compile(r"\b([A-Z]{3})(\d{3})\b")
 
-# Clock time: H:MM or HH:MM, not part of an HH:MM:SS timestamp.
-_TIME_RE = re.compile(r"(?<!\d)(\d{1,2}):(\d{2})(?!:?\d)")
-
 # 3 uppercase letters, standalone — the IATA airport-code pattern.
 # Must run *after* the flight and PNR substitutions so that their letter
 # portions aren't later re-expanded into airport names.
 _IATA_RE = re.compile(r"\b([A-Z]{3})\b")
 
-# Dollar amount: ``$30``, ``$30.50``.
-_DOLLAR_RE = re.compile(r"\$(\d+(?:\.\d+)?)")
+
+def _insert_spaces(s: str) -> str:
+    """Insert a space between every character so TTS reads each one individually."""
+    return " ".join(s)
 
 
-def _space_digits(digits: str) -> str:
-    """Insert spaces between digits so the TTS voices each one individually."""
-    return " ".join(digits)
+def _sub_alphanumeric_code(match: re.Match) -> str:
+    """Spell every capture group character-by-character, separated by spaces.
 
-
-def _spell_letters(letters: str) -> str:
-    """Insert spaces between letters so the TTS reads each letter individually."""
-    return " ".join(letters)
-
-
-def _sub_flight(match: re.Match) -> str:
-    return f"{_spell_letters(match.group(1))} {_space_digits(match.group(2))}"
-
-
-def _sub_pnr(match: re.Match) -> str:
-    return f"{_spell_letters(match.group(1))} {_space_digits(match.group(2))}"
-
-
-def _sub_time(match: re.Match) -> str:
-    return f"{match.group(1)} {match.group(2)}"
+    Each group is spaced out individually and groups are joined with a space,
+    so ``AA123`` (groups: ``'AA'``, ``'123'``) becomes ``'A A 1 2 3'``.
+    Works for any number of capture groups.
+    """
+    return " ".join(_insert_spaces(g) for g in match.groups())
 
 
 def _sub_iata(match: re.Match) -> str:
     code = match.group(1)
-    return _IATA_CITY.get(code, _spell_letters(code))
-
-
-def _sub_dollar(match: re.Match) -> str:
-    return f"{match.group(1)} dollars"
+    return _IATA_CITY.get(code, _insert_spaces(code))
 
 
 def _apply_airline_substitutions(text: str) -> str:
     """Apply the airline-specific regex substitutions in dependency order."""
-    text = _FLIGHT_RE.sub(_sub_flight, text)
-    text = _PNR_RE.sub(_sub_pnr, text)
-    text = _TIME_RE.sub(_sub_time, text)
+    text = _FLIGHT_RE.sub(_sub_alphanumeric_code, text)
+    text = _PNR_RE.sub(_sub_alphanumeric_code, text)
     text = _IATA_RE.sub(_sub_iata, text)
-    text = _DOLLAR_RE.sub(_sub_dollar, text)
     return text
 
 
@@ -134,8 +112,8 @@ class AirlineSpeechTextFilter(NemotronSpeechTextFilter):
     """Airline domain-aware TTS text filter.
 
     Applies airline-specific substitutions (flight numbers, PNRs, airport
-    codes, times, dollar amounts) first, then delegates to the parent
-    Nemotron filter for generic cleanup.
+    codes) first, then delegates to the parent Nemotron filter for generic
+    cleanup.
     """
 
     async def filter(self, text: str) -> str:

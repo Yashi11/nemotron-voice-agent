@@ -63,12 +63,50 @@ The dictionary is loaded at session start and applied to every TTS request. Rest
 
 ## TTS Text Filter
 
-The text filter (`NemotronSpeechTextFilter`) strips markdown formatting, special characters, and excess whitespace before sending text to the TTS model. This prevents synthesis failures caused by unsupported characters.
+LLM output frequently contains special characters, Markdown formatting, or characters reserved by the Magpie TTS preprocessor for its own internal markup. When these characters reach the TTS inference engine unfiltered, synthesis fails or produces unexpected audio. A text filter sits between the LLM and the TTS service and removes these characters before synthesis.
 
-Controlled via the `ENABLE_TTS_TEXT_FILTER` environment variable in `.env`:
+The Magpie preprocessor reserves two character sequences:
 
-```bash
-ENABLE_TTS_TEXT_FILTER=true
+- **`{` and `}`** — delimit ARPAbet phoneme tokens such as `{@AW1}` and `{@N}`.
+- **`<tag>`** — SSML tags parsed by the TTS inference.
+
+Both reserved sequences appear naturally in LLM output, particularly when the model responds with code examples, JSON, Markdown, or HTML snippets.
+
+All filter classes live in `src/cascaded/shared/nemotron_speech_text_filter.py`.
+
+### `NemotronSpeechTextFilter` *(default)*
+
+Applies a single regex pass that strips `{`, `}`, and tag-opening `<` from the input text. All other characters — including comparison operators (`5 < 7`), currency signs, emoji, and non-Latin scripts (Arabic, Chinese, Devanagari, Korean, etc.) — are passed through unchanged.
+
+Use this filter when the LLM produces plain prose or lightly formatted text with no Markdown.
+
+```python
+# src/cascaded/generic/pipeline.py
+from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
+
+tts = NvidiaTTSService(
+    ...
+    text_filter=NemotronSpeechTextFilter(),  # default
+)
 ```
 
-The filter is automatically disabled when a multilingual prompt is selected, because multilingual responses are handled by a dedicated processor that extracts the spoken `Text:` block and switches TTS language and voice dynamically. For setup details, see [Enable Multilingual Voice Agent](./enable-multilingual.md).
+### `NemotronSpeechMarkdownTextFilter`
+
+Extends Pipecat's `MarkdownTextFilter` with a second pass that applies the same reserved-character strip from `NemotronSpeechTextFilter`. Use this filter when the LLM streams Markdown-formatted responses.
+
+```python
+# src/cascaded/generic/pipeline.py
+from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechMarkdownTextFilter
+
+tts = NvidiaTTSService(
+    ...
+    text_filter=NemotronSpeechMarkdownTextFilter(),
+)
+```
+
+All `MarkdownTextFilter` settings (`filter_code`, `filter_tables`) are inherited and work unchanged.
+
+### `AirlineSpeechTextFilter`
+
+A domain-specific subclass of `NemotronSpeechTextFilter` used by the `agentic_airline` pipeline. It applies the same reserved-character strip and adds airline-specific post-processing (flight numbers, PNRs, and IATA airport codes). It is set default in `src/cascaded/agentic_airline/pipeline.py` and does not need to be changed.
+
