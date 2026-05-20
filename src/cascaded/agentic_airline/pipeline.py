@@ -50,7 +50,6 @@ from utils import (
     is_nvcf,
     load_ipa_dictionary,
     load_service_entry,
-    parse_env_bool,
     parse_env_int,
     parse_json_dict,
     resolve_prompt,
@@ -183,17 +182,16 @@ async def bot(runner_args: RunnerArguments) -> None:
     tts_server = body.get("tts_server", "") or default_tts.get("server", "grpc.nvcf.nvidia.com:443")
     tts_ssl = is_nvcf(tts_server)
     tts_voice = body.get("tts_voice_id", "") or default_tts.get("voice_id", "Magpie-Multilingual.EN-US.Aria")
-    enable_text_filter = parse_env_bool("ENABLE_TTS_TEXT_FILTER", default=True)
     custom_dictionary = load_ipa_dictionary()
     tts = NvidiaTTSService(
         api_key=os.getenv("NVIDIA_API_KEY"),
         server=tts_server,
         settings=NvidiaTTSSettings(voice=tts_voice),
         use_ssl=tts_ssl,
-        text_filter=AirlineSpeechTextFilter() if enable_text_filter else None,
+        text_filters=[AirlineSpeechTextFilter()],
         custom_dictionary=custom_dictionary,
     )
-    logger.info(f"TTS: server={tts_server}, ssl={tts_ssl}, voice={tts_voice}, text_filter={enable_text_filter}")
+    logger.info(f"TTS: server={tts_server}, ssl={tts_ssl}, voice={tts_voice}, text_filters=[AirlineSpeechTextFilter]")
 
     # --- Context + aggregators ---
     _, system_prompt = resolve_prompt(__file__, body.get("prompt_content", ""), body.get("prompt_key", ""))

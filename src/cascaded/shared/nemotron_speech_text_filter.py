@@ -6,39 +6,37 @@
 import re
 
 from pipecat.utils.text.base_text_filter import BaseTextFilter
+from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
 
-
-def _normalize_whitespace(text: str) -> str:
-    """Collapse repeated whitespace/newlines into single spaces; keep edge intent."""
-    return re.sub(r"\s+", " ", text)
+_TTS_RESERVED_CHARACTERS = re.compile(
+    r"<(?=[A-Za-z/!])"  # < that starts a tag: <b>, </em>, <!--
+    r"|[{}]"  # ARPAbet phoneme delimiters: {, }
+)
 
 
 class NemotronSpeechTextFilter(BaseTextFilter):
-    """Cleans text for TTS by removing special characters, numbers, and excess spacing."""
+    """Strips characters reserved by the NVIDIA TTS text preprocessor.
+
+    ``{...}``  ARPAbet phoneme notation.
+
+    ``<tag>``  SSML tags.
+    """
 
     async def filter(self, text: str) -> str:
-        """Clean and normalize text prior to TTS synthesis."""
-        text = re.sub(r"[*_`~\[\]\(\)\{\}<>]", "", text)
-        text = re.sub(r"(?m)^\s*\d+\.\s+", "", text)
-        text = re.sub(r"(?m)^\s*[•\-]\s+", "", text)
-        text = re.sub(r"([\.!\?])(?=[A-Za-z0-9])", r"\1 ", text)
-        text = re.sub(r"[^A-Za-z0-9\s\.\,\!\?\-']", " ", text)
-        text = _normalize_whitespace(text)
-        text = re.sub(r"\s+([,\.!\?])", r"\1", text)
-        text = re.sub(r"\s*-\s*", "-", text)
-        text = re.sub(r"\s*'\s*", "'", text)
-        return text
+        """Strip SSML tag openers and ARPAbet phoneme delimiters from TTS input."""
+        return _TTS_RESERVED_CHARACTERS.sub("", text)
 
-    async def handle_interruption(self):
-        """No-op interruption handler for compatibility.
 
-        Filter is stateless, so nothing to reset on interruption.
-        """
-        return None
+class NemotronSpeechMarkdownTextFilter(MarkdownTextFilter):
+    """Markdown filter safe for NVIDIA TTS.
 
-    async def reset_interruption(self):
-        """No-op reset handler for compatibility.
+    Extends Pipecat's :class:`MarkdownTextFilter` with a final pass that strips
+    characters reserved by the NVIDIA TTS preprocessor.  Use this instead of
+    ``MarkdownTextFilter`` wherever the output feeds into NVIDIA TTS
+    service.
+    """
 
-        Filter keeps no internal buffers; nothing to restore.
-        """
-        return None
+    async def filter(self, text: str) -> str:
+        """Apply Markdown stripping then remove NVIDIA TTS reserved characters."""
+        text = await super().filter(text)
+        return _TTS_RESERVED_CHARACTERS.sub("", text)

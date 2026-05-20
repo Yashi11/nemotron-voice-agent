@@ -294,7 +294,6 @@ async def bot(runner_args: RunnerArguments) -> None:
     tts_voice = body.get("tts_voice_id", "") or default_tts.get("voice_id", "Magpie-Multilingual.EN-US.Aria")
 
     is_multilingual = "multilingual" in prompt_key.lower()
-    enable_text_filter = parse_env_bool("ENABLE_TTS_TEXT_FILTER", default=True)
     custom_dictionary = load_ipa_dictionary()
 
     tts = NvidiaTTSService(
@@ -302,7 +301,7 @@ async def bot(runner_args: RunnerArguments) -> None:
         server=tts_server,
         settings=NvidiaTTSSettings(voice=tts_voice),
         use_ssl=tts_ssl,
-        text_filter=NemotronSpeechTextFilter() if (enable_text_filter and not is_multilingual) else None,
+        text_filters=[NemotronSpeechTextFilter()],
         custom_dictionary=custom_dictionary,
         skip_aggregator_types=list(SKIP_TTS_AGGREGATIONS) if is_multilingual else [],
     )
@@ -323,7 +322,7 @@ async def bot(runner_args: RunnerArguments) -> None:
 
     logger.info(
         f"TTS: server={tts_server}, ssl={tts_ssl}, voice={tts_voice}, "
-        f"multilingual={is_multilingual}, text_filter={enable_text_filter and not is_multilingual}"
+        f"multilingual={is_multilingual}, text_filters=[NemotronSpeechTextFilter]"
     )
 
     # --- Context ---
