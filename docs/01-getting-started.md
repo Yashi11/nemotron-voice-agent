@@ -14,15 +14,20 @@ Before you begin, ensure you have the following:
 
 **Cloud-only mode** (default): No local GPUs required. ASR, LLM, and TTS services run via NVIDIA cloud APIs.
 
-**Docker Compose profiles**:
+**Docker Compose profiles** (compose freely: pick one **example profile**, optionally combine with one **hardware** profile and any observability profiles):
 
-| Profile | Hardware | Services | Description |
-|---------|----------|----------|-------------|
-| `all-examples` | None (cloud only) | Cascaded UI selector + booking server | Selector across Cascaded examples |
-| `generic` / `agentic-airline` | None (cloud only) | Single-example backend | Lock the backend to one cloud example |
-| `generic-workstation` / `agentic-airline-workstation` | 1 GPU (at least 80 GB VRAM) | ASR + TTS NIMs + NIM LLM | Single-GPU local deployment requiring at least 80 GB VRAM for the chosen example |
-| `generic-dgxspark` | 1 GPU, 128 GB unified memory | ASR + TTS NIMs + vLLM LLM | Single-GPU local deployment for the Generic example |
-| `generic-jetson` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) | Edge deployment for the Generic example |
+| Axis | Profile | Hardware | Notes |
+|------|---------|----------|-------|
+| Example | `cascaded/generic` | None (cloud) | Generic Cascaded pipeline |
+| Example | `cascaded/agentic-airline` | None (cloud) | Agentic Airline + booking-server sidecar |
+| Example | `speech-to-speech/generic` | None (cloud) | NVIDIA Voice Chat (S2S) |
+| Hardware | `workstation` | 1 GPU (≥80 GB VRAM) | NIM ASR + TTS + NIM LLM |
+| Hardware | `dgxspark` | 1 GPU, 128 GB unified memory | NIM ASR + TTS + vLLM LLM |
+| Hardware | `jetson` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
+| Observability | `tracing` | — | Phoenix OTel collector |
+| Observability | `turn` | — | coturn TURN server |
+
+> Profile names match the registry example keys verbatim. Every deployment specifies exactly one example profile so the deployment intent is unambiguous.
 
 ---
 
@@ -55,20 +60,17 @@ Before you begin, ensure you have the following:
 
     For DGX Spark staging or private Magpie TTS images, ensure `NVIDIA_API_KEY` has access before logging in.
 
-5. Deploy the default selector application:
+5. Deploy a cloud-only example:
 
     ```bash
-    docker compose --profile all-examples up -d
+    docker compose --profile cascaded/generic up -d            # Generic Cascaded
+    docker compose --profile cascaded/agentic-airline up -d    # Agentic Airline (+ booking-server)
+    docker compose --profile speech-to-speech/generic up -d    # NVIDIA Voice Chat (S2S)
     ```
 
-    This starts one UI/backend plus the Agentic Airline booking server using cloud/NVCF services. Use the UI example selector to switch between Cascaded examples.
+    Pick the example profile that matches the registry key you want to run. `docker compose up` with no profile is intentionally a no-op so the deployment is always explicit.
 
-    Standalone cloud profiles are also available when you want to lock the backend to one example:
-
-    ```bash
-    docker compose --profile generic up -d
-    docker compose --profile agentic-airline up -d
-    ```
+    > **Note:** Docker Compose deployments are per-example only — pick the profile that matches the example you want to run. Selector mode (one container exposing multiple examples in the UI) is supported for host-native runs only (see [Local Development](#optional-local-development-without-docker)).
 
     > **Note:** Deployment may take 30–60 minutes on first run.
 
@@ -92,17 +94,17 @@ Workstation profiles place ASR, TTS, and LLM on one GPU by default. Single-GPU d
 DGX Spark and Jetson additionally need `HF_TOKEN` for the vLLM model download. If the Magpie TTS image is staging or private, use a `NVIDIA_API_KEY` with access to that image.
 
 ```bash
-# Generic example — full local deployment
-docker compose --profile generic-workstation up -d
+# Generic example — full local NIM stack on a workstation
+docker compose --profile cascaded/generic --profile workstation up -d
 
 # Generic example — DGX Spark
-docker compose --profile generic-dgxspark up -d
+docker compose --profile cascaded/generic --profile dgxspark up -d
 
 # Generic example — Jetson edge (set HF_TOKEN in .env)
-docker compose --profile generic-jetson up -d
+docker compose --profile cascaded/generic --profile jetson up -d
 
-# Agentic Airline example — full local deployment
-docker compose --profile agentic-airline-workstation up -d
+# Agentic Airline example — full local NIM stack on a workstation
+docker compose --profile cascaded/agentic-airline --profile workstation up -d
 ```
 
 List compatible LLM NIM profiles for your hardware:
@@ -114,7 +116,7 @@ docker run --rm --gpus all \
   list-model-profiles
 ```
 
-Run with `--profile generic` (or `--profile agentic-airline`) to stay cloud/NVCF only.
+Run with just an example profile (e.g., `--profile cascaded/generic`) to stay cloud/NVCF only.
 
 For Jetson-specific setup, refer to [Jetson Thor Deployment](03-jetson-thor.md).
 
@@ -160,15 +162,23 @@ For development and debugging, you can run the server directly:
     PIPELINE_TLS=false uv run python src/server.py
     ```
 
-    Local server modes:
+    Host-native runs read [`examples_registry.yaml`](../examples_registry.yaml) at the repository root. Edit the `selection` field to choose what the UI exposes, then start the server normally. The server has no example/pipeline CLI flags.
 
-    | Command | UI behavior |
-    |---------|-------------|
-    | `uv run python src/server.py` | Show the default example for each pipeline family |
-    | `uv run python src/server.py --pipeline cascaded` | Show only the default Cascaded example |
-    | `uv run python src/server.py --all-examples --pipeline cascaded` | Show all Cascaded examples |
-    | `uv run python src/server.py --all-examples` | Show all registered examples across all pipeline families |
-    | `uv run python src/server.py --example cascaded/agentic-airline` | Lock the server to one example |
+    | `selection` in `examples_registry.yaml` | UI behavior |
+    |-----------------------------------------|-------------|
+    | `cascaded/generic` | Lock to the Generic Cascaded example |
+    | `cascaded/agentic-airline` | Lock to Agentic Airline |
+    | `speech-to-speech/generic` | Lock to NVIDIA Voice Chat (S2S) |
+    | `cascaded/all` | Show every Cascaded example in the UI selector |
+    | `all` | Show every registered example across all pipeline families |
+
+    After editing, run:
+
+    ```bash
+    uv run python src/server.py
+    ```
+
+    > **Note:** Docker Compose deployments ignore the `selection` field — the per-example profile pins each container to a single example. Selector modes (`*/all`, `all`) are host-native only today.
 
 6. Access the application at `https://localhost:7860`, or `http://localhost:7860` when `PIPELINE_TLS=false`.
 
@@ -181,8 +191,8 @@ Only needed when the browser connects from a different network than the host (NA
 A Coturn service ships in `docker-compose.yml` behind an opt-in `turn` profile. Add `--profile turn` to any deploy command:
 
 ```bash
-docker compose --profile generic --profile turn up -d               # cloud-only + TURN
-docker compose --profile generic-workstation --profile turn up -d   # any local profile + TURN
+docker compose --profile cascaded/generic --profile turn up -d                       # cloud-only + TURN
+docker compose --profile cascaded/generic --profile workstation --profile turn up -d # local NIM + TURN
 ```
 
 - Coturn binds host ports UDP `3478` and UDP `49160-49200`. These must be reachable from clients (open them on your cloud firewall / security group).
@@ -196,4 +206,4 @@ docker compose --profile generic-workstation --profile turn up -d   # any local 
     TURN_PASSWORD=<pass>
     ```
 
-- If `TURN_URL` is unset, `all-examples` derives the TURN host from the request. When using a reverse proxy in that mode, ensure it forwards the `X-Forwarded-Host` header so the derived TURN URL resolves to the client-reachable hostname.
+- If `TURN_URL` is unset, the app derives the TURN host from the request. When using a reverse proxy in that mode, ensure it forwards the `X-Forwarded-Host` header so the derived TURN URL resolves to the client-reachable hostname.

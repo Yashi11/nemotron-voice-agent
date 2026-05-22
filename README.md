@@ -32,12 +32,18 @@ Check the following requirements before you begin.
 
 ### Hardware Requirements
 
-| Mode | Supported Docker Compose Profiles | Hardware | Services | Description |
-|------|--------------------|----------|----------|-------------|
-| Cloud-only (default) | `all-examples`, `generic`, `agentic-airline` | None | ASR, LLM, and TTS via NVIDIA cloud APIs | No local GPUs required. `all-examples` opens the Cascaded selector |
-| NVIDIA Workstation and Server GPUs | `generic-workstation`, `agentic-airline-workstation` | 1 GPU (~80 GB VRAM available) | ASR + TTS NIMs + NIM LLM | Single-GPU local deployment for the chosen example |
-| DGX Spark | `generic-dgxspark` | 1 GPU, 128 GB unified memory | ASR + TTS NIMs + vLLM LLM | Single-GPU local deployment for the Generic example |
-| Jetson Thor | `generic-jetson` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) | Edge deployment for the Generic example |
+Pick one **example** profile (which registers the pipeline) and optionally combine with one **hardware** profile (which adds the local NIM/Riva/vLLM sidecars).
+
+| Axis | Profile | Hardware | Services |
+|------|---------|----------|----------|
+| Example | `cascaded/generic` | None | NVIDIA cloud ASR + LLM + TTS |
+| Example | `cascaded/agentic-airline` | None | NVIDIA cloud ASR + LLM + TTS + booking-server sidecar |
+| Example | `speech-to-speech/generic` | None | NVIDIA Voice Chat (S2S) over NVCF |
+| Hardware | `workstation` | 1 GPU (~80 GB VRAM) | Local NIM ASR + TTS + LLM |
+| Hardware | `dgxspark` | 1 GPU, 128 GB unified memory | Local NIM ASR + TTS + vLLM LLM |
+| Hardware | `jetson` | 1 GPU, 128 GB unified memory | Local Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
+
+> Cloud-only is the default — invoking just an example profile uses NVCF services. Add a hardware profile when you want a local stack.
 
 ### Software Requirements
 
@@ -74,10 +80,10 @@ Start the application following these steps.
 4. Deploy the application.
 
     ```bash
-    docker compose --profile all-examples up -d
+    docker compose --profile cascaded/generic up -d
     ```
 
-    > **Note:** Deployment may take 30–60 minutes on first run. The default `all-examples` profile starts the cloud/NVCF Cascaded selector. See the [Getting Started Guide](docs/01-getting-started.md) for locked examples and on-prem profiles.
+    > **Note:** Deployment may take 30–60 minutes on first run. The example above runs the Generic Cascaded pipeline against NVIDIA cloud APIs. Swap the profile (e.g. `cascaded/agentic-airline`, `speech-to-speech/generic`) to deploy a different example. See the [Getting Started Guide](docs/01-getting-started.md) for on-prem profiles and combining with hardware profiles. Each compose deployment is locked to a single example.
 
 5. Access the application at `https://<machine-ip>:7860`. Set `PIPELINE_TLS=false` in `.env` to use `http://<machine-ip>:7860`.
 
@@ -101,8 +107,9 @@ Service and prompt catalogs are example-local under each example package, for ex
 `src/cascaded/generic/services.{cloud,local}.yaml` with
 `src/cascaded/generic/prompts.yaml`, or
 `src/speech_to_speech/generic/services.cloud.yaml` with
-`src/speech_to_speech/generic/prompts.yaml`. In the multi-example selector,
-the active UI selection determines which catalogs are loaded.
+`src/speech_to_speech/generic/prompts.yaml`. The active example (set by the
+Docker Compose profile or by `examples_registry.yaml` for host-native runs)
+determines which catalogs are loaded.
 
 See the [Configuration Guide](docs/02-configuration-guide.md) for details.
 

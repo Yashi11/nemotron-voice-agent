@@ -1,61 +1,96 @@
 name: nemotron-voice-agent
 
-# Each example owns a self-contained compose file. The default all-examples
-# profile starts one selector-capable UI/backend that can switch between
-# cascaded examples from the UI.
+# Compose deployments are per-example only. Each example gets its own
+# per-example profile that activates a dedicated app variant with the
+# matching ``EXAMPLE_SELECTION`` baked in. ``docker compose up`` without a
+# per-example profile starts nothing — pick an example explicitly to keep
+# deployment intent unambiguous.
 #
-#   Default selector:
-#     --profile all-examples          Cascaded examples via UI selector (cloud/NVCF)
+# Selector modes (``cascaded/all``, ``speech-to-speech/all``, ``all``) are
+# host-native only today (``uv run python src/server.py`` with the matching
+# ``selection`` in ``examples_registry.yaml``); they are intentionally not
+# exposed as compose profiles.
 #
-#   Cascaded / Generic standalone:
-#     --profile generic              cloud endpoints (NVCF), no local sidecars
-#     --profile generic-jetson       on-device Nemotron vLLM + Riva
-#     --profile generic-dgxspark     on-device Nemotron vLLM + NIM ASR/TTS
-#     --profile generic-workstation  NIM ASR/TTS + NIM LLM
+# Profile names match the registry example keys verbatim
+# (``<family>/<example>``) so YAML and compose stay in lockstep.
 #
-#   Cascaded / Agentic Airline standalone:
-#     --profile agentic-airline      Agentic Airline pipeline
-#     --profile agentic-airline-workstation  Agentic Airline pipeline + local NIM ASR/TTS/LLM
+# Deployment pattern:
+#   docker compose --profile <example-key> [--profile <hardware>] [--profile <observability>] up
 #
-#   Tracing (opt-in, combine with any profile above):
-#     --profile tracing              Phoenix OTel collector
+# Common invocations:
+#   docker compose --profile cascaded/generic up                            # cloud, Generic Cascaded
+#   docker compose --profile cascaded/agentic-airline up                    # cloud, Agentic Airline (+ booking-server)
+#   docker compose --profile speech-to-speech/generic up                    # cloud, Generic S2S
+#   docker compose --profile cascaded/generic --profile workstation up      # + local NIM ASR/TTS/LLM
+#   docker compose --profile cascaded/generic --profile dgxspark up         # + local NIM ASR/TTS + vLLM
+#   docker compose --profile cascaded/generic --profile jetson up           # + local Riva + vLLM
+#   docker compose --profile cascaded/generic --profile tracing up          # + Phoenix OTel collector
+#   docker compose --profile cascaded/generic --profile turn up             # + coturn TURN server
+#
+# Each per-example profile sets ``EXAMPLE_SELECTION`` via a substitution
+# default so the container always runs the matching example. The shell env
+# var is treated as an advanced override (and is deliberately omitted from
+# ``.env.example``) — for day-to-day compose work prefer choosing a
+# different profile, and for host-native runs edit
+# ``examples_registry.yaml`` instead.
 
 include:
   - path: src/cascaded/shared/docker-compose.yml
-  - path: src/cascaded/generic/docker-compose.yml
   - path: src/cascaded/agentic_airline/docker-compose.yml
 
+x-app: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: nemotron-voice-agent:latest
+  cpuset: ${PIPECAT_CPUSET:-}
+  command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0"]
+  ports:
+    - "${PIPELINE_APP_PORT:-7860}:7860"
+  env_file:
+    - .env
+  volumes:
+    - ./src:/app/src:ro
+    - ./examples_registry.yaml:/app/examples_registry.yaml:ro
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fk $$(test \"$$(printf %s \"$${PIPELINE_TLS:-true}\" | tr '[:upper:]' '[:lower:]')\" = true && echo https || echo http)://localhost:7860/health || exit 1"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 30s
+  restart: unless-stopped
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "50m"
+      max-file: "5"
+
 services:
-  all-examples:
-    profiles: ["all-examples"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: nemotron-voice-agent:latest
-    cpuset: ${PIPECAT_CPUSET:-}
-    command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0", "--all-examples", "--pipeline", "cascaded"]
-    ports:
-      - "${PIPELINE_APP_PORT:-7860}:7860"
-    env_file:
-      - .env
+  cascaded-generic:
+    <<: *app-base
+    profiles: ["cascaded/generic"]
     environment:
       APP_RUNTIME: container
-    volumes:
-      - ./src:/app/src:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fk $$(test \"$$(printf %s \"$${PIPELINE_TLS:-true}\" | tr '[:upper:]' '[:lower:]')\" = true && echo https || echo http)://localhost:7860/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded/generic}
+      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
+
+  cascaded-agentic-airline:
+    <<: *app-base
+    profiles: ["cascaded/agentic-airline"]
+    environment:
+      APP_RUNTIME: container
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded/agentic-airline}
+      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
+
+  speech-to-speech-generic:
+    <<: *app-base
+    profiles: ["speech-to-speech/generic"]
+    environment:
+      APP_RUNTIME: container
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-speech-to-speech/generic}
+      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
   # OpenTelemetry trace collector & UI (opt-in via ENABLE_TRACING).
   phoenix:

@@ -259,8 +259,11 @@ async def bot(runner_args: RunnerArguments) -> None:
     # --- LLM ---
     model_id = body.get("model_id", "") or default_llm.get("model_id", "nvidia/nemotron-3-nano-30b-a3b")
     base_url = body.get("base_url", "") or default_llm.get("base_url", "https://integrate.api.nvidia.com/v1")
-    system_prompt = body.get("system_prompt", "")
-    extra_params = parse_json_dict(body.get("extra_params", ""), label="extra_params")
+    system_prompt = body.get("system_prompt", "") or default_llm.get("system_prompt", "")
+    extra_params = parse_json_dict(
+        body.get("extra_params", "") or default_llm.get("extra_params", ""),
+        label="extra_params",
+    )
 
     logger.info(
         f"LLM: model={model_id}, base_url={base_url}, "

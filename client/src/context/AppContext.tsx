@@ -36,16 +36,36 @@ function getEffectiveSelectedId<T extends ManagedService>(
   selectedId: string,
   items: T[],
   loading: boolean,
+  preferredBuiltInId = "",
 ): string {
+  // User's explicit selection (built-in or custom) always wins.
   if (selectedId && items.some((item) => item.id === selectedId)) return selectedId;
   if (loading) return "";
+  // Otherwise prefer the registry's declared default for this slot.
+  if (preferredBuiltInId && items.some((item) => item.id === preferredBuiltInId)) return preferredBuiltInId;
   return items.find((item) => item.builtIn)?.id || items[0]?.id || "";
 }
 
-function getEffectivePromptKey(selectedKey: string, prompts: Prompt[], loading: boolean): string {
+function getEffectivePromptKey(
+  selectedKey: string,
+  prompts: Prompt[],
+  loading: boolean,
+  preferredBuiltInKey = "",
+): string {
   if (selectedKey && prompts.some((prompt) => prompt.key === selectedKey)) return selectedKey;
   if (loading) return "";
+  if (preferredBuiltInKey && prompts.some((prompt) => prompt.key === preferredBuiltInKey)) return preferredBuiltInKey;
   return prompts.find((prompt) => prompt.default)?.key || prompts[0]?.key || "";
+}
+
+function getDefaultServiceId(selectedExample: DeploymentOption | undefined, slot: string): string {
+  const entry = selectedExample?.defaults?.[slot]?.[0];
+  return entry && "id" in entry && typeof entry.id === "string" ? entry.id : "";
+}
+
+function getDefaultPromptKey(selectedExample: DeploymentOption | undefined): string {
+  const entry = selectedExample?.defaults?.prompt?.[0];
+  return entry && "key" in entry && typeof entry.key === "string" ? entry.key : "";
 }
 
 type ManagedServiceCatalogOptions<T extends ManagedService> = {
@@ -53,6 +73,7 @@ type ManagedServiceCatalogOptions<T extends ManagedService> = {
   loading: boolean;
   customStorageKey: string;
   selectionStorageKey: string;
+  preferredBuiltInId?: string;
 };
 
 function useManagedServiceCatalog<T extends ManagedService>({
@@ -60,6 +81,7 @@ function useManagedServiceCatalog<T extends ManagedService>({
   loading,
   customStorageKey,
   selectionStorageKey,
+  preferredBuiltInId = "",
 }: ManagedServiceCatalogOptions<T>) {
   const [customItems, setCustomItems] = useState<T[]>(() => readCustomServices<T>(customStorageKey));
   const [selectedId, setSelectedId] = useState(() => readLSString(selectionStorageKey));
@@ -67,8 +89,8 @@ function useManagedServiceCatalog<T extends ManagedService>({
   const items = useMemo(() => [...defaultItems, ...customItems], [defaultItems, customItems]);
 
   const effectiveSelectedId = useMemo(
-    () => getEffectiveSelectedId(selectedId, items, loading),
-    [selectedId, items, loading],
+    () => getEffectiveSelectedId(selectedId, items, loading, preferredBuiltInId),
+    [selectedId, items, loading, preferredBuiltInId],
   );
 
   const select = useCallback((id: string) => {
@@ -238,6 +260,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     loading: llmsLoading,
     customStorageKey: LLM_STORAGE,
     selectionStorageKey: LLM_SELECTION_STORAGE,
+    preferredBuiltInId: getDefaultServiceId(selectedExample, "llm"),
   });
 
   const addLLM = useCallback((name: string, modelId: string, baseUrl: string, systemPrompt: string, extraParams: string) => {
@@ -265,6 +288,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     loading: asrLoading,
     customStorageKey: ASR_STORAGE,
     selectionStorageKey: ASR_SELECTION_STORAGE,
+    preferredBuiltInId: getDefaultServiceId(selectedExample, "asr"),
   });
 
   const addASR = useCallback((name: string, server: string, model?: string) => {
@@ -294,6 +318,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     loading: ttsLoading,
     customStorageKey: TTS_STORAGE,
     selectionStorageKey: TTS_SELECTION_STORAGE,
+    preferredBuiltInId: getDefaultServiceId(selectedExample, "tts"),
   });
 
   const selectTTS = useCallback((id: string) => {
@@ -321,8 +346,8 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   const prompts = useMemo(() => [...defaultPrompts, ...customPrompts], [defaultPrompts, customPrompts]);
 
   const effectiveSelectedPromptKey = useMemo(
-    () => getEffectivePromptKey(selectedPromptKey, prompts, promptsLoading),
-    [selectedPromptKey, prompts, promptsLoading],
+    () => getEffectivePromptKey(selectedPromptKey, prompts, promptsLoading, getDefaultPromptKey(selectedExample)),
+    [selectedPromptKey, prompts, promptsLoading, selectedExample],
   );
 
   const persistPrompts = useCallback((next: Prompt[]) => {

@@ -1,39 +1,18 @@
 name: cascaded-agentic-airline
 
-services:
-  agentic-airline-example:
-    profiles: ["agentic-airline", "agentic-airline-workstation"]
-    build:
-      context: ../../..
-      dockerfile: Dockerfile
-    image: nemotron-voice-agent:latest
-    cpuset: ${PIPECAT_CPUSET:-}
-    command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0", "--bot", "cascaded.agentic_airline.pipeline:bot"]
-    ports:
-      - "7860:7860"
-    env_file:
-      - ../../../.env
-    environment:
-      APP_RUNTIME: container
-    volumes:
-      - .:/app/src/cascaded/agentic_airline:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fk $$(test \"$$(printf %s \"$${PIPELINE_TLS:-true}\" | tr '[:upper:]' '[:lower:]')\" = true && echo https || echo http)://localhost:7860/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
+# Example-specific sidecar(s) for the Agentic Airline example. Gated by the
+# ``cascaded/agentic-airline`` per-example compose profile so a Generic-only
+# deployment does not spin up the booking server. The profile name matches the
+# registry example key verbatim.
+#
+#   docker compose --profile cascaded/agentic-airline up
+#
+# Combine with hardware profiles as needed, e.g.
+# ``--profile cascaded/agentic-airline --profile workstation``.
 
+services:
   booking-server:
-    profiles: ["all-examples", "agentic-airline", "agentic-airline-workstation"]
+    profiles: ["cascaded/agentic-airline"]
     build:
       context: ../../..
       dockerfile: Dockerfile

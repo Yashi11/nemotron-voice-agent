@@ -15,8 +15,10 @@ metadata:
 - Use Docker Compose for deployment.
 - Preserve existing `.env`; create it only if missing.
 - Use `configure-pipeline` for `.env`, catalog, or prompt changes.
-- Local profiles are platform-specific: `*-workstation`, `*-dgxspark`, and `*-jetson` are not interchangeable. Pick the suffix that matches detected hardware.
-- Cloud-only profiles (`all-examples`, `generic`, `agentic-airline`) use remote/NVCF services and run on any host with Docker.
+- Every deployment composes **one example profile** with **at most one hardware profile** (plus optional observability profiles). `docker compose up` with no profile is a no-op.
+- Compose deployments are per-example only — each profile pins one example. Selector modes (`cascaded/all`, `all` etc.) are host-native (`uv run`) only and have no compose profile.
+- Example profile names match the registry keys verbatim: `cascaded/generic`, `cascaded/agentic-airline`, `speech-to-speech/generic`.
+- Hardware profiles (`workstation`, `dgxspark`, `jetson`) are platform-specific and not interchangeable.
 
 ## Deploy
 
@@ -29,11 +31,11 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
 free -h
 ```
 
-2. Identify the deployment target:
+2. Identify the hardware target:
 - `jetson`: `/proc/device-tree/model` identifies a Jetson platform, or the GPU name is `NVIDIA Thor`.
 - `dgxspark`: `/sys/class/dmi/id/product_name` contains `DGX Spark` or `DGX_Spark` case-insensitively.
-- `workstation`: non-DGX Spark, non-Jetson host with GPUs `0` and `1` available for local NIM services.
-- `cloud-only`: local platform requirements are not met, or remote/NVCF services are preferred.
+- `workstation`: non-DGX Spark, non-Jetson host with enough GPU VRAM for the selected local NIM services; single-GPU hosts are valid when capacity is sufficient.
+- _(omit)_: local platform requirements are not met, or remote/NVCF services are preferred (cloud-only).
 
 3. Prepare `.env`:
 
@@ -43,28 +45,38 @@ test -f .env || cp .env.example .env
 
 Required keys: `NVIDIA_API_KEY` for all modes; `HF_TOKEN` for `dgxspark` and `jetson`.
 
-4. Select profile:
-- Selector app: `all-examples` (cloud/NVCF, Cascaded examples)
-- Generic: `generic`, `generic-workstation`, `generic-dgxspark`, `generic-jetson`
-- Agentic Airline: `agentic-airline`, `agentic-airline-workstation` (no DGX Spark / Jetson local profile)
-- For local profiles, log in to `nvcr.io`.
+4. Compose the profile pair:
+
+| Goal | Example profile | Hardware profile |
+| --- | --- | --- |
+| Cloud-only Generic Cascaded | `cascaded/generic` | _(none)_ |
+| Cloud-only Agentic Airline | `cascaded/agentic-airline` | _(none)_ |
+| Cloud-only Speech-to-Speech | `speech-to-speech/generic` | _(none)_ |
+| Generic Cascaded on a workstation | `cascaded/generic` | `workstation` |
+| Generic Cascaded on DGX Spark | `cascaded/generic` | `dgxspark` |
+| Generic Cascaded on Jetson Thor | `cascaded/generic` | `jetson` |
+| Agentic Airline on a workstation | `cascaded/agentic-airline` | `workstation` |
+
+Hardware profiles are generic Compose overlays. This matrix is representative, not exhaustive: `workstation`, `dgxspark`, and `jetson` can be combined with example profiles unless an example-specific README documents a limitation. Some unlisted combinations may start sidecars that do not match that example's service slots.
+
+For any hardware profile, log in to `nvcr.io` first.
 
 5. Start:
 
 ```bash
-docker compose --profile <profile> up -d
+docker compose --profile <example> [--profile <hardware>] up -d
 ```
 
-Use `--build` only after source or `Dockerfile` changes.
+Add observability profiles freely: `--profile tracing` (Phoenix), `--profile turn` (coturn). Use `--build` only after source or `Dockerfile` changes.
 
 6. Verify:
 
 ```bash
 docker compose ps
-docker compose logs --tail 200 <example-service>
+docker compose logs --tail 200 <service-name>
 ```
 
-Service name follows the profile (`all-examples`, `generic-example`, or `agentic-airline-example`).
+Service names follow the profile: `cascaded-generic`, `cascaded-agentic-airline`, or `speech-to-speech-generic`. Sidecars keep their own names (`booking-server`, `nvidia-llm`, `asr-service`, etc.).
 
 ## References
 
