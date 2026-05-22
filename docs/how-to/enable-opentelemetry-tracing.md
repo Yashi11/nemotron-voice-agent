@@ -22,10 +22,10 @@ OpenTelemetry tracing provides observability for both the cascaded and S2S voice
     OTEL_EXPORTER_OTLP_ENDPOINT=phoenix:4317
     ```
 
-3. Restart the pipeline app so it picks up the new environment.
+3. Restart the pipeline app so it picks up the new environment. Replay the same example/hardware profile pair you started with and add `--profile tracing`. For example, with the Generic Cascaded example:
 
     ```bash
-    docker compose --profile all-examples --profile tracing up -d
+    docker compose --profile cascaded/generic --profile tracing up -d
     ```
 
 4. Open the Phoenix UI.

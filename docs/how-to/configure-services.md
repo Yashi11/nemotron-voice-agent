@@ -44,7 +44,9 @@ The Services tab lists all services exposed by the active catalog (cloud and rea
 
 ## Changing built-in defaults
 
-The first entry in each catalog category is the runtime default. To change defaults, reorder entries (or add a new entry first) in the relevant `services.cloud.yaml` / `services.local.yaml`. Host-run development reads these files directly; Docker deployments package them into the application image, so rebuild/redeploy after catalog edits.
+Each example declares its default service per slot via `defaults` in `examples_registry.yaml`. The pipeline resolves that default at startup, and the UI uses it as the initial selection. Edit `defaults` (and optionally reorder entries in the `services.cloud.yaml` / `services.local.yaml` for visual ordering in the UI) to change defaults. Host-run development reads these files directly; the Docker images mount `./src` and `./examples_registry.yaml` read-only so changes are picked up after `docker compose restart <service>`.
+
+When the same default key exists in both `services.cloud.yaml` and `services.local.yaml`, the resolver prefers the **self-hosted** variant so that deploying local NIM sidecars automatically promotes them to the active default — no UI click needed. If the self-hosted endpoint is unreachable at session-start time, the runtime falls back to the cloud variant.
 
 ## On-prem catalog
 
@@ -93,13 +95,13 @@ tts:
 
 ## Local NIM services
 
-Start the matching profile; the catalog will pick them up automatically.
+Combine an example profile with a hardware profile to bring up the matching sidecars; the catalog picks them up automatically once reachable.
 
 ```bash
-docker compose --profile generic-workstation up -d
-docker compose --profile generic-dgxspark up -d
-docker compose --profile generic-jetson up -d
-docker compose --profile agentic-airline-workstation up -d
+docker compose --profile cascaded/generic --profile workstation up -d
+docker compose --profile cascaded/generic --profile dgxspark up -d
+docker compose --profile cascaded/generic --profile jetson up -d
+docker compose --profile cascaded/agentic-airline --profile workstation up -d
 ```
 
-`--profile generic` and `--profile agentic-airline` stay cloud-only and use only `services.cloud.yaml`.
+Running an example profile on its own (e.g. `--profile cascaded/generic`) stays cloud-only and uses just `services.cloud.yaml`.

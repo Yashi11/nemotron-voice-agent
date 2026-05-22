@@ -1,11 +1,11 @@
 # Apply Configuration Changes
 
-Use this reference after editing `.env`, an example-local `prompts.yaml`, or an example-local `services.cloud.yaml` / `services.local.yaml`.
+Use this reference after editing `.env`, `examples_registry.yaml`, an example-local `prompts.yaml`, or an example-local `services.cloud.yaml` / `services.local.yaml`.
 
 ## Default Rule
 
-- `.env` changes: compose re-apply.
-- YAML catalog changes (`prompts.yaml`, `services.*.yaml`): compose re-apply and refresh browser. `src/` is bind-mounted, so no rebuild needed.
+- `.env` changes: compose re-apply (`up -d` with the same profile combination).
+- YAML changes (`examples_registry.yaml`, `prompts.yaml`, `services.*.yaml`): compose restart of the example service and refresh browser. `./src` and `./examples_registry.yaml` are bind-mounted, so no rebuild needed.
 - `ASR_DOCKER_IMAGE`, `ASR_NIM_TAGS`, `TTS_DOCKER_IMAGE` are `.env` changes that need a compose re-apply.
 
 ## Endpoint Rules
@@ -25,28 +25,28 @@ Cloud catalog entries use NVCF endpoints (`grpc.nvcf.nvidia.com:443`, `https://i
 
 ## Apply Commands
 
-`--profile` selects the example and the local sidecar set. Pick the matching profile for the example you need:
+Profiles compose orthogonally: pick one **example** profile (which selects the example and any example-specific sidecars) and optionally one **hardware** profile (which adds local NIM/Riva/vLLM sidecars).
 
 ```bash
 # Cloud-only (NVCF)
-docker compose --profile generic up -d
-docker compose --profile agentic-airline up -d
+docker compose --profile cascaded/generic up -d
+docker compose --profile cascaded/agentic-airline up -d
+docker compose --profile speech-to-speech/generic up -d
 
 # Workstation (local NIM ASR/TTS/LLM)
-docker compose --profile generic-workstation up -d
-docker compose --profile agentic-airline-workstation up -d
+docker compose --profile cascaded/generic --profile workstation up -d
+docker compose --profile cascaded/agentic-airline --profile workstation up -d
 
-# DGX Spark / Jetson (Generic only)
-docker compose --profile generic-dgxspark up -d
-docker compose --profile generic-jetson up -d
-
-# Multi-example selector (cloud only)
-docker compose --profile all-examples up -d
+# DGX Spark / Jetson (Generic Cascaded only)
+docker compose --profile cascaded/generic --profile dgxspark up -d
+docker compose --profile cascaded/generic --profile jetson up -d
 ```
+
+For YAML-only edits that don't change env or sidecar membership, `docker compose restart <service>` is enough (e.g. `docker compose restart cascaded-generic`).
 
 ## Optional Profile Overlays
 
-Combine with any platform profile. Re-apply must include them again to keep those services running.
+Combine with any example × hardware combination. Re-apply must include them again to keep those services running.
 
 ### Tracing (`--profile tracing`)
 
@@ -59,14 +59,15 @@ Add when:
 Add when clients connect from outside the host's network. Credentials come from `TURN_USERNAME` / `TURN_PASSWORD` in `.env` (defaults are `admin:admin`). Set `TURN_URL=turn:<host>:3478` if TURN runs on a different host. The client auto-fetches ICE config from `/api/ice-servers`.
 
 ```bash
-docker compose --profile generic --profile tracing up -d
-docker compose --profile generic-workstation --profile turn up -d
-docker compose --profile generic-dgxspark --profile tracing --profile turn up -d
+docker compose --profile cascaded/generic --profile tracing up -d
+docker compose --profile cascaded/generic --profile workstation --profile turn up -d
+docker compose --profile cascaded/generic --profile dgxspark --profile tracing --profile turn up -d
 ```
 
 ## Validation Checklist
 
-- The selected `--profile` matches the example you want active.
+- The selected `--profile` pair matches the example and hardware you want active.
+- `examples_registry.yaml` `defaults` references catalog keys that actually exist for that example.
 - Multilingual prompt selection is paired with multilingual-capable ASR (`parakeet-rnnt`) and TTS (`magpie-tts`) in the active catalog.
 - For S2S, the active example's `services.cloud.yaml` `s2s` block points at the desired realtime endpoint. Authentication uses `NVIDIA_API_KEY`.
 - If `ENABLE_TRACING=true` with `phoenix:4317`, the `phoenix` service is started through the `tracing` profile.
@@ -77,7 +78,7 @@ docker compose --profile generic-dgxspark --profile tracing --profile turn up -d
 
 ```bash
 docker compose ps
-docker compose logs --tail 200 <example-service>
+docker compose logs --tail 200 <service-name>
 ```
 
 Refresh open browser tabs after the backend is healthy. The client caches deployment metadata, built-in services, prompts, and ICE config for the page lifetime.

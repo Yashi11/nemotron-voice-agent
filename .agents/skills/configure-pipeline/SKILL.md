@@ -20,18 +20,18 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 ## Scope
 
 - Run commands from the repository root.
-- Limit repository-backed changes to `.env`, example-local `prompts.yaml`, and per-example service catalogs.
+- Limit repository-backed changes to `.env`, `examples_registry.yaml`, example-local `prompts.yaml`, and per-example service catalogs.
 - UI-only prompt or service tests stay in browser localStorage. Redeployment is not required.
-- Exposed UI pipelines are server startup config. Use `--pipeline cascaded` or `--pipeline speech-to-speech`. Omit the flag to expose both.
-- Exposed UI transports are server startup config. Use `--transport webrtc` or `--transport websocket`. Omit the flag to expose both.
+- Exposed UI examples and transports live in `examples_registry.yaml` (`selection` and `transports` fields). Use the `EXAMPLE_SELECTION` env var only to override the registry at runtime (e.g., for one-off benchmarks).
 - Use `deploy` for initial deployment, profile selection, or auth troubleshooting.
 
 ## Instructions
 
-1. Identify the active example by inspecting the running app container (`generic-example`, `agentic-airline-example`, or `all-examples`). Each example has its own catalog under `src/<family>/<example>/`.
+1. Identify the active example by inspecting the running app container (`cascaded-generic`, `cascaded-agentic-airline`, or `speech-to-speech-generic`). Each example has its own catalog under `src/<family>/<example>/`.
 
 2. Edit the smallest configuration surface that satisfies the request:
    - `.env`: feature flags, tracing, S2S settings, chat history, audio debugging, buffering, and local NIM image overrides such as `ASR_DOCKER_IMAGE`, `ASR_NIM_TAGS`, and `TTS_DOCKER_IMAGE`.
+   - `examples_registry.yaml`: visible examples (`selection`), allowed transports (`transports`), and per-example slot defaults (`defaults`).
    - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`): built-in LLM, ASR, TTS, S2S, and example-specific role catalogs (e.g. `fast-llm`, `orchestrator-llm`, `booking-server`).
    - `<example-package>/prompts.yaml`: built-in prompt presets and prompt content for the active example.
 
@@ -46,23 +46,24 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 ## Rules
 
 - `.env` changes: compose re-apply.
-- YAML catalog changes (`prompts.yaml`, `services.*.yaml`): compose re-apply and refresh browser. `src/` is bind-mounted, so no rebuild needed.
+- YAML catalog changes (`prompts.yaml`, `services.*.yaml`, `examples_registry.yaml`): compose restart of the example service. `./src` and `./examples_registry.yaml` are bind-mounted, so no rebuild needed.
 - Preserve unrelated keys, comments, and entries while editing.
 - Image-only local variants reuse `asr-service` / `tts-service`. Configure the image through `.env`.
-- The first entry per catalog category is the runtime default; UI-side selection lives in browser localStorage.
+- Per-example slot defaults live in `examples_registry.yaml` `defaults`. The catalog file ordering only affects UI listings; the actual default is whatever `defaults` declares.
 
 ## Examples
 
 **Switch the default LLM to a different cloud model:**
 
-1. Open the active example's `services.cloud.yaml` and reorder so the target model is the first entry under `llm:` (or `fast-llm:` / `orchestrator-llm:` for Agentic Airline).
-2. Compose re-apply and refresh browser.
+1. Open `examples_registry.yaml` and update the relevant `defaults` entry for the active example (e.g. change `llm: [nemotron-nano]` to `llm: [nemotron-super]`, or update `fast-llm` / `orchestrator-llm` for Agentic Airline). The catalog key must exist in the active example's `services.cloud.yaml` / `services.local.yaml`.
+2. Compose restart of the example service and refresh browser.
 
 **Add a multilingual persona prompt:**
 
-1. Add the prompt to the active example's `prompts.yaml`. First entry is the default unless one is marked `default: true`.
-2. Ensure the active example's catalog has multilingual-capable ASR (`parakeet-rnnt`) and TTS (`magpie-tts`).
-3. Compose re-apply and refresh browser.
+1. Add the prompt to the active example's `prompts.yaml`.
+2. To make it the per-example default, update `examples_registry.yaml` `defaults.prompt` for that example to the new prompt key.
+3. Ensure the active example's catalog has multilingual-capable ASR (`parakeet-rnnt`) and TTS (`magpie-tts`).
+4. Compose restart of the example service and refresh browser.
 
 ## Limitations
 

@@ -8,6 +8,8 @@ import json
 import os
 import socket
 import time
+from collections.abc import Iterable, Mapping
+from contextvars import ContextVar
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -17,13 +19,20 @@ from loguru import logger
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_FILENAME = "prompts.yaml"
 TOOLS_FILENAME = "tools.yaml"
+_service_context: ContextVar[tuple[Path, tuple[str, ...]] | None] = ContextVar("service_context", default=None)
 
 
 def _services_cloud_path() -> Path:
+    context = _service_context.get()
+    if context:
+        return context[0] / "services.cloud.yaml"
     return Path(os.getenv("SERVICES_CLOUD_PATH", str(PROJECT_ROOT / "src/cascaded/generic/services.cloud.yaml")))
 
 
 def _services_local_path() -> Path:
+    context = _service_context.get()
+    if context:
+        return context[0] / "services.local.yaml"
     return Path(os.getenv("SERVICES_LOCAL_PATH", str(PROJECT_ROOT / "src/cascaded/generic/services.local.yaml")))
 
 
@@ -31,7 +40,7 @@ _SLOT_CONFIG_KEYS: dict[str, frozenset[str]] = {
     "llm": frozenset({"llm_id", "model_id", "base_url", "system_prompt", "extra_params"}),
     "asr": frozenset({"asr_id", "asr_server", "asr_model", "asr_function_id"}),
     "tts": frozenset({"tts_id", "tts_server", "tts_voice_id", "tts_function_id"}),
-    "s2s": frozenset({"s2s_id", "s2s_server"}),
+    "s2s": frozenset({"s2s_id", "s2s_server", "s2s_model", "s2s_function_id"}),
 }
 _SLOT_AGNOSTIC_KEYS: frozenset[str] = frozenset({"pipeline_mode", "prompt_key", "prompt_content"})
 _active_slots: frozenset[str] | None = None
@@ -47,6 +56,25 @@ def set_active_slots(slots: list[str] | tuple[str, ...] | None) -> None:
     else:
         _active_slot_order = None
         _active_slots = None
+
+
+def set_service_context(example_dir: str | Path, slots: Iterable[str] | None) -> None:
+    """Bind service catalogs and active slots to the current request context."""
+    _service_context.set((Path(example_dir), tuple(slots) if slots is not None else ()))
+
+
+def _effective_active_slots() -> frozenset[str] | None:
+    context = _service_context.get()
+    if context is not None:
+        return frozenset(context[1]) if context[1] else None
+    return _active_slots
+
+
+def _effective_slot_order() -> tuple[str, ...]:
+    context = _service_context.get()
+    if context is not None:
+        return context[1]
+    return _active_slot_order or ()
 
 
 def resolve_prompt_catalog_path(module_file: str | Path) -> Path:
@@ -271,6 +299,18 @@ def _filter_reachable_entries(catalog: dict) -> dict:
     return filtered
 
 
+def _entry_endpoint(entry: dict) -> str:
+    return str(entry.get("server") or entry.get("base_url") or "")
+
+
+def _first_reachable_variant(variants: list[tuple[str, dict]]) -> tuple[str, dict] | None:
+    for platform_name, entry in variants:
+        rewritten = _rewrite_local_runtime_endpoints({"_": {"_": entry}}).get("_", {}).get("_", {})
+        if isinstance(rewritten, dict) and is_endpoint_reachable(_entry_endpoint(rewritten)):
+            return platform_name, entry
+    return None
+
+
 def _load_cloud_services_catalog() -> dict:
     """Load cloud service entries from ``services.cloud.yaml``."""
     return _normalize_services_catalog(load_yaml_file(_services_cloud_path()))
@@ -279,8 +319,9 @@ def _load_cloud_services_catalog() -> dict:
 def _load_local_services_catalog() -> dict:
     """Load all platform sections from ``services.local.yaml`` into one catalog.
 
-    Identical entries across platforms are deduplicated; conflicting entries are
-    suffixed with the platform name so each variant remains addressable.
+    Identical entries across platforms are deduplicated. For conflicting
+    platform variants, the reachable variant keeps the base key so it shadows
+    cloud defaults; non-active variants remain addressable with platform suffixes.
     """
     local_path = _services_local_path()
     if not local_path.is_file():
@@ -288,19 +329,35 @@ def _load_local_services_catalog() -> dict:
     data = load_yaml_file(local_path)
     if not isinstance(data, dict):
         return _normalize_services_catalog({})
-    merged: dict = {}
+    variants: dict[str, dict[str, list[tuple[str, dict]]]] = {}
     for platform_name, platform_data in data.items():
         if not isinstance(platform_data, dict):
             continue
         for category, section in platform_data.items():
             if not isinstance(section, dict):
                 continue
-            cat_merged = merged.setdefault(category, {})
+            cat_variants = variants.setdefault(str(category), {})
             for key, entry in section.items():
-                if key not in cat_merged:
-                    cat_merged[key] = entry
-                elif cat_merged[key] != entry:
-                    cat_merged[f"{key}-{platform_name}"] = entry
+                if isinstance(entry, dict):
+                    cat_variants.setdefault(str(key), []).append((str(platform_name), dict(entry)))
+
+    merged: dict = {}
+    for category, section in variants.items():
+        target = merged.setdefault(category, {})
+        for key, entries in section.items():
+            first_entry = entries[0][1]
+            if all(entry == first_entry for _, entry in entries):
+                target[key] = first_entry
+                continue
+            active = _first_reachable_variant(entries)
+            if active is not None:
+                active_platform, active_entry = active
+                target[key] = active_entry
+            else:
+                active_platform = ""
+            for platform_name, entry in entries:
+                if platform_name != active_platform:
+                    target[f"{key}-{platform_name}"] = entry
     return _rewrite_local_runtime_endpoints(_normalize_services_catalog(merged))
 
 
@@ -344,6 +401,8 @@ SESSION_CONFIG_KEYS: frozenset[str] = frozenset(
         "prompt_key",
         "prompt_content",
         "s2s_server",
+        "s2s_model",
+        "s2s_function_id",
         "asr_server",
         "asr_model",
         "asr_function_id",
@@ -389,6 +448,8 @@ _CATALOG_HYDRATION: tuple[tuple[str, str, dict[str, str]], ...] = (
         "s2s",
         {
             "server": "s2s_server",
+            "model": "s2s_model",
+            "function_id": "s2s_function_id",
         },
     ),
 )
@@ -421,9 +482,10 @@ def filter_session_config(data: dict) -> dict:
     selections from YAML (see :func:`hydrate_config_from_catalog`).
     """
     filtered = {k: v for k, v in data.items() if k in SESSION_CONFIG_KEYS and v not in ("", None)}
-    if _active_slots is not None:
+    active_slots = _effective_active_slots()
+    if active_slots is not None:
         allowed: set[str] = set(_SLOT_AGNOSTIC_KEYS)
-        for slot in _active_slots:
+        for slot in active_slots:
             allowed |= _SLOT_CONFIG_KEYS.get(slot, frozenset())
         filtered = {k: v for k, v in filtered.items() if k in allowed}
     hydrate_config_from_catalog(filtered)
@@ -495,7 +557,7 @@ def _build_services_api_entries(section: dict, category: str, source: str) -> li
 
 def _services_api_categories(*catalogs: dict) -> tuple[str, ...]:
     """Return service categories ordered by the active example's ``slots``."""
-    ordered: list[str] = list(_active_slot_order or ())
+    ordered: list[str] = list(_effective_slot_order())
     for catalog in catalogs:
         ordered.extend(category for category in catalog if category not in ordered)
     return tuple(ordered)
@@ -505,9 +567,10 @@ def build_services_api_response() -> dict:
     """Build the payload for ``GET /api/services`` with cloud and reachable local entries."""
     cloud_data = _load_cloud_services_catalog()
     local_data = _filter_reachable_entries(_load_local_services_catalog())
+    active_slots = _effective_active_slots()
     result: dict = {}
     for category in _services_api_categories(cloud_data, local_data):
-        if _active_slots is not None and category not in _active_slots:
+        if active_slots is not None and category not in active_slots:
             result[category] = []
             continue
         cloud_entries = _build_services_api_entries(cloud_data.get(category, {}), category, "cloud-nim")
@@ -516,15 +579,20 @@ def build_services_api_response() -> dict:
     return result
 
 
-def parse_json_dict(raw: str, label: str = "JSON") -> dict:
-    """Parse a JSON string into a dict. Returns {} on empty input or failure."""
-    if not raw:
+def parse_json_dict(raw: object, label: str = "JSON") -> dict:
+    """Coerce a JSON string or mapping into a dict; return {} on empty/invalid input."""
+    if raw in ("", None):
+        return {}
+    if isinstance(raw, Mapping):
+        return dict(raw)
+    if not isinstance(raw, str):
+        logger.warning(f"Invalid {label}, expected JSON string or mapping, ignoring: {raw!r}")
         return {}
     try:
         parsed = json.loads(raw)
         if isinstance(parsed, dict):
             return parsed
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError:
         logger.warning(f"Invalid {label}, ignoring: {raw!r}")
     return {}
 

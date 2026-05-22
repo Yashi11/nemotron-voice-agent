@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `nemotron-speech` compose service promotes Riva (ASR + TTS) to a first-class Jetson service so the full stack lifecycles via `docker compose --profile generic-jetson up -d`; replaces the prior host-side `riva_start.sh` flow
+- `examples_registry.yaml` becomes the single source of truth for which examples and transports the UI exposes (`selection`, `transports` fields) and per-example slot defaults (`defaults`). `EXAMPLE_SELECTION` / `TRANSPORT_SELECTION` env vars provide runtime overrides without surfacing in `.env.example`
+- Per-example compose profiles named verbatim after the registry key (`cascaded/generic`, `cascaded/agentic-airline`, `speech-to-speech/generic`) composed orthogonally with hardware profiles (`workstation`, `dgxspark`, `jetson`) and observability profiles (`tracing`, `turn`)
+- `nemotron-speech` compose service promotes Riva (ASR + TTS) to a first-class Jetson service so the full stack lifecycles via `docker compose --profile cascaded/generic --profile jetson up -d`; replaces the prior host-side `riva_start.sh` flow
 - CUDA MPS SM-split and disjoint CPU pinning for Thor's shared GPU and LPDDR5X bus: `VLLM_MPS_THREAD_PCT` / `RIVA_MPS_THREAD_PCT` and `VLLM_CPUSET` / `RIVA_CPUSET` / `PIPECAT_CPUSET`; `scripts/start-mps.sh` and `scripts/stop-mps.sh` manage the daemon
 - Grouped service UI (Self-hosted / NVIDIA Cloud / Custom) in the LLM/ASR/TTS selectors, driven by namespaced service IDs returned by `/api/services`
 - `APP_RUNTIME=container` marker set by `docker-compose.yml`; when absent the backend rewrites Compose-reachable endpoints in `services.local.yaml` to `localhost` so host-native runs (`uv run`) work without editing the catalog
@@ -18,13 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Single root `docker-compose.yml` now hosts one `x-app` template plus per-example service variants (`cascaded-generic`, `cascaded-agentic-airline`, `speech-to-speech-generic`); per-example compose files only ship example-specific sidecars (e.g. agentic_airline ships `booking-server`)
+- Sidecar profile names became hardware-only (`workstation`, `dgxspark`, `jetson`); they no longer mention the example so they compose freely with any example profile
+- Pipelines default slot values come from `examples_registry.yaml` `defaults` rather than YAML insertion order, so YAML reformats do not silently change behavior
+- Registry-default service resolution now prefers the `self-hosted` variant over `cloud-nim` when both define the same key, matching `/api/services` precedence so local NIM sidecars become the active default as soon as they're deployed
 - Jetson ASR/TTS endpoint moves from `host.docker.internal:50051` to the `nemotron-speech:50051` compose service; host-run Pipecat rewrites it to `localhost:50051` automatically
 - Service catalogs are example-local: each example owns `services.cloud.yaml` and `services.local.yaml`. The local catalog is merged on top of the cloud catalog when its endpoints are reachable; selection no longer relies on a `DEPLOYMENT_PLATFORM` flag
-- Pipelines pick the first entry per catalog category as the runtime default; UI selection persists in browser localStorage
 - S2S pipeline now authenticates with `NVIDIA_API_KEY` only; the former `S2S_API_KEY` env fallback (with OpenAI compatibility) has been removed
 
 ### Removed
 
+- Example/pipeline-shaping CLI flags from `src/server.py`: `--example`, `--bot`, `--all-examples`, `--pipeline`, `--transport`. Their behavior moves to `examples_registry.yaml` (`selection`, `transports`, `defaults`) plus optional env overrides. CLI args now cover only infrastructure concerns (`--host`, `--port`, `--prompt-file`, `--tls-cert`/`--tls-key`, `--workers`, `-v`)
+- `DEFAULT_PIPELINE_MODE` environment variable (superseded by `EXAMPLE_SELECTION`)
+- Per-example compose files for `cascaded/generic` (no example-specific sidecars to ship); generic example now uses only the root compose template
+- `--profile all-examples`, `--profile generic[-*]`, `--profile agentic-airline[-*]` legacy profile names (replaced by `cascaded/generic`, `cascaded/agentic-airline`, `speech-to-speech/generic` per-example profiles composed with hardware profiles)
 - `LLM_INTERLEAVING` env flag and `NvidiaInterleavedLLMService`: MPS + CPU pinning replace the need for strict sentence-bounded interleaving
 - `S2S_API_KEY` environment variable
 - `DEPLOYMENT_PLATFORM`, `DEFAULT_LLM`, `DEFAULT_ASR`, `DEFAULT_TTS`, `BOOKING_API_URL`, `FAST_LLM_*`, and `ORCHESTRATOR_LLM_*` env vars; configuration now lives entirely in the example service catalogs

@@ -1,0 +1,59 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: BSD-2-Clause
+
+# Single source of truth for what the UI selector exposes:
+#   all                       → every example across every pipeline family
+#   <family>/all              → every example in that family
+#   <family>/<example>        → lock to one example (no switching)
+#
+# The first example listed (YAML insertion order) within the visible set
+# becomes the initial default selection.
+#
+# The ``EXAMPLE_SELECTION`` environment variable overrides this value at
+# runtime so the same YAML can drive multiple compose profiles.
+selection: cascaded/all
+
+# Which transport(s) the UI exposes:
+#   all        → WebRTC and WebSocket
+#   webrtc     → WebRTC only
+#   websocket  → WebSocket only
+#
+# Override at runtime via the ``TRANSPORT_SELECTION`` environment variable.
+transports: all
+
+pipeline_families:
+  - id: cascaded
+    label: Cascaded
+  - id: speech-to-speech
+    label: Speech-to-Speech
+
+examples:
+  cascaded:
+    generic:
+      label: Generic Cascaded
+      slots: [llm, asr, tts]
+      defaults:
+        prompt: [generic_assistant]
+        llm: [nemotron-super]
+        asr: [parakeet-ctc]
+        tts: [magpie-tts]
+      bot: cascaded.generic.pipeline:bot
+    agentic-airline:
+      label: Agentic Airline
+      slots: [fast-llm, orchestrator-llm, booking-server, asr, tts]
+      defaults:
+        prompt: [airline_fast_agent]
+        fast-llm: [nemotron-nano]
+        orchestrator-llm: [nemotron-nano]
+        booking-server: [default]
+        asr: [nemotron-speech]
+        tts: [magpie-tts]
+      bot: cascaded.agentic_airline.pipeline:bot
+  speech-to-speech:
+    generic:
+      label: Speech to Speech
+      slots: [s2s]
+      defaults:
+        prompt: [generic]
+        s2s: [nemotron-voice-chat]
+      bot: speech_to_speech.generic.pipeline:bot

@@ -19,15 +19,14 @@ Use [`benchmarking_tools/scaling-perf/`](../../benchmarking_tools/scaling-perf/)
     PIPELINE_TLS=false uv run python src/server.py
     ```
 
-    To run perf tests against the Generic example with the benchmark prompt catalog:
+    To run perf tests against the Generic Cascaded example with the benchmark prompt catalog, set `selection: cascaded/generic` in [`examples_registry.yaml`](../../examples_registry.yaml) and then start the server with the perf prompt catalog:
 
     ```bash
     PIPELINE_TLS=false uv run python src/server.py \
-      --example cascaded/generic \
       --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
     ```
 
-    Or run it under Docker Compose with any of the cloud profiles described in [Getting Started](../01-getting-started.md).
+    Or run it under Docker Compose with the matching example profile, for example `--profile cascaded/generic`. See [Getting Started](../01-getting-started.md) for the full list of profile combinations.
 
 ## Run
 

@@ -1,6 +1,6 @@
 # Platform Deployment Reference
 
-Use from repository root after `deploy` selects a local profile.
+Use from repository root after `deploy` selects a hardware profile.
 
 ## Common Setup
 
@@ -16,29 +16,29 @@ Required `.env` keys:
 
 ## Workstation
 
-Services: `generic-example-workstation` or `agentic-airline-example-workstation`, `nvidia-llm`, `asr-service`, `tts-service`.
-Requires GPUs `0` and `1`: ASR/TTS use GPU `0`; `nvidia-llm` uses GPU `1`.
+Services: example app variant (`cascaded-generic` / `cascaded-agentic-airline`), `nvidia-llm`, `asr-service`, `tts-service` (and `booking-server` when running the agentic-airline example).
+Requires enough GPU VRAM for the selected local NIM services. Single-GPU hosts are valid when capacity is sufficient; multi-GPU hosts may split ASR/TTS and LLM across devices.
 
 ```bash
 nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
-docker compose --profile generic-workstation up -d
-# or: docker compose --profile agentic-airline-workstation up -d
+docker compose --profile cascaded/generic --profile workstation up -d
+# or: docker compose --profile cascaded/agentic-airline --profile workstation up -d
 ```
 
 ## DGX Spark
 
-Services: `generic-example-dgxspark`, `nvidia-llm-vllm`, `asr-service`, `tts-service`.
+Services: `cascaded-generic`, `nvidia-llm-vllm`, `asr-service`, `tts-service`.
 
 ```bash
 free -h
-docker compose --profile generic-dgxspark up -d
+docker compose --profile cascaded/generic --profile dgxspark up -d
 ```
 
 Optional `.env`: `TTS_DOCKER_IMAGE=<image>` for DGX Spark / staging Magpie.
 
 ## Jetson
 
-Services: `generic-example-jetson`, `nvidia-llm-vllm`, `nemotron-speech`.
+Services: `cascaded-generic`, `nvidia-llm-vllm`, `nemotron-speech`.
 
 One-time Riva model setup, from the repo parent:
 
@@ -52,7 +52,7 @@ Deploy:
 
 ```bash
 sudo bash scripts/start-mps.sh
-docker compose --profile generic-jetson up -d
+docker compose --profile cascaded/generic --profile jetson up -d
 ```
 
 Thor tuning `.env`:
@@ -70,14 +70,14 @@ PIPECAT_CPUSET=8-11
 Add `--profile turn` when clients connect from outside the host network.
 
 ```bash
-docker compose --profile generic --profile turn up -d
-docker compose --profile generic-workstation --profile turn up -d
+docker compose --profile cascaded/generic --profile turn up -d
+docker compose --profile cascaded/generic --profile workstation --profile turn up -d
 ```
 
 ## Verify / Stop
 
 ```bash
 docker compose ps
-docker compose logs --tail 200 <example-service>
+docker compose logs --tail 200 <service-name>
 docker compose down
 ```

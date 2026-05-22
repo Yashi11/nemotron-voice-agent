@@ -117,9 +117,9 @@ deploy:
     - echo "DEFAULT_ASR=nemotron-speech" >> .env
     - echo "PIPELINE_APP_PORT=7860" >> .env
   script:
-    - docker compose --profile all-examples build
-    - docker compose --profile all-examples up -d --remove-orphans all-examples
-    - echo "Pipeline selector deployed at https://$(hostname):7860/"
+    - docker compose --profile cascaded/generic build
+    - docker compose --profile cascaded/generic up -d --remove-orphans cascaded-generic
+    - echo "Generic Cascaded deployed at https://$(hostname):7860/"
   after_script:
     - rm -f .env
 

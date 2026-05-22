@@ -155,6 +155,7 @@ export interface ServiceEntry {
 }
 
 export type ServiceCatalog = Record<string, ServiceEntry[]>;
+export type DeploymentDefaults = Record<string, Array<ServiceEntry | Prompt> | undefined>;
 
 export interface DeploymentOption {
   family: string;
@@ -162,6 +163,7 @@ export interface DeploymentOption {
   key: string;
   label: string;
   slots: string[];
+  defaults?: DeploymentDefaults;
 }
 
 export type TransportType = "webrtc" | "websocket";

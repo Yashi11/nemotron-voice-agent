@@ -2,7 +2,7 @@ name: cascaded-shared
 
 services:
   nvidia-llm:
-    profiles: ["generic-workstation", "agentic-airline-workstation"]
+    profiles: ["workstation"]
     image: ${NVIDIA_LLM_IMAGE:-nvcr.io/nim/nvidia/nemotron-3-nano:1.7.0-variant}
     user: "0:0"
     environment:
@@ -39,7 +39,7 @@ services:
         max-file: "5"
 
   nvidia-llm-vllm:
-    profiles: ["generic-dgxspark", "generic-jetson"]
+    profiles: ["dgxspark", "jetson"]
     container_name: nvidia-llm-vllm
     runtime: nvidia
     image: nvcr.io/nvidia/vllm:25.12.post1-py3
@@ -102,7 +102,7 @@ services:
         max-file: "5"
 
   asr-service:
-    profiles: ["generic-dgxspark", "generic-workstation", "agentic-airline-workstation"]
+    profiles: ["workstation", "dgxspark"]
     image: ${ASR_DOCKER_IMAGE:-nvcr.io/nim/nvidia/nemotron-asr-streaming:1.0.0}
     user: "0:0"
     environment:
@@ -138,7 +138,7 @@ services:
         max-file: "5"
 
   tts-service:
-    profiles: ["generic-dgxspark", "generic-workstation", "agentic-airline-workstation"]
+    profiles: ["workstation", "dgxspark"]
     image: ${TTS_DOCKER_IMAGE:-nvcr.io/nvstaging/nim/magpie-tts-multilingual:1.9.0-51143266}
     user: "0:0"
     environment:
@@ -175,7 +175,7 @@ services:
         max-file: "5"
 
   nemotron-speech:
-    profiles: ["generic-jetson"]
+    profiles: ["jetson"]
     container_name: nemotron-speech
     image: nvcr.io/nvidia/riva/riva-speech:2.24.0-l4t-aarch64
     runtime: nvidia

@@ -48,19 +48,22 @@ async def bot(runner_args: RunnerArguments) -> None:
     default_s2s = load_service_entry("s2s", "")
 
     base_url = body.get("s2s_server", "") or default_s2s.get("server", "wss://grpc.nvcf.nvidia.com/v1/realtime")
-    function_id = default_s2s.get("function_id", "")
+    model = body.get("s2s_model", "") or default_s2s.get("model", "")
+    function_id = body.get("s2s_function_id", "") or default_s2s.get("function_id", "")
     api_key = os.getenv("NVIDIA_API_KEY", "")
 
     _, instructions = resolve_prompt(__file__, body.get("prompt_content", ""), body.get("prompt_key", ""))
 
     key_hint = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else api_key
     logger.info(
-        f"Starting S2S pipeline — endpoint: {base_url}, function_id: {function_id or '(none)'}, api_key: {key_hint}"
+        f"Starting S2S pipeline — endpoint: {base_url}, model: {model or '(none)'}, "
+        f"function_id: {function_id or '(none)'}, api_key: {key_hint}"
     )
 
     transport = _create_transport(runner_args)
 
     session_properties = SessionProperties(
+        model=model or None,
         audio=AudioConfiguration(
             input=AudioInput(
                 transcription=InputAudioTranscription(),

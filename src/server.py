@@ -14,16 +14,19 @@ Routes:
   GET       /api/tts-config  - TTS voices & languages
   GET       /                - Built client UI (from client/dist/)
 
+Pipeline / example selection lives in ``examples_registry.yaml`` (the
+``selection`` and ``transports`` fields). To change which examples or
+transports the UI exposes, edit the YAML. ``EXAMPLE_SELECTION`` and
+``TRANSPORT_SELECTION`` env vars exist as compose-profile pinning hooks
+(used by ``docker-compose.yml``) but are intentionally not surfaced in
+``.env.example`` or host-native run instructions — day-to-day deployments
+should configure them via YAML or compose profile.
+
 Run:
-  uv run python src/server.py                              # both pipeline families and transports
-  PIPELINE_TLS=false uv run python src/server.py           # plain HTTP
-  uv run python src/server.py --tls-cert c --tls-key k     # custom TLS cert/key
-  uv run python src/server.py --example cascaded/agentic-airline
-  uv run python src/server.py --example cascaded/generic --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
-  uv run python src/server.py --pipeline cascaded          # Cascaded only
-  uv run python src/server.py --pipeline speech-to-speech  # Speech-to-Speech only
-  uv run python src/server.py --transport webrtc            # WebRTC only
-  uv run python src/server.py --transport websocket         # WebSocket only
+  uv run python src/server.py                                              # use selection/transports from YAML
+  PIPELINE_TLS=false uv run python src/server.py                           # plain HTTP
+  uv run python src/server.py --tls-cert c --tls-key k                     # custom TLS cert/key
+  uv run python src/server.py --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
 """
 
 from dotenv import load_dotenv
@@ -35,18 +38,15 @@ load_dotenv(override=True)
 import argparse
 import asyncio
 import contextlib
-import importlib
 import json
 import os
 import sys
 import urllib.request
 import uuid
-from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 from urllib.parse import urlparse
 
 import uvicorn
@@ -77,6 +77,7 @@ from utils import (
     load_tools_catalog,
     parse_endpoint,
     set_active_slots,
+    set_service_context,
 )
 
 CLIENT_DIST = PROJECT_ROOT / "client" / "dist"
@@ -92,7 +93,7 @@ _SPEECH_READY_ENDPOINTS = {
 _TURN_LISTEN_PORT = 3478
 _INDEX_NO_CACHE_HEADERS = {"Cache-Control": "no-store"}
 _MULTI_WORKER_SESSION_CONFIG_MESSAGE = (
-    "Session-config based WebRTC and selector flows are disabled when "
+    "Session-config based WebRTC and WebSocket flows are disabled when "
     "UVICORN_WORKERS is greater than 1. Use a single worker, sticky routing, "
     "or shared session storage."
 )
@@ -102,7 +103,6 @@ _TRANSPORT_OPTIONS: tuple[dict[str, str], ...] = (
     {"id": "webrtc", "label": "WebRTC"},
     {"id": "websocket", "label": "WebSocket"},
 )
-_TRANSPORTS: tuple[str, ...] = tuple(option["id"] for option in _TRANSPORT_OPTIONS)
 
 
 @dataclass(frozen=True)
@@ -110,42 +110,19 @@ class WorkerAppConfig:
     """App-factory config reconstructed from server CLI args."""
 
     host: str = "localhost"
-    bot_spec: str = ""
-    example_key: str = ""
-    all_examples: bool = False
     prompt_file: str = ""
-    pipelines: tuple[str, ...] = examples_registry.pipeline_family_ids()
-    transports: tuple[str, ...] = _TRANSPORTS
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> "WorkerAppConfig":
         """Build a config from an already-parsed argparse namespace."""
-        return cls(
-            host=args.host,
-            bot_spec=args.bot,
-            example_key=args.example,
-            all_examples=bool(args.all_examples),
-            prompt_file=args.prompt_file,
-            pipelines=tuple(args.pipeline),
-            transports=tuple(args.transport),
-        )
+        return cls(host=args.host, prompt_file=args.prompt_file)
 
     @classmethod
     def from_argv(cls, argv: list[str]) -> "WorkerAppConfig":
         """Build a config by parsing a raw argv list (used by worker subprocesses)."""
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("--host", type=str, default="localhost")
-        parser.add_argument("--example", type=str, default="")
-        parser.add_argument("--all-examples", action="store_true")
-        parser.add_argument("--bot", type=str, default="")
         parser.add_argument("--prompt-file", type=str, default="")
-        parser.add_argument(
-            "--pipeline",
-            nargs="+",
-            choices=list(examples_registry.pipeline_family_ids()),
-            default=list(examples_registry.pipeline_family_ids()),
-        )
-        parser.add_argument("--transport", nargs="+", choices=list(_TRANSPORTS), default=list(_TRANSPORTS))
         args, _ = parser.parse_known_args(argv)
         return cls.from_args(args)
 
@@ -185,43 +162,47 @@ def _multi_worker_session_config_response() -> JSONResponse:
     return JSONResponse(status_code=503, content={"info": _MULTI_WORKER_SESSION_CONFIG_MESSAGE})
 
 
-def _deployment_response(
-    active: dict,
-    forced_bot_fn: Callable[..., Any] | None,
-    options: list[dict],
-    pipelines: tuple[str, ...] = examples_registry.pipeline_family_ids(),
-    transports: tuple[str, ...] = _TRANSPORTS,
-) -> dict:
-    """Build the metadata payload consumed by the client selector page."""
+def _deployment_response(active: dict, options: list[dict]) -> dict:
+    """Build the metadata payload consumed by the client selector page.
+
+    Visibility (examples, families, transports) is driven entirely by the YAML
+    registry plus its environment overrides, so this function just packages
+    what the registry has already resolved.
+    """
     active_deployment = dict(active)
     active_deployment.setdefault("slots", [])
-
-    locked = forced_bot_fn is not None or bool(os.getenv("DEFAULT_PIPELINE_MODE", "").strip())
-    visible_pipelines = (active_deployment["family"],) if locked else pipelines
+    transports = set(examples_registry.visible_transports())
     return {
         "active": active_deployment,
-        "selectable": not locked,
-        "options": [active_deployment] if locked else options,
-        "pipelines": examples_registry.pipeline_options(visible_pipelines),
+        "selectable": not examples_registry.is_locked(),
+        "options": options,
+        "pipelines": examples_registry.pipeline_options(examples_registry.visible_families()),
         "transports": [option for option in _TRANSPORT_OPTIONS if option["id"] in transports],
     }
 
 
 def _sanitize_session_config(data: dict, fallback_example_key: str = "") -> dict:
-    """Activate the catalog for the requested pipeline_mode and drop unknown slot keys."""
-    _activate_example_catalog_by_key(str(data.get("pipeline_mode", "")) or fallback_example_key)
-    return filter_session_config(data)
+    """Bind the catalog for the requested pipeline_mode and drop unknown slot keys."""
+    if not isinstance(data, dict):
+        raise ValueError("session config must be a JSON object")
+    example = _bind_example_context_by_key(str(data.get("pipeline_mode", "")) or fallback_example_key)
+    config = dict(data)
+    if not config.get("prompt_key") and not config.get("prompt_content"):
+        prompt_key = examples_registry.prompt_default_key(example["key"])
+        if prompt_key:
+            config["prompt_key"] = prompt_key
+    return filter_session_config(config)
 
 
-def _example_with_module(example_key: str = "") -> tuple[dict, Any]:
-    """Return ``(metadata, module)`` for a registry example key."""
+def _example_with_module_file(example_key: str = "") -> tuple[dict, Path]:
+    """Return ``(metadata, module_file)`` for a registry example key."""
     selected = examples_registry.find(example_key)
-    return examples_registry.metadata(selected), importlib.import_module(selected["bot"].__module__)
+    return examples_registry.metadata(selected), examples_registry.example_module_file(selected)
 
 
-def _activate_example_catalog(module: Any, example: dict) -> None:
+def _activate_example_catalog(module_file: Path, example: dict) -> None:
     """Use package-local service catalogs and slot filtering for a selected example."""
-    module_dir = Path(module.__file__).resolve().parent
+    module_dir = Path(module_file).resolve().parent
     for env_var, candidate in (
         ("SERVICES_CLOUD_PATH", module_dir / "services.cloud.yaml"),
         ("SERVICES_LOCAL_PATH", module_dir / "services.local.yaml"),
@@ -230,42 +211,23 @@ def _activate_example_catalog(module: Any, example: dict) -> None:
     set_active_slots(example.get("slots") or None)
 
 
-def _activate_example_catalog_by_key(example_key: str = "") -> dict:
-    """Activate the package-local service catalog for a registry example key."""
-    example, module = _example_with_module(example_key)
-    _activate_example_catalog(module, example)
+def _bind_example_context(module_file: Path, example: dict) -> None:
+    """Bind package-local service catalogs to the current request context."""
+    set_service_context(Path(module_file).resolve().parent, example.get("slots") or None)
+
+
+def _bind_example_context_by_key(example_key: str = "") -> dict:
+    """Bind the package-local service catalog for one request without mutating globals."""
+    example, module_file = _example_with_module_file(example_key)
+    _bind_example_context(module_file, example)
     return example
 
 
-def _load_bot(spec: str) -> tuple[Callable[..., Any], dict]:
-    """Resolve ``module.path:attr`` into a bot callable and example metadata."""
-    if ":" not in spec:
-        raise ValueError(f"--bot must be 'module.path:attr' (got {spec!r})")
-    module_path, attr = spec.split(":", 1)
-    module = importlib.import_module(module_path)
-    bot_fn = getattr(module, attr, None)
-    if not callable(bot_fn):
-        raise AttributeError(f"{module_path}:{attr} is not callable")
-
-    builtin = next((e for e in examples_registry.iter_all() if e["bot"] is bot_fn), None)
-    if builtin is not None:
-        example = examples_registry.metadata(builtin)
-    else:
-        example = getattr(module, "EXAMPLE", None) or {}
-        if not isinstance(example, dict) or not example:
-            label = module_path.split(".")[-2 if module_path.endswith(".pipeline") else -1]
-            example = {
-                "family": module_path.split(".", 1)[0],
-                "id": label.replace("_", "-"),
-                "label": label.replace("_", " ").title(),
-            }
-        example = dict(example)
-        example.setdefault("slots", [])
-        example.setdefault("key", f"{example.get('family', module_path.split('.', 1)[0])}/{example.get('id', attr)}")
-
-    _activate_example_catalog(module, example)
-
-    return bot_fn, example
+def _activate_example_catalog_by_key(example_key: str = "") -> dict:
+    """Activate the package-local service catalog process-wide for startup defaults."""
+    example, module_file = _example_with_module_file(example_key)
+    _activate_example_catalog(module_file, example)
+    return example
 
 
 def _resolve_config(session_id: str = "", fallback_example_key: str = "", **query_params: str) -> dict:
@@ -300,11 +262,6 @@ def _store_session_config(data: dict, fallback_example_key: str = "") -> str:
     session_id = uuid.uuid4().hex[:12]
     _session_configs[session_id] = _sanitize_session_config(data, fallback_example_key=fallback_example_key)
     return session_id
-
-
-def _select_bot(pipeline_mode: str, forced_bot_fn: Callable[..., Any] | None = None):
-    """Return the bot for ``pipeline_mode`` (``DEFAULT_PIPELINE_MODE`` env wins; ``forced_bot_fn`` overrides)."""
-    return forced_bot_fn if forced_bot_fn is not None else examples_registry.find(pipeline_mode)["bot"]
 
 
 async def _run_blocking(func, *args, timeout: float | None = None):
@@ -564,42 +521,21 @@ async def _ensure_services_ready_for_connection(config: dict, example: dict) -> 
     await _ensure_tts_ready_for_connection(config, example)
 
 
-def create_app(
-    host: str = "localhost",
-    bot_spec: str = "",
-    example_key: str = "",
-    all_examples: bool = False,
-    prompt_file: str = "",
-    pipelines: tuple[str, ...] = examples_registry.pipeline_family_ids(),
-    transports: tuple[str, ...] = _TRANSPORTS,
-) -> FastAPI:
+def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
     """Build and return the FastAPI application with all routes."""
     if prompt_file:
         os.environ["PROMPT_FILE_PATH"] = prompt_file
 
-    forced_bot_fn: Callable[..., Any] | None = None
-    selected_example = examples_registry.find(example_key)
-    deployment = examples_registry.metadata(selected_example)
-    fallback_example_key = deployment["key"]
-    selector_options = (
-        examples_registry.all_selector_options(pipelines)
-        if all_examples
-        else examples_registry.selector_options(pipelines)
+    selected_example = examples_registry.find()
+    fallback_example_key = selected_example["key"]
+    _activate_example_catalog_by_key(fallback_example_key)
+    logger.info(
+        f"Active selection: {fallback_example_key} "
+        f"(locked={examples_registry.is_locked()}, "
+        f"families={examples_registry.visible_families()}, "
+        f"examples={examples_registry.visible_example_keys()}, "
+        f"transports={examples_registry.visible_transports()})"
     )
-    if not selector_options:
-        raise ValueError(f"No pipeline examples available for requested pipeline filter: {', '.join(pipelines)}")
-    if not example_key and deployment["family"] not in set(pipelines):
-        selected_example = examples_registry.find(selector_options[0]["key"])
-        deployment = examples_registry.metadata(selected_example)
-        fallback_example_key = deployment["key"]
-    if bot_spec:
-        forced_bot_fn, deployment = _load_bot(bot_spec)
-        fallback_example_key = deployment["key"]
-        logger.info(f"Loaded bot override: {bot_spec} -> deployment={deployment}")
-    elif example_key:
-        forced_bot_fn = selected_example["bot"]
-        _activate_example_catalog_by_key(deployment["key"])
-        logger.info(f"Loaded example: {deployment['key']} -> deployment={deployment}")
 
     handler = SmallWebRTCRequestHandler(host=host)
 
@@ -619,9 +555,7 @@ def create_app(
     )
 
     def _resolve_example(config: dict) -> dict:
-        """Return the active example metadata: pinned for forced bot, else inferred from config."""
-        if forced_bot_fn is not None:
-            return deployment
+        """Return the active example metadata. ``examples_registry.find()`` honors any selection lock."""
         return examples_registry.metadata(examples_registry.find(config.get("pipeline_mode", "")))
 
     async def _readiness_check_or_503(config: dict, log_label: str) -> JSONResponse | None:
@@ -635,7 +569,9 @@ def create_app(
 
     @app.get("/api/deployment")
     async def get_deployment():
-        return _deployment_response(deployment, forced_bot_fn, selector_options, pipelines, transports)
+        deployment = examples_registry.metadata(examples_registry.find(fallback_example_key))
+        selector_options = examples_registry.visible_options()
+        return _deployment_response(deployment, selector_options)
 
     # ---- Session config (avoids long URLs for prompts / system_prompt) ----
 
@@ -644,7 +580,10 @@ def create_app(
         """Store pipeline config server-side, return a short session_id."""
         if _multi_worker_mode_enabled():
             return _multi_worker_session_config_response()
-        config = _sanitize_session_config(await request.json(), fallback_example_key=fallback_example_key)
+        try:
+            config = _sanitize_session_config(await request.json(), fallback_example_key=fallback_example_key)
+        except ValueError as exc:
+            return JSONResponse(status_code=400, content={"detail": str(exc)})
         if (failure := await _readiness_check_or_503(config, "session config")) is not None:
             return failure
         return {"session_id": _store_session_config(config, fallback_example_key=fallback_example_key)}
@@ -654,7 +593,10 @@ def create_app(
         """Run readiness checks before starting a WebRTC session."""
         if _multi_worker_mode_enabled():
             return _multi_worker_session_config_response()
-        config = _sanitize_session_config(await request.json(), fallback_example_key=fallback_example_key)
+        try:
+            config = _sanitize_session_config(await request.json(), fallback_example_key=fallback_example_key)
+        except ValueError as exc:
+            return JSONResponse(status_code=400, content={"detail": str(exc)})
         if (failure := await _readiness_check_or_503(config, "WebRTC start")) is not None:
             return failure
         session_id = _store_session_config(config, fallback_example_key=fallback_example_key)
@@ -672,13 +614,14 @@ def create_app(
         if _multi_worker_mode_enabled():
             return _multi_worker_session_config_response()
         config = _resolve_config(session_id, fallback_example_key=fallback_example_key, pipeline_mode=pipeline_mode)
-        bot_fn = _select_bot(config.get("pipeline_mode", "cascaded"), forced_bot_fn)
         example = _resolve_example(config)
+        selected = examples_registry.find(config.get("pipeline_mode", fallback_example_key))
+        bot_fn = examples_registry.resolve_bot(selected)
 
         async def on_connection(connection: SmallWebRTCConnection):
             body = dict(request.request_data) if isinstance(request.request_data, dict) else {}
             body.update(config)
-            _activate_example_catalog_by_key(example["key"])
+            _bind_example_context_by_key(example["key"])
             runner_args = SmallWebRTCRunnerArguments(webrtc_connection=connection, body=body)
             runner_args.pipeline_idle_timeout_secs = parse_env_int("PIPELINE_IDLE_TIMEOUT_SECS", 600, min_value=300)
             background_tasks.add_task(bot_fn, runner_args)
@@ -707,17 +650,19 @@ def create_app(
         stream_id = session_id or "-"
         with logger.contextualize(stream_id=stream_id):
             config = _resolve_config(session_id, fallback_example_key=fallback_example_key, pipeline_mode=pipeline_mode)
+            example = _resolve_example(config)
             if not session_id:
                 try:
-                    await _ensure_services_ready_for_connection(config, _resolve_example(config))
+                    await _ensure_services_ready_for_connection(config, example)
                 except RuntimeError as exc:
                     logger.warning(f"Rejecting WebSocket start during service readiness check: {exc}")
                     await websocket.close(code=1011, reason=str(exc))
                     return
 
             await websocket.accept()
-            bot_fn = _select_bot(config.get("pipeline_mode", "cascaded"), forced_bot_fn)
-            _activate_example_catalog_by_key(_resolve_example(config)["key"])
+            selected = examples_registry.find(config.get("pipeline_mode", fallback_example_key))
+            bot_fn = examples_registry.resolve_bot(selected)
+            _bind_example_context_by_key(example["key"])
 
             runner_args = SimpleNamespace(
                 websocket=websocket,
@@ -737,9 +682,10 @@ def create_app(
 
     @app.get("/api/prompts")
     async def get_prompts(pipeline_mode: str = Query(default="")):
-        _, module = _example_with_module(pipeline_mode or fallback_example_key)
-        catalog = load_prompt_catalog(module.__file__)
-        default_key = default_prompt_key(catalog)
+        _, module_file = _example_with_module_file(pipeline_mode or fallback_example_key)
+        catalog = load_prompt_catalog(module_file)
+        registry_default_key = examples_registry.prompt_default_key(pipeline_mode or fallback_example_key)
+        default_key = registry_default_key if registry_default_key in catalog else default_prompt_key(catalog)
         return [
             {
                 "key": key,
@@ -755,8 +701,8 @@ def create_app(
 
     @app.get("/api/tools")
     async def get_tools(pipeline_mode: str = Query(default="")):
-        _, module = _example_with_module(pipeline_mode or fallback_example_key)
-        catalog = load_tools_catalog(module.__file__)
+        _, module_file = _example_with_module_file(pipeline_mode or fallback_example_key)
+        catalog = load_tools_catalog(module_file)
         tools: list[dict] = []
         for name, entry in catalog.items():
             if not isinstance(entry, dict):
@@ -775,7 +721,7 @@ def create_app(
 
     @app.get("/api/services")
     async def get_services(pipeline_mode: str = Query(default="")):
-        _activate_example_catalog_by_key(pipeline_mode or fallback_example_key)
+        _bind_example_context_by_key(pipeline_mode or fallback_example_key)
         return build_services_api_response()
 
     # ---- TTS config (voices & languages from the TTS service) ----
@@ -845,39 +791,10 @@ def main():
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--port", type=int, default=7860)
     parser.add_argument(
-        "--example",
-        type=str,
-        default="",
-        help="Registry example key to run, for example cascaded/generic or cascaded/agentic-airline",
-    )
-    parser.add_argument("--all-examples", action="store_true", help="Expose selectable examples in the UI selector")
-    parser.add_argument(
-        "--bot",
-        type=str,
-        default="",
-        help="Deprecated bot module path override; prefer --example for built-in pipelines",
-    )
-    parser.add_argument(
         "--prompt-file",
         type=str,
         default="",
         help="Optional prompt catalog YAML path to use instead of the active example's local prompts.yaml",
-    )
-    parser.add_argument(
-        "--pipeline",
-        nargs="+",
-        choices=list(examples_registry.pipeline_family_ids()),
-        default=list(examples_registry.pipeline_family_ids()),
-        metavar="PIPELINE",
-        help="Pipeline family/families to expose in the UI: cascaded, speech-to-speech (default: both)",
-    )
-    parser.add_argument(
-        "--transport",
-        nargs="+",
-        choices=list(_TRANSPORTS),
-        default=list(_TRANSPORTS),
-        metavar="TRANSPORT",
-        help="Transport(s) to enable in the UI: webrtc, websocket (default: both)",
     )
     parser.add_argument("--tls-cert", type=str, help="Path to TLS certificate file")
     parser.add_argument("--tls-key", type=str, help="Path to TLS key file")
@@ -909,15 +826,7 @@ def main():
 
     app = None
     if workers == 1:
-        app = create_app(
-            host=args.host,
-            bot_spec=args.bot,
-            example_key=args.example,
-            all_examples=args.all_examples,
-            prompt_file=args.prompt_file,
-            pipelines=tuple(args.pipeline),
-            transports=tuple(args.transport),
-        )
+        app = create_app(host=args.host, prompt_file=args.prompt_file)
 
     tls_enabled = parse_env_bool("PIPELINE_TLS", default=True)
     ssl_kwargs: dict = {}
@@ -949,15 +858,7 @@ def main():
 def app_factory():
     """Build an app instance for uvicorn multi-worker mode."""
     config = WorkerAppConfig.from_argv(sys.argv[1:])
-    return create_app(
-        host=config.host,
-        bot_spec=config.bot_spec,
-        example_key=config.example_key,
-        all_examples=config.all_examples,
-        prompt_file=config.prompt_file,
-        pipelines=config.pipelines,
-        transports=config.transports,
-    )
+    return create_app(host=config.host, prompt_file=config.prompt_file)
 
 
 if __name__ == "__main__":

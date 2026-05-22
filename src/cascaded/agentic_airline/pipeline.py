@@ -140,6 +140,7 @@ async def bot(runner_args: RunnerArguments) -> None:
     #   2. services YAML     — Agentic Airline ``fast-llm`` role defaults.
     model_id = body.get("model_id") or default_fast_llm.get("model_id", "nvidia/nemotron-3-nano-30b-a3b")
     base_url = body.get("base_url") or default_fast_llm.get("base_url", "https://integrate.api.nvidia.com/v1")
+    fast_system_prompt = body.get("system_prompt") or default_fast_llm.get("system_prompt", "")
     extra_params_raw = body.get("extra_params") or default_fast_llm.get("extra_params", "")
     extra_params = parse_json_dict(extra_params_raw)
     llm_settings = NvidiaLLMSettings(model=model_id)
@@ -150,7 +151,11 @@ async def bot(runner_args: RunnerArguments) -> None:
         base_url=base_url,
         settings=llm_settings,
     )
-    logger.info(f"Fast LLM: model={model_id}, base_url={base_url}, extra_params={extra_params or '(none)'}")
+    logger.info(
+        f"Fast LLM: model={model_id}, base_url={base_url}, "
+        f"system_prompt={'<' + fast_system_prompt + '>' if fast_system_prompt else '(none)'}, "
+        f"extra_params={extra_params or '(none)'}"
+    )
 
     bridge = DeepAgentBridgeService(entity_store=entity_store, memory=memory)
 
@@ -195,8 +200,16 @@ async def bot(runner_args: RunnerArguments) -> None:
 
     # --- Context + aggregators ---
     _, system_prompt = resolve_prompt(__file__, body.get("prompt_content", ""), body.get("prompt_key", ""))
-    context = LLMContext([{"role": "system", "content": system_prompt}], tools=FAST_TOOLS_SCHEMA)
-    preserve_prompt_messages = 1
+    context_messages = (
+        [
+            {"role": "system", "content": fast_system_prompt},
+            {"role": "user", "content": system_prompt},
+        ]
+        if fast_system_prompt
+        else [{"role": "system", "content": system_prompt}]
+    )
+    context = LLMContext(context_messages, tools=FAST_TOOLS_SCHEMA)
+    preserve_prompt_messages = len(context_messages)
 
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,

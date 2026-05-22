@@ -1,36 +1,38 @@
 # Generic Cascaded Example — Deployment Reference
 
-Use this reference from the `deploy` skill when deploying only the cascaded/generic voice pipeline example (NVIDIA STT, NIM LLM, NVIDIA TTS with function calling).
+Use this reference from the `deploy` skill when deploying the cascaded/generic voice pipeline example (NVIDIA STT, NIM LLM, NVIDIA TTS with function calling).
 
 ## When to use
 
-Deploying only the generic example, not the multi-example selector — use `--profile all-examples` from the root compose otherwise.
+Pinning a Docker Compose deployment to the Generic Cascaded example. Compose deployments are per-example only; the `cascaded/generic` profile sets the container's `EXAMPLE_SELECTION` directly. Selector modes (`cascaded/all`, `all`) are host-native only today — they are not exposed as compose profiles.
 
-Per-example catalogs at `src/cascaded/generic/services.{cloud,local}.yaml` are auto-selected on container startup and when the Generic example is the active UI example.
+Per-example catalogs at `src/cascaded/generic/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active profile.
 
 ## Compose deploy
 
+Pick one example profile and optionally combine with a hardware profile:
+
 ```bash
-docker compose --profile <generic|generic-workstation|generic-dgxspark|generic-jetson> up -d
+docker compose --profile cascaded/generic [--profile <hardware>] up -d
 ```
 
-| Profile | Example service | Sidecars from `cascaded/shared/` |
+| Profile combination | App service | Sidecars from `cascaded/shared/` |
 | --- | --- | --- |
-| `generic` | `generic-example` | none (cloud NVCF) |
-| `generic-workstation` | `generic-example` | `nvidia-llm`, `asr-service`, `tts-service` |
-| `generic-dgxspark` | `generic-example` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
-| `generic-jetson` | `generic-example` | `nvidia-llm-vllm`, `nemotron-speech` |
+| `cascaded/generic` | `cascaded-generic` | none (cloud NVCF) |
+| `cascaded/generic` + `workstation` | `cascaded-generic` | `nvidia-llm`, `asr-service`, `tts-service` |
+| `cascaded/generic` + `dgxspark` | `cascaded-generic` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
+| `cascaded/generic` + `jetson` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
 
-Tear down with the same profile:
+Tear down with the same profile combination used at `up` time:
 
 ```bash
-docker compose --profile <same-profile> down
+docker compose --profile cascaded/generic [--profile <hardware>] down
 ```
 
 ## Verify
 
-- UI at `https://<host>:7860/` by default, or `http://<host>:7860/` when `PIPELINE_TLS=false`. Locked to **Cascaded → Generic**.
-- `docker compose ps` and `docker compose logs --tail 200 generic-example`.
+- UI at `https://<host>:7860/` by default, or `http://<host>:7860/` when `PIPELINE_TLS=false`.
+- `docker compose ps` and `docker compose logs --tail 200 cascaded-generic`.
 
 ## Local LLM NIM profiles
 

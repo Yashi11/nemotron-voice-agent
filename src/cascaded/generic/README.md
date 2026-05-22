@@ -5,10 +5,12 @@ Generic cascaded voice pipeline using pipecat's built-in NVIDIA services
 `NvidiaTTSService`). Use this example as the baseline cascaded reference
 or as the starting point for your own use case.
 
-This package follows the same example-style layout as
-`src/cascaded/agentic_airline/`: everything specific to the generic
-example lives under `src/cascaded/generic/`, including its pipeline
-entry point, service catalogs, and example-local compose file.
+Everything specific to the generic example lives under
+`src/cascaded/generic/`: pipeline entry point, service catalogs, prompts,
+and tool registrations. There is no per-example compose file because the
+generic example has no example-specific sidecars; the app container and
+shared sidecars are defined in the root and `cascaded/shared/`
+compose files.
 
 ## Layout
 
@@ -19,92 +21,55 @@ entry point, service catalogs, and example-local compose file.
 | `tools.yaml` | OpenAI function-calling schemas, keyed by tool name |
 | `tool_handlers.py` | async handlers for each schema in `tools.yaml`, exposed via the `TOOL_HANDLERS` registry |
 | `tools.py` | builds a filtered `ToolsSchema` from `tools.yaml` for the tool names a prompt requests, skipping entries without a matching handler |
-| `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for standalone and selector runs |
-| `docker-compose.yml` | example-local pipeline app stack (pairs with `cascaded/shared/`) |
+| `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for cloud and on-prem deployments |
 
 ## Running the example
 
-Start the voice server directly on the host:
+Host-native (no Docker), set `selection: cascaded/generic` in
+[`examples_registry.yaml`](../../../examples_registry.yaml) at the repo root, then:
 
 ```bash
-uv run python3 src/server.py --bot cascaded.generic.pipeline:bot
+uv run python3 src/server.py
 ```
 
-Or with the example-local compose files. The shared model services
-(`nvidia-llm`, `nvidia-llm-vllm`, `asr-service`, `tts-service`,
-`nemotron-speech`) live in `src/cascaded/shared/docker-compose.yml`, so
-any non-cloud run **must** pass both compose files via `-f` — running
-the generic compose alone will fail with `service
-"generic-example-workstation" depends on undefined service
-"asr-service"` (or the equivalent for whichever platform profile you
-selected).
-
-Cloud (NVCF) — no shared services needed, only the generic compose:
+Docker — pick the per-example profile (cloud-only):
 
 ```bash
-docker compose \
-  -f src/cascaded/generic/docker-compose.yml \
-  --profile generic \
-  up -d
+docker compose --profile cascaded/generic up -d
 ```
 
-Workstation (local NIM ASR / TTS / LLM) — stack the shared and generic
-compose files:
+Add a hardware profile to layer local NIM / vLLM / Riva sidecars on top:
 
 ```bash
-docker compose \
-  -f src/cascaded/shared/docker-compose.yml \
-  -f src/cascaded/generic/docker-compose.yml \
-  --profile generic-workstation \
-  up -d
+# Workstation (local NIM ASR / TTS / LLM)
+docker compose --profile cascaded/generic --profile workstation up -d
+
+# DGX Spark (vLLM LLM + NIM ASR / TTS)
+docker compose --profile cascaded/generic --profile dgxspark up -d
+
+# Jetson (vLLM LLM + Riva ASR + TTS via nemotron-speech)
+docker compose --profile cascaded/generic --profile jetson up -d
 ```
 
-DGX Spark (vLLM LLM + NIM ASR / TTS):
+Tear down with the same profile combination used at `up` time:
 
 ```bash
-docker compose \
-  -f src/cascaded/shared/docker-compose.yml \
-  -f src/cascaded/generic/docker-compose.yml \
-  --profile generic-dgxspark \
-  up -d
+docker compose --profile cascaded/generic --profile workstation down
 ```
 
-Jetson (vLLM LLM + Riva ASR + TTS via `nemotron-speech`):
-
-```bash
-docker compose \
-  -f src/cascaded/shared/docker-compose.yml \
-  -f src/cascaded/generic/docker-compose.yml \
-  --profile generic-jetson \
-  up -d
-```
-
-Tear down with the same `-f` flags as setup so compose can resolve every
-service it brought up:
-
-```bash
-docker compose \
-  -f src/cascaded/shared/docker-compose.yml \
-  -f src/cascaded/generic/docker-compose.yml \
-  --profile generic-workstation \
-  down
-```
-
-(Swap the profile to match the one used at `up` time.)
-
-| Profile | Pipeline app | Shared backends pulled from `cascaded/shared/` |
+| Profile combination | App service | Shared sidecars pulled from `cascaded/shared/` |
 | --- | --- | --- |
-| `generic` | `generic-example` | none (cloud NVCF) |
-| `generic-workstation` | `generic-example` | `nvidia-llm`, `asr-service`, `tts-service` |
-| `generic-dgxspark` | `generic-example` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
-| `generic-jetson` | `generic-example` | `nvidia-llm-vllm`, `nemotron-speech` |
+| `cascaded/generic` | `cascaded-generic` | none (cloud NVCF) |
+| `cascaded/generic` + `workstation` | `cascaded-generic` | `nvidia-llm`, `asr-service`, `tts-service` |
+| `cascaded/generic` + `dgxspark` | `cascaded-generic` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
+| `cascaded/generic` + `jetson` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
 
 The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
-when `PIPELINE_TLS=false`. In the UI, select **Cascaded → Generic** before connecting.
+when `PIPELINE_TLS=false`.
 
-The compose path uses the multi-experience server selector. The package-local
-`services.cloud.yaml` and `services.local.yaml` are selected automatically when
-this example is active in the UI or launched with `--bot cascaded.generic.pipeline:bot`.
+The pipeline always uses this package's `services.cloud.yaml` and
+`services.local.yaml` because the active example is resolved from
+`examples_registry.yaml`.
 
 ## Import convention
 
@@ -123,12 +88,8 @@ with deployment and configuration:
 
 | Skill | Purpose |
 | --- | --- |
-| [`deploy`](../../../.agents/skills/deploy/SKILL.md) | hardware-mode selection, NGC login, and root-compose deploy across every profile (`all-examples`, `generic[-*]`, `agentic-airline[-*]`) |
+| [`deploy`](../../../.agents/skills/deploy/SKILL.md) | hardware-mode selection, NGC login, and root-compose deploy across every example / hardware profile combination |
 | [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, example-local `prompts.yaml`, or example-local `services.{cloud,local}.yaml`, then re-apply |
 
 Install them into your coding agent with `npx skills add .` (see the
-[top-level README](../../../README.md#agent-skills)). When deploying only
-this example (not the multi-example selector), the root `deploy` skill
-points at
-[`deploy/references/generic-deploy.md`](../../../.agents/skills/deploy/references/generic-deploy.md)
-for the `generic[-*]` profile listing and example-specific verification.
+[top-level README](../../../README.md#agent-skills)).

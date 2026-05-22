@@ -7,6 +7,7 @@ The Nemotron Voice Agent is configured through a small set of example-local file
 | File | Purpose |
 |------|---------|
 | [`.env.example`](../.env.example) | API keys and feature flags |
+| [`examples_registry.yaml`](../examples_registry.yaml) | Examples to expose (`selection`), allowed transports (`transports`), and per-example slot defaults |
 | `<example-package>/services.cloud.yaml` | Example-local cloud (NVCF) service catalog |
 | `<example-package>/services.local.yaml` | Example-local on-prem catalog merged automatically when sidecars are reachable |
 | `<example-package>/prompts.yaml` | Example-local persona and system prompt presets selectable from the UI |
