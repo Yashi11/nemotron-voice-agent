@@ -171,13 +171,15 @@ For development and debugging, you can run the server directly:
 5. Start the server:
 
     ```bash
-    uv run python src/server.py
+    uv run python src/server.py --host 0.0.0.0 --port 7860
     ```
+
+    > **Note:** `src/server.py` defaults to `--host localhost --port 7860`, which only binds the loopback interface. Pass `--host 0.0.0.0 --port 7860` so the UI is reachable from another host (e.g., when accessing `https://<machine-ip>:7860` from a browser on a different machine). Drop the flags only when you intend the server to be reachable from the local machine alone.
 
     To serve plain HTTP instead of HTTPS, set `PIPELINE_TLS=false` in `.env` or prefix the command:
 
     ```bash
-    PIPELINE_TLS=false uv run python src/server.py
+    PIPELINE_TLS=false uv run python src/server.py --host 0.0.0.0 --port 7860
     ```
 
     Host-native runs read [`examples_registry.yaml`](../examples_registry.yaml) at the repository root. Edit the `selection` field to choose what the UI exposes, then start the server normally. The server has no example/pipeline CLI flags.
@@ -195,7 +197,7 @@ For development and debugging, you can run the server directly:
     After editing, run:
 
     ```bash
-    uv run python src/server.py
+    uv run python src/server.py --host 0.0.0.0 --port 7860
     ```
 
     > **Note:** Docker Compose deployments ignore the `selection` field — the per-example profile pins each container to a single example. Selector modes (`*/all`, `all`) are host-native only today.
@@ -208,7 +210,9 @@ For development and debugging, you can run the server directly:
 
 Only needed when the browser connects from a different network than the host (NAT, restrictive firewall, cloud deployment). Localhost and same-subnet clients work without this.
 
-A Coturn service ships in `docker-compose.yml` behind an opt-in `turn` profile. Add `--profile turn` to any deploy command:
+> **Architecture note:** The bundled `turn` profile uses the `instrumentisto/coturn` image, which is supported on **x86_64 (linux/amd64) only**. It is **not** supported on arm64 / aarch64 platforms (for example, NVIDIA Jetson Thor). On arm64 hosts, do not enable `--profile turn`; instead, point the client at an externally hosted TURN server by setting `TURN_URL`, `TURN_USERNAME`, and `TURN_PASSWORD` in `.env` (see the snippet below).
+
+A Coturn service ships in `docker-compose.yml` behind an opt-in `turn` profile. Add `--profile turn` to any deploy command (x86_64 only):
 
 ```bash
 docker compose --profile cascaded/generic --profile turn up -d              # cloud-only + TURN
