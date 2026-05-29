@@ -32,24 +32,31 @@ Check the following requirements before you begin.
 
 ### Hardware Requirements
 
-Pick one **example** profile (which registers the pipeline) and optionally combine with one **hardware** profile (which adds the local NIM/Riva/vLLM sidecars).
+Pick one **recipe** profile. Cloud recipes use `<family>/<example>`. On-prem recipes use `<family>/<example>/<hardware>`. Each recipe is a complete stack, so do not combine a separate hardware profile.
 
-| Axis | Profile | Hardware | Services |
-|------|---------|----------|----------|
-| Example | `cascaded/generic` | None | NVIDIA cloud ASR + LLM + TTS |
-| Example | `cascaded/agentic-airline` | None | NVIDIA cloud ASR + LLM + TTS + booking-server sidecar |
-| Example | `speech-to-speech/generic` | None | NVIDIA Voice Chat (S2S) over NVCF |
-| Hardware | `workstation` | 1 GPU (~80 GB VRAM) | Local NIM ASR + TTS + LLM |
-| Hardware | `dgxspark` | 1 GPU, 128 GB unified memory | Local NIM ASR + TTS + vLLM LLM |
-| Hardware | `jetson` | 1 GPU, 128 GB unified memory | Local Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
+| Profile | Hardware | Services |
+|---------|----------|----------|
+| `cascaded/generic` | None | NVIDIA cloud ASR + LLM + TTS |
+| `cascaded/agentic-airline` | None | NVIDIA cloud ASR + LLM + TTS + booking-server sidecar |
+| `cascaded/omni-assistant` | None | NVIDIA cloud Nemotron Omni (ASR + LLM in one model) + cloud Magpie TTS |
+| `cascaded/omni-assistant-subagents` | None | Same as `cascaded/omni-assistant` plus media analyzer + webcam vision subagents |
+| `speech-to-speech/generic` | None | NVIDIA Voice Chat (S2S) over NVCF |
+| `cascaded/generic/workstation` | 1 GPU (~80 GB VRAM) | Local NIM ASR + TTS + LLM |
+| `cascaded/generic/dgxspark` | 1 GPU, 128 GB unified memory | Local NIM ASR + TTS + vLLM LLM |
+| `cascaded/generic/jetson` | 1 GPU, 128 GB unified memory | Local Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
+| `cascaded/agentic-airline/workstation` | 1 GPU (~80 GB VRAM) | Agentic Airline with local NIM ASR + TTS + LLM |
+| `cascaded/omni-assistant/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
+| `cascaded/omni-assistant/dgxspark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
+| `cascaded/omni-assistant-subagents/dgxspark` | 1 GPU, 128 GB unified memory | Subagents with local Nemotron Omni vLLM + Magpie TTS |
 
-> Cloud-only is the default — invoking just an example profile uses NVCF services. Add a hardware profile when you want a local stack.
+> Observability profiles (`tracing`, `turn`) can still be added alongside any recipe. Omni examples support DGX Spark today. Jetson is not yet supported because the 30B Omni NVFP4 model does not fit on Orin-class hardware.
 
 ### Software Requirements
 
 - **NVIDIA NGC**: Valid credentials for NVIDIA NGC. See the [NGC Getting Started Guide](https://docs.nvidia.com/ngc/ngc-overview/index.html#registering-activating-ngc-account).
 - **NVIDIA API Key**: Required for NVIDIA NIM models and NGC container images. Get yours at [build.nvidia.com](https://build.nvidia.com/).
 - **Docker**: With NVIDIA GPU support installed.
+- **Docker Compose v2.20 or newer** (`docker compose version`). Required because the root `docker-compose.yml` uses the `include:` directive added in Compose v2.20. Older `docker-compose` v1 (the legacy Python binary) is not supported.
 
 ---
 
@@ -83,7 +90,7 @@ Start the application following these steps.
     docker compose --profile cascaded/generic up -d
     ```
 
-    > **Note:** Deployment may take 30–60 minutes on first run. The example above runs the Generic Cascaded pipeline against NVIDIA cloud APIs. Swap the profile (e.g. `cascaded/agentic-airline`, `speech-to-speech/generic`) to deploy a different example. See the [Getting Started Guide](docs/01-getting-started.md) for on-prem profiles and combining with hardware profiles. Each compose deployment is locked to a single example.
+    > **Note:** Deployment may take 30–60 minutes on first run. The example above runs the Generic Cascaded pipeline against NVIDIA cloud APIs. Swap the recipe profile (e.g. `cascaded/agentic-airline`, `cascaded/generic/dgxspark`, `speech-to-speech/generic`) to deploy a different stack. Each compose deployment is locked to a single recipe.
 
 5. Access the application at `https://<machine-ip>:7860`. Set `PIPELINE_TLS=false` in `.env` to use `http://<machine-ip>:7860`.
 

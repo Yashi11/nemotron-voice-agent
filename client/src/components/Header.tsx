@@ -146,10 +146,15 @@ function buildSessionConfig({
   return config;
 }
 
+function sessionIdFromWebRTCUrl(url: string): string {
+  const query = url.split("?", 2)[1] ?? "";
+  return new URLSearchParams(query).get("session_id") ?? "";
+}
+
 export function Header() {
   const client = usePipecatClient() as StartBotClient | undefined;
   const { isConnected, isConnecting } = useConnectionState();
-  const { selectedExample, selectedTransport, selectedS2SServer, selectedLLM, selectedASR, selectedTTS, selectedVoiceId, selectedPrompt, selectedPromptKey } = useApp();
+  const { selectedExample, selectedTransport, selectedS2SServer, selectedLLM, selectedASR, selectedTTS, selectedVoiceId, selectedPrompt, selectedPromptKey, setCurrentSessionId } = useApp();
   const [connectionError, setConnectionError] = useState("");
 
   const handleClick = async () => {
@@ -165,6 +170,7 @@ export function Header() {
 
       if (isConnected) {
         await client.disconnect();
+        setCurrentSessionId("");
       } else {
         const config = buildSessionConfig({
           selectedExample,
@@ -181,13 +187,20 @@ export function Header() {
           const sessionId = await createSessionConfig(config);
           const qs = `session_id=${sessionId}`;
           const wsProto = globalThis.location.protocol === "https:" ? "wss:" : "ws:";
+          setCurrentSessionId(sessionId);
           await client.connect({ wsUrl: `${wsProto}//${globalThis.location.host}/api/ws?${qs}` });
         } else {
           const webrtcUrl = await createWebRTCSession(config);
+          const sessionId = sessionIdFromWebRTCUrl(webrtcUrl);
+          if (!sessionId) {
+            throw new Error("WebRTC session URL did not include session_id.");
+          }
+          setCurrentSessionId(sessionId);
           await withWebRTCConnectTimeout(client.connect({ webrtcUrl }));
         }
       }
     } catch (err) {
+      setCurrentSessionId("");
       if (isWebRTCTimeoutError(err)) {
         await client?.disconnect().catch(() => undefined);
         setConnectionError(getWebRTCTimeoutMessage());

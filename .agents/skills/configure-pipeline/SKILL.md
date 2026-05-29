@@ -27,17 +27,17 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 
 ## Instructions
 
-1. Identify the active example by inspecting the running app container (`cascaded-generic`, `cascaded-agentic-airline`, or `speech-to-speech-generic`). Each example has its own catalog under `src/<family>/<example>/`.
+1. Identify the active example by inspecting the running app container (`cascaded-generic`, `cascaded-agentic-airline`, `cascaded-omni-assistant`, `cascaded-omni-assistant-subagents`, or `speech-to-speech-generic`). Each example has its own catalog under `src/<family>/<example>/`.
 
 2. Edit the smallest configuration surface that satisfies the request:
    - `.env`: feature flags, tracing, S2S settings, chat history, audio debugging, buffering, and local NIM image overrides such as `ASR_DOCKER_IMAGE`, `ASR_NIM_TAGS`, and `TTS_DOCKER_IMAGE`.
    - `examples_registry.yaml`: visible examples (`selection`), allowed transports (`transports`), and per-example slot defaults (`defaults`).
-   - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`): built-in LLM, ASR, TTS, S2S, and example-specific role catalogs (e.g. `fast-llm`, `orchestrator-llm`, `booking-server`).
+   - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`, matching the example's supported `<example>/<hardware>` recipes): built-in LLM, ASR, TTS, S2S, and example-specific role catalogs (e.g. `fast-llm`, `orchestrator-llm`, `booking-server`).
    - `<example-package>/prompts.yaml`: built-in prompt presets and prompt content for the active example.
 
 3. Validate:
-   - Multilingual prompts must use multilingual-capable ASR and TTS from the active catalog (e.g. `magpie-tts`, `parakeet-rnnt`); verify the keys exist before referencing them.
-   - Local catalog endpoints must use Compose service names (`asr-service:50052`, `tts-service:50051`, `nvidia-llm:8000`, `nemotron-speech:50051`, `booking-server:8001`). Host-run backends auto-rewrite to the matching `localhost` ports.
+   - Multilingual prompts must use multilingual-capable ASR and TTS from the active catalog (e.g. `magpie-tts`, `parakeet-rnnt`). Verify the keys exist before referencing them.
+   - Local catalog endpoints must use Compose service names (`asr-service:50052`, `tts-service:50051`, `nvidia-llm:8000`, `nvidia-llm-vllm:8000`, `nvidia-llm-vllm-omni:8002`, `nemotron-speech:50051`, `booking-server:8001`). Host-run backends auto-rewrite to the matching `localhost` ports.
    - ASR/TTS image overrides keep the same Compose service names and ports. For Parakeet CTC/RNNT ASR images, set `ASR_NIM_TAGS=mode=str,vad=silero`. Keep `mode=str` for Nemotron ASR. DGX Spark TTS image overrides keep `server: "tts-service:50051"`.
    - Workstation local Compose runs ASR/TTS and NIM LLM on GPU `0` by default. Single-GPU deployments are supported only when at least 80 GB of VRAM is available.
 
@@ -49,7 +49,7 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 - YAML catalog changes (`prompts.yaml`, `services.*.yaml`, `examples_registry.yaml`): compose restart of the example service. `./src` and `./examples_registry.yaml` are bind-mounted, so no rebuild needed.
 - Preserve unrelated keys, comments, and entries while editing.
 - Image-only local variants reuse `asr-service` / `tts-service`. Configure the image through `.env`.
-- Per-example slot defaults live in `examples_registry.yaml` `defaults`. The catalog file ordering only affects UI listings; the actual default is whatever `defaults` declares.
+- Per-example slot defaults live in `examples_registry.yaml` `defaults`. The catalog file ordering only affects UI listings. The actual default is whatever `defaults` declares.
 
 ## Examples
 
@@ -68,8 +68,8 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 ## Limitations
 
 - Does not deploy the stack or change profiles. Use `deploy` (and its per-example references) for that.
-- Source code or `Dockerfile` changes require an image rebuild (`--build`); out of scope here.
-- UI-only ad-hoc service / prompt overrides (saved in `localStorage`) are intentionally not persisted; this skill writes only to repo files.
+- Source code or `Dockerfile` changes require an image rebuild (`--build`). Out of scope here.
+- UI-only ad-hoc service / prompt overrides (saved in `localStorage`) are intentionally not persisted. This skill writes only to repo files.
 
 ## Troubleshooting
 

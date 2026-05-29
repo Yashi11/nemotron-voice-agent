@@ -26,6 +26,10 @@ export interface Prompt {
   content: string;
   default?: boolean;
   builtIn: boolean;
+  selectable?: boolean;
+  scope?: "session" | "agent";
+  agent?: string;
+  promptName?: string;
   tools?: string[];
 }
 
@@ -163,6 +167,7 @@ export interface DeploymentOption {
   key: string;
   label: string;
   slots: string[];
+  capabilities?: string[];
   defaults?: DeploymentDefaults;
 }
 
@@ -193,6 +198,14 @@ export interface IceServersResponse {
 export interface IceConfig {
   iceServers: RTCIceServer[];
   hasTurnServer: boolean;
+}
+
+export interface WebcamConfig {
+  sample_interval_seconds?: number;
+  frame_max_width?: number;
+  jpeg_quality?: number;
+  initial_upload_enabled?: boolean;
+  initial_upload_delay_ms?: number;
 }
 
 function iceServerHasTurn(server: RTCIceServer): boolean {
@@ -275,4 +288,38 @@ export async function createWebRTCSession(config: Record<string, string>): Promi
     throw new Error("WebRTC start did not return a connection URL");
   }
   return data.webrtcUrl;
+}
+
+export async function uploadAttachment(sessionId: string, file: File, kind: string) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/attachments?kind=${encodeURIComponent(kind)}`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    const details = body ? `: ${body.slice(0, 200)}` : "";
+    throw new Error(`HTTP ${res.status}${details}`);
+  }
+  return res.json();
+}
+
+export async function getWebcamConfig(): Promise<WebcamConfig> {
+  return fetchJson<WebcamConfig>("/api/webcam-config");
+}
+
+export async function uploadWebcamFrame(sessionId: string, frame: Blob) {
+  const form = new FormData();
+  form.append("file", frame, "webcam-frame.jpg");
+  const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/webcam/frames`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    const details = body ? `: ${body.slice(0, 200)}` : "";
+    throw new Error(`HTTP ${res.status}${details}`);
+  }
+  return res.json();
 }

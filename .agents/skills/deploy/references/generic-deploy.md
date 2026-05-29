@@ -4,29 +4,29 @@ Use this reference from the `deploy` skill when deploying the cascaded/generic v
 
 ## When to use
 
-Pinning a Docker Compose deployment to the Generic Cascaded example. Compose deployments are per-example only; the `cascaded/generic` profile sets the container's `EXAMPLE_SELECTION` directly. Selector modes (`cascaded/all`, `all`) are host-native only today — they are not exposed as compose profiles.
+Pinning a Docker Compose deployment to the Generic Cascaded example. Recipe profile names encode both the example and the hardware target. Selector modes (`cascaded/all`, `all`) are host-native only — they are not exposed as compose profiles.
 
-Per-example catalogs at `src/cascaded/generic/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active profile.
+Per-example catalogs at `src/cascaded/generic/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active recipe.
 
 ## Compose deploy
 
-Pick one example profile and optionally combine with a hardware profile:
+Pick one recipe profile:
 
 ```bash
-docker compose --profile cascaded/generic [--profile <hardware>] up -d
+docker compose --profile <recipe> up -d
 ```
 
-| Profile combination | App service | Sidecars from `cascaded/shared/` |
+| Recipe profile | App service | Sidecars from `cascaded/shared/` |
 | --- | --- | --- |
 | `cascaded/generic` | `cascaded-generic` | none (cloud NVCF) |
-| `cascaded/generic` + `workstation` | `cascaded-generic` | `nvidia-llm`, `asr-service`, `tts-service` |
-| `cascaded/generic` + `dgxspark` | `cascaded-generic` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
-| `cascaded/generic` + `jetson` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
+| `cascaded/generic/workstation` | `cascaded-generic` | `nvidia-llm`, `asr-service`, `tts-service` |
+| `cascaded/generic/dgxspark` | `cascaded-generic` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
+| `cascaded/generic/jetson` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
 
-Tear down with the same profile combination used at `up` time:
+Tear down with the same recipe used at `up` time:
 
 ```bash
-docker compose --profile cascaded/generic [--profile <hardware>] down
+docker compose --profile <recipe> down
 ```
 
 ## Verify

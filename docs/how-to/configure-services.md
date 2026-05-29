@@ -7,7 +7,7 @@ The Nemotron Voice Agent uses example-local service catalogs to manage LLM, ASR,
 - Each example owns its catalog at `<example-package>/services.cloud.yaml` (remote / NVCF) and optional `<example-package>/services.local.yaml` (Compose-managed sidecars).
 - The cloud catalog is always loaded.
 - The local catalog is merged on top, but only entries whose endpoint is reachable on TCP are exposed in the UI and used by the pipeline.
-- The same `--profile` works whether you run cloud-only or with local sidecars; nothing else needs to be set.
+- The same `--profile` works whether you run cloud-only or with local sidecars. Nothing else needs to be set.
 
 ## Available services (Generic Cascaded cloud)
 
@@ -44,18 +44,19 @@ The Services tab lists all services exposed by the active catalog (cloud and rea
 
 ## Changing built-in defaults
 
-Each example declares its default service per slot via `defaults` in `examples_registry.yaml`. The pipeline resolves that default at startup, and the UI uses it as the initial selection. Edit `defaults` (and optionally reorder entries in the `services.cloud.yaml` / `services.local.yaml` for visual ordering in the UI) to change defaults. Host-run development reads these files directly; the Docker images mount `./src` and `./examples_registry.yaml` read-only so changes are picked up after `docker compose restart <service>`.
+Each example declares its default service per slot via `defaults` in `examples_registry.yaml`. The pipeline resolves that default at startup, and the UI uses it as the initial selection. Edit `defaults` (and optionally reorder entries in the `services.cloud.yaml` / `services.local.yaml` for visual ordering in the UI) to change defaults. Host-run development reads these files directly. The Docker images mount `./src` and `./examples_registry.yaml` read-only so changes are picked up after `docker compose restart <service>`.
 
 When the same default key exists in both `services.cloud.yaml` and `services.local.yaml`, the resolver prefers the **self-hosted** variant so that deploying local NIM sidecars automatically promotes them to the active default — no UI click needed. If the self-hosted endpoint is unreachable at session-start time, the runtime falls back to the cloud variant.
 
 ## On-prem catalog
 
-`services.local.yaml` groups entries under platform sections (`workstation`, `dgxspark`, `jetson`) for documentation. The backend merges all sections automatically; reachability filtering exposes only the deployed sidecars.
+`services.local.yaml` groups entries under platform sections (`workstation`, `dgxspark`, `jetson`) for documentation. The backend merges all sections automatically. Reachability filtering exposes only the deployed sidecars.
 
 | Compose endpoint | Host-run rewrite |
 |---|---|
 | `http://nvidia-llm:8000/v1` | `http://localhost:18000/v1` |
 | `http://nvidia-llm-vllm:8000/v1` | `http://localhost:18000/v1` |
+| `http://nvidia-llm-vllm-omni:8002/v1` | `http://localhost:8002/v1` |
 | `tts-service:50051` | `localhost:50151` |
 | `asr-service:50052` | `localhost:50152` |
 | `nemotron-speech:50051` | `localhost:50051` |
@@ -95,13 +96,16 @@ tts:
 
 ## Local NIM services
 
-Combine an example profile with a hardware profile to bring up the matching sidecars; the catalog picks them up automatically once reachable.
+Pick the recipe profile that matches the example and hardware target. The catalog picks up the matching sidecars automatically once they are reachable.
 
 ```bash
-docker compose --profile cascaded/generic --profile workstation up -d
-docker compose --profile cascaded/generic --profile dgxspark up -d
-docker compose --profile cascaded/generic --profile jetson up -d
-docker compose --profile cascaded/agentic-airline --profile workstation up -d
+docker compose --profile cascaded/generic/workstation up -d
+docker compose --profile cascaded/generic/dgxspark up -d
+docker compose --profile cascaded/generic/jetson up -d
+docker compose --profile cascaded/agentic-airline/workstation up -d
+docker compose --profile cascaded/omni-assistant/workstation up -d
+docker compose --profile cascaded/omni-assistant/dgxspark up -d
+docker compose --profile cascaded/omni-assistant-subagents/dgxspark up -d
 ```
 
-Running an example profile on its own (e.g. `--profile cascaded/generic`) stays cloud-only and uses just `services.cloud.yaml`.
+Running a cloud-only profile (e.g. `--profile cascaded/generic`) stays cloud-only and uses just `services.cloud.yaml`.

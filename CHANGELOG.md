@@ -8,35 +8,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Two new cascaded examples — `cascaded/omni-assistant` (Nemotron 3 Nano Omni as a single multimodal ASR + LLM service with Magpie TTS) and `cascaded/omni-assistant-subagents` (the same Omni service split across four cooperating Pipecat Subagents with live webcam vision and uploaded-media analysis)
+- `NvidiaOmniMultimodalService` — an upstream-compatible Pipecat `LLMService` for Nemotron Omni, with the application-policy extension hooks `_on_turn_result`, `_structured_response_control_fields`, `_should_emit_streamed_structured_response`
+- Generic `capabilities` field per example in `examples_registry.yaml` (`attachments`, `webcam`). The UI gates the attachment-upload control and the webcam panel on these capabilities so no example-specific code lives in the client
+- New session-scoped HTTP endpoints `POST /api/sessions/{session_id}/attachments`, `POST /api/sessions/{session_id}/webcam/frames`, `GET /api/webcam-config` (capability-driven, not example-named)
+- Generic client-visible `metric-group` server-message protocol for the Metrics panel. Any pipeline can publish grouped per-turn metrics
+- Recipe-style compose profiles (`<family>/<example>` for cloud-only and `<family>/<example>/<hardware>` for on-prem). Every profile is a complete, self-contained deployment stack — no orthogonal hardware profile to combine, no silent mis-pairing
+- `pipecat-ai-subagents>=0.6.0` declared in `pyproject.toml` (consumed by `cascaded/omni-assistant-subagents`)
 - `examples_registry.yaml` becomes the single source of truth for which examples and transports the UI exposes (`selection`, `transports` fields) and per-example slot defaults (`defaults`). `EXAMPLE_SELECTION` / `TRANSPORT_SELECTION` env vars provide runtime overrides without surfacing in `.env.example`
-- Per-example compose profiles named verbatim after the registry key (`cascaded/generic`, `cascaded/agentic-airline`, `speech-to-speech/generic`) composed orthogonally with hardware profiles (`workstation`, `dgxspark`, `jetson`) and observability profiles (`tracing`, `turn`)
-- `nemotron-speech` compose service promotes Riva (ASR + TTS) to a first-class Jetson service so the full stack lifecycles via `docker compose --profile cascaded/generic --profile jetson up -d`; replaces the prior host-side `riva_start.sh` flow
-- CUDA MPS SM-split and disjoint CPU pinning for Thor's shared GPU and LPDDR5X bus: `VLLM_MPS_THREAD_PCT` / `RIVA_MPS_THREAD_PCT` and `VLLM_CPUSET` / `RIVA_CPUSET` / `PIPECAT_CPUSET`; `scripts/start-mps.sh` and `scripts/stop-mps.sh` manage the daemon
+- Compose recipes are named after the registry key for cloud-only deployments and append hardware for on-prem deployments (for example, `cascaded/generic/dgxspark`). Observability profiles (`tracing`, `turn`) remain optional overlays.
+- `nemotron-speech` compose service promotes Riva (ASR + TTS) to a first-class Jetson service so the full stack lifecycles via `docker compose --profile cascaded/generic/jetson up -d`. Replaces the prior host-side `riva_start.sh` flow
+- CUDA MPS SM-split and disjoint CPU pinning for Thor's shared GPU and LPDDR5X bus: `VLLM_MPS_THREAD_PCT` / `RIVA_MPS_THREAD_PCT` and `VLLM_CPUSET` / `RIVA_CPUSET` / `PIPECAT_CPUSET`. `scripts/start-mps.sh` and `scripts/stop-mps.sh` manage the daemon
 - Grouped service UI (Self-hosted / NVIDIA Cloud / Custom) in the LLM/ASR/TTS selectors, driven by namespaced service IDs returned by `/api/services`
-- `APP_RUNTIME=container` marker set by `docker-compose.yml`; when absent the backend rewrites Compose-reachable endpoints in `services.local.yaml` to `localhost` so host-native runs (`uv run`) work without editing the catalog
-- TCP reachability filter on `/api/services`: only deployed local services appear in the UI; cloud entries always show
+- `APP_RUNTIME=container` marker set by `docker-compose.yml`. When absent the backend rewrites Compose-reachable endpoints in `services.local.yaml` to `localhost` so host-native runs (`uv run`) work without editing the catalog
+- TCP reachability filter on `/api/services`: only deployed local services appear in the UI. Cloud entries always show
 - Pre-commit hook config (`uv run ruff check`, `uv run ruff format`, `npm run lint`) and Agentic Airline `fast-llm` / `orchestrator-llm` / `booking-server` role catalog categories
 - Speech-to-Speech now has its own example-local catalog under `src/speech_to_speech/generic/`
 
 ### Changed
 
-- Single root `docker-compose.yml` now hosts one `x-app` template plus per-example service variants (`cascaded-generic`, `cascaded-agentic-airline`, `speech-to-speech-generic`); per-example compose files only ship example-specific sidecars (e.g. agentic_airline ships `booking-server`)
-- Sidecar profile names became hardware-only (`workstation`, `dgxspark`, `jetson`); they no longer mention the example so they compose freely with any example profile
+- Single root `docker-compose.yml` now hosts one `x-app` template plus per-example service variants (`cascaded-generic`, `cascaded-agentic-airline`, `cascaded-omni-assistant`, `cascaded-omni-assistant-subagents`, `speech-to-speech-generic`). Per-example compose files only ship example-specific sidecars (e.g. agentic_airline ships `booking-server`)
+- Compose profile model switched from two orthogonal axes (`<example>` × `<hardware>`) to single recipe profiles (`<family>/<example>/<hardware>`). Each recipe is a complete deployment stack, so wrong-combo deployments become impossible to type. Replaces the previous `--profile <example> --profile <hardware>` style and the short-lived `dgxspark-omni` / `jetson-omni` hardware-suffix profiles
 - Pipelines default slot values come from `examples_registry.yaml` `defaults` rather than YAML insertion order, so YAML reformats do not silently change behavior
 - Registry-default service resolution now prefers the `self-hosted` variant over `cloud-nim` when both define the same key, matching `/api/services` precedence so local NIM sidecars become the active default as soon as they're deployed
-- Jetson ASR/TTS endpoint moves from `host.docker.internal:50051` to the `nemotron-speech:50051` compose service; host-run Pipecat rewrites it to `localhost:50051` automatically
-- Service catalogs are example-local: each example owns `services.cloud.yaml` and `services.local.yaml`. The local catalog is merged on top of the cloud catalog when its endpoints are reachable; selection no longer relies on a `DEPLOYMENT_PLATFORM` flag
-- S2S pipeline now authenticates with `NVIDIA_API_KEY` only; the former `S2S_API_KEY` env fallback (with OpenAI compatibility) has been removed
+- Jetson ASR/TTS endpoint moves from `host.docker.internal:50051` to the `nemotron-speech:50051` compose service. Host-run Pipecat rewrites it to `localhost:50051` automatically
+- Service catalogs are example-local: each example owns `services.cloud.yaml` and `services.local.yaml`. The local catalog is merged on top of the cloud catalog when its endpoints are reachable. Selection no longer relies on a `DEPLOYMENT_PLATFORM` flag
+- S2S pipeline now authenticates with `NVIDIA_API_KEY` only. The former `S2S_API_KEY` env fallback (with OpenAI compatibility) has been removed
 
 ### Removed
 
 - Example/pipeline-shaping CLI flags from `src/server.py`: `--example`, `--bot`, `--all-examples`, `--pipeline`, `--transport`. Their behavior moves to `examples_registry.yaml` (`selection`, `transports`, `defaults`) plus optional env overrides. CLI args now cover only infrastructure concerns (`--host`, `--port`, `--prompt-file`, `--tls-cert`/`--tls-key`, `--workers`, `-v`)
 - `DEFAULT_PIPELINE_MODE` environment variable (superseded by `EXAMPLE_SELECTION`)
-- Per-example compose files for `cascaded/generic` (no example-specific sidecars to ship); generic example now uses only the root compose template
-- `--profile all-examples`, `--profile generic[-*]`, `--profile agentic-airline[-*]` legacy profile names (replaced by `cascaded/generic`, `cascaded/agentic-airline`, `speech-to-speech/generic` per-example profiles composed with hardware profiles)
+- Per-example compose files for `cascaded/generic` (no example-specific sidecars to ship). Generic example now uses only the root compose template
+- `--profile all-examples`, `--profile generic[-*]`, `--profile agentic-airline[-*]`, and standalone hardware profiles such as `workstation`, `dgxspark`, and `jetson` (replaced by self-contained recipe profiles)
 - `LLM_INTERLEAVING` env flag and `NvidiaInterleavedLLMService`: MPS + CPU pinning replace the need for strict sentence-bounded interleaving
 - `S2S_API_KEY` environment variable
-- `DEPLOYMENT_PLATFORM`, `DEFAULT_LLM`, `DEFAULT_ASR`, `DEFAULT_TTS`, `BOOKING_API_URL`, `FAST_LLM_*`, and `ORCHESTRATOR_LLM_*` env vars; configuration now lives entirely in the example service catalogs
+- `DEPLOYMENT_PLATFORM`, `DEFAULT_LLM`, `DEFAULT_ASR`, `DEFAULT_TTS`, `BOOKING_API_URL`, `FAST_LLM_*`, and `ORCHESTRATOR_LLM_*` env vars. Configuration now lives entirely in the example service catalogs
 - Root-level `services.cloud.yaml` / `services.local.yaml` (replaced by example-local catalogs)
 
 ## [2.0.0] - 2026-03-25

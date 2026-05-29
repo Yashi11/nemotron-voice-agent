@@ -25,7 +25,7 @@ The client UI includes a voice selector. Available voices and languages are auto
 
 ## Using Local TTS NIM
 
-When a local Magpie TTS NIM runs on GPU 0, add or edit the entry under the active platform block in `services.local.yaml`. Use Compose network names (`tts-service:50051`); the backend rewrites them to `localhost:50151` automatically when the app is run directly on the host instead of inside a container:
+When a local Magpie TTS NIM runs on GPU 0, add or edit the entry under the active platform block in `services.local.yaml`. Use Compose network names (`tts-service:50051`). The backend rewrites them to `localhost:50151` automatically when the app is run directly on the host instead of inside a container:
 
 ```yaml
 workstation:
@@ -109,4 +109,3 @@ All `MarkdownTextFilter` settings (`filter_code`, `filter_tables`) are inherited
 ### `AirlineSpeechTextFilter`
 
 A domain-specific subclass of `NemotronSpeechTextFilter` used by the `agentic_airline` pipeline. It applies the same reserved-character strip and adds airline-specific post-processing (flight numbers, PNRs, and IATA airport codes). It is set default in `src/cascaded/agentic_airline/pipeline.py` and does not need to be changed.
-

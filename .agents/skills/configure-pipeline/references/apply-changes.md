@@ -25,28 +25,35 @@ Cloud catalog entries use NVCF endpoints (`grpc.nvcf.nvidia.com:443`, `https://i
 
 ## Apply Commands
 
-Profiles compose orthogonally: pick one **example** profile (which selects the example and any example-specific sidecars) and optionally one **hardware** profile (which adds local NIM/Riva/vLLM sidecars).
+Pick a single recipe profile (`<family>/<example>` for cloud or `<family>/<example>/<hardware>` for on-prem). Each recipe is a complete deployment — never combine two recipes.
 
 ```bash
 # Cloud-only (NVCF)
 docker compose --profile cascaded/generic up -d
 docker compose --profile cascaded/agentic-airline up -d
+docker compose --profile cascaded/omni-assistant up -d
+docker compose --profile cascaded/omni-assistant-subagents up -d
 docker compose --profile speech-to-speech/generic up -d
 
 # Workstation (local NIM ASR/TTS/LLM)
-docker compose --profile cascaded/generic --profile workstation up -d
-docker compose --profile cascaded/agentic-airline --profile workstation up -d
+docker compose --profile cascaded/generic/workstation up -d
+docker compose --profile cascaded/agentic-airline/workstation up -d
+docker compose --profile cascaded/omni-assistant/workstation up -d
 
-# DGX Spark / Jetson (Generic Cascaded only)
-docker compose --profile cascaded/generic --profile dgxspark up -d
-docker compose --profile cascaded/generic --profile jetson up -d
+# DGX Spark
+docker compose --profile cascaded/generic/dgxspark up -d
+docker compose --profile cascaded/omni-assistant/dgxspark up -d
+docker compose --profile cascaded/omni-assistant-subagents/dgxspark up -d
+
+# Jetson (Generic Cascaded only. Omni does not fit on Orin today)
+docker compose --profile cascaded/generic/jetson up -d
 ```
 
 For YAML-only edits that don't change env or sidecar membership, `docker compose restart <service>` is enough (e.g. `docker compose restart cascaded-generic`).
 
 ## Optional Profile Overlays
 
-Combine with any example × hardware combination. Re-apply must include them again to keep those services running.
+Tracing and TURN compose orthogonally with any recipe. Re-apply must include them again to keep those services running.
 
 ### Tracing (`--profile tracing`)
 
@@ -60,13 +67,13 @@ Add when clients connect from outside the host's network. Credentials come from 
 
 ```bash
 docker compose --profile cascaded/generic --profile tracing up -d
-docker compose --profile cascaded/generic --profile workstation --profile turn up -d
-docker compose --profile cascaded/generic --profile dgxspark --profile tracing --profile turn up -d
+docker compose --profile cascaded/generic/workstation --profile turn up -d
+docker compose --profile cascaded/generic/dgxspark --profile tracing --profile turn up -d
 ```
 
 ## Validation Checklist
 
-- The selected `--profile` pair matches the example and hardware you want active.
+- The selected recipe profile matches the example and hardware you want active.
 - `examples_registry.yaml` `defaults` references catalog keys that actually exist for that example.
 - Multilingual prompt selection is paired with multilingual-capable ASR (`parakeet-rnnt`) and TTS (`magpie-tts`) in the active catalog.
 - For S2S, the active example's `services.cloud.yaml` `s2s` block points at the desired realtime endpoint. Authentication uses `NVIDIA_API_KEY`.

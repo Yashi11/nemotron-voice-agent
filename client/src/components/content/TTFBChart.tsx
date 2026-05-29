@@ -4,6 +4,7 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 interface DataPoint {
+  id: string;
   timestamp: string;
   value: number;
 }
@@ -23,10 +24,11 @@ export function TTFBChart({ data, title, label = "TTFB" }: Readonly<TTFBChartPro
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <XAxis
-            dataKey="timestamp"
+            dataKey="id"
             stroke="#666666"
             fontSize={10}
             tickLine={false}
+            tickFormatter={(_, index) => data[index]?.timestamp ?? ""}
           />
           <YAxis
             stroke="#666666"
@@ -42,6 +44,7 @@ export function TTFBChart({ data, title, label = "TTFB" }: Readonly<TTFBChartPro
               color: "#e0e0e0",
               fontSize: "12px",
             }}
+            labelFormatter={(_, payload) => payload?.[0]?.payload?.timestamp ?? ""}
             formatter={(value) => [`${Number(value).toFixed(0)}ms`, label]}
           />
           <Line

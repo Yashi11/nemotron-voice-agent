@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: BSD-2-Clause
+
+"""Media analyzer worker package."""
+
+from cascaded.omni_assistant_subagents.subagents.media_analyzer.agent import (
+    MEDIA_ANALYSIS_TASK_NAME,
+    MediaAnalyzerWorker,
+)
+
+__all__ = ["MEDIA_ANALYSIS_TASK_NAME", "MediaAnalyzerWorker"]

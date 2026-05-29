@@ -11,7 +11,7 @@ import time
 from collections.abc import Iterable, Mapping
 from contextvars import ContextVar
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 import yaml
 from loguru import logger
@@ -188,22 +188,51 @@ def _is_container_runtime() -> bool:
     return os.getenv("APP_RUNTIME", "").strip().lower() == "container"
 
 
+_HOST_RUNTIME_PORT_OVERRIDES: dict[tuple[str, int], int] = {
+    ("nvidia-llm", 8000): 18000,
+    ("nvidia-llm-vllm", 8000): 18000,
+    ("tts-service", 50051): 50151,
+    ("asr-service", 50052): 50152,
+}
+_LOCAL_SERVICE_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _is_compose_service_host(host: str) -> bool:
+    """Return true for Docker Compose service names, not public hosts/IPs."""
+    normalized = host.strip().lower()
+    if not normalized or normalized in _LOCAL_SERVICE_HOSTS:
+        return False
+    try:
+        ipaddress.ip_address(normalized)
+        return False
+    except ValueError:
+        pass
+    return "." not in normalized
+
+
 def _rewrite_endpoint_for_host_runtime(field: str, value: str) -> str:
     """Convert Compose-oriented built-ins to host-accessible endpoints."""
-    if field == "base_url":
-        if value in {"http://nvidia-llm:8000/v1", "http://nvidia-llm-vllm:8000/v1"}:
-            return "http://localhost:18000/v1"
+    if field not in {"base_url", "server"}:
         return value
 
-    if field == "server":
-        return (
-            value.replace("tts-service:50051", "localhost:50151")
-            .replace("asr-service:50052", "localhost:50152")
-            .replace("nemotron-speech:50051", "localhost:50051")
-            .replace("booking-server:8001", "localhost:8001")
-            .replace("host.docker.internal", "localhost")
-        )
+    parsed = urlparse(value if "://" in value else f"//{value}")
+    host = parsed.hostname
+    if not host:
+        return value
 
+    normalized_host = host.lower()
+    if normalized_host == "host.docker.internal" or _is_compose_service_host(normalized_host):
+        port = parsed.port
+        target_port = _HOST_RUNTIME_PORT_OVERRIDES.get((normalized_host, port), port)
+        netloc = "localhost" if target_port is None else f"localhost:{target_port}"
+        if parsed.scheme:
+            return urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+        suffix = parsed.path
+        if parsed.query:
+            suffix += f"?{parsed.query}"
+        if parsed.fragment:
+            suffix += f"#{parsed.fragment}"
+        return f"{netloc}{suffix}"
     return value
 
 
@@ -493,24 +522,26 @@ def filter_session_config(data: dict) -> dict:
 
 
 def _load_catalog_entry_by_id(category: str, entry_id: str) -> dict:
-    """Look up a built-in catalog entry by category and API id (``<source>:<key>``).
+    """Look up a built-in catalog entry by category and API id.
 
-    Returns the raw YAML entry, or ``{}`` if the id is empty, malformed, points
-    at a user-authored service (``custom-*``), or is not present in the active
-    catalog for the given category. Keeps ``services.*.yaml`` as the single
-    source of truth for built-in services.
+    Supports UI ids (``<source>:<key>``) and raw catalog keys for direct
+    clients. Returns ``{}`` for custom or unknown entries.
     """
-    if not entry_id or entry_id.startswith("custom-") or ":" not in entry_id:
+    if not entry_id or entry_id.startswith("custom-"):
         return {}
-    source, key = entry_id.split(":", 1)
-    if not key:
-        return {}
-    if source == "cloud-nim":
-        catalog = _load_cloud_services_catalog()
-    elif source == "self-hosted":
-        catalog = _load_local_services_catalog()
+    if ":" in entry_id:
+        source, key = entry_id.split(":", 1)
+        if not key:
+            return {}
+        if source == "cloud-nim":
+            catalog = _load_cloud_services_catalog()
+        elif source == "self-hosted":
+            catalog = _load_local_services_catalog()
+        else:
+            return {}
     else:
-        return {}
+        key = entry_id
+        catalog = _load_effective_services_catalog()
     entry = catalog.get(category, {}).get(key)
     return dict(entry) if isinstance(entry, dict) else {}
 

@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useDeployment, useDefaultLLMs, useDefaultPrompts, useDefaultASR, useDefaultTTS, useDefaultTools, type DeploymentOption, type LLMService, type PipelineOption, type Prompt, type SimpleService, type Tool, type TransportOption, type TransportType } from "../api";
-import { readLSArray, readLSString, writeLSString, writeLSJson, removeLSKey } from "../utils";
+import { isSelectablePrompt, readLSArray, readLSString, writeLSString, writeLSJson, removeLSKey } from "../utils";
 import { AppContext } from "./app-context";
 
 const ASR_STORAGE = "nvidia-voice-agent-asr-custom";
@@ -52,10 +52,13 @@ function getEffectivePromptKey(
   loading: boolean,
   preferredBuiltInKey = "",
 ): string {
-  if (selectedKey && prompts.some((prompt) => prompt.key === selectedKey)) return selectedKey;
+  const selectablePrompts = prompts.filter(isSelectablePrompt);
+  if (selectedKey && selectablePrompts.some((prompt) => prompt.key === selectedKey)) return selectedKey;
   if (loading) return "";
-  if (preferredBuiltInKey && prompts.some((prompt) => prompt.key === preferredBuiltInKey)) return preferredBuiltInKey;
-  return prompts.find((prompt) => prompt.default)?.key || prompts[0]?.key || "";
+  if (preferredBuiltInKey && selectablePrompts.some((prompt) => prompt.key === preferredBuiltInKey)) {
+    return preferredBuiltInKey;
+  }
+  return selectablePrompts.find((prompt) => prompt.default)?.key || selectablePrompts[0]?.key || "";
 }
 
 function getDefaultServiceId(selectedExample: DeploymentOption | undefined, slot: string): string {
@@ -147,6 +150,8 @@ export interface AppState {
   availableTransports: TransportOption[];
   selectedTransport: TransportType;
   setTransport: (t: TransportType) => void;
+  currentSessionId: string;
+  setCurrentSessionId: (id: string) => void;
 
   selectedS2SServer: string;
   setSelectedS2SServer: (s: string) => void;
@@ -239,6 +244,8 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     setSelectedTransport(t);
     writeLSString(TRANSPORT_STORAGE, t);
   }, []);
+
+  const [currentSessionId, setCurrentSessionId] = useState("");
 
   // --- S2S server state ---
   const [selectedS2SServer, setSelectedS2SServer] = useState("");
@@ -376,7 +383,10 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     if (effectiveSelectedPromptKey === key) setSelectedPromptKey("");
   }, [customPrompts, persistPrompts, effectiveSelectedPromptKey]);
 
-  const selectedPrompt = useMemo(() => prompts.find((p) => p.key === effectiveSelectedPromptKey), [prompts, effectiveSelectedPromptKey]);
+  const selectedPrompt = useMemo(
+    () => prompts.find((p) => p.key === effectiveSelectedPromptKey && isSelectablePrompt(p)),
+    [prompts, effectiveSelectedPromptKey],
+  );
 
   // --- Tools (read-only catalog from active example's tools.yaml) ---
   const { data: tools = [], isLoading: toolsLoading } = useDefaultTools(serviceCatalogKey);
@@ -387,6 +397,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     deploymentSelectable,
     availableTransports,
     selectedTransport: effectiveTransport, setTransport,
+    currentSessionId, setCurrentSessionId,
     selectedS2SServer, setSelectedS2SServer,
     llms, llmsLoading, selectedLLMId: effectiveSelectedLLMId, selectLLM, addLLM, updateLLM, removeLLM, selectedLLM,
     asrServices, asrLoading, selectedASRId: effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
@@ -394,7 +405,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     selectedVoiceId, setSelectedVoiceId,
     prompts, promptsLoading, selectedPromptKey: effectiveSelectedPromptKey, selectPrompt, addPrompt, updatePrompt, removePrompt, selectedPrompt,
     tools, toolsLoading,
-  }), [selectedExample, selectExample, deploymentOptions, availablePipelines, deploymentSelectable, availableTransports, effectiveTransport, setTransport, selectedS2SServer,
+  }), [selectedExample, selectExample, deploymentOptions, availablePipelines, deploymentSelectable, availableTransports, effectiveTransport, setTransport, currentSessionId, selectedS2SServer,
        llms, llmsLoading, effectiveSelectedLLMId, selectLLM, addLLM, updateLLM, removeLLM, selectedLLM,
        asrServices, asrLoading, effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
        ttsServices, ttsLoading, effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,

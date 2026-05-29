@@ -47,10 +47,11 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Annotated
 from urllib.parse import urlparse
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, Query, Request, WebSocket
+from fastapi import BackgroundTasks, FastAPI, File, Query, Request, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from loguru import logger
@@ -64,6 +65,7 @@ from pipecat.transports.smallwebrtc.request_handler import (
 
 import config_store
 import examples_registry
+from attachment_store import store_attachment
 from cascaded.shared.prewarm import prewarm_tts, warmup_tts_synthesis
 from utils import (
     PROJECT_ROOT,
@@ -79,9 +81,11 @@ from utils import (
     set_active_slots,
     set_service_context,
 )
+from webcam_frame_store import store_webcam_frame, webcam_client_config
 
 CLIENT_DIST = PROJECT_ROOT / "client" / "dist"
 _session_configs: dict[str, dict] = {}
+_active_session_configs: dict[str, dict] = {}
 _CONNECT_PREWARM_TIMEOUT_SECS = 15
 _CONNECT_HEALTH_TIMEOUT_SECS = 5
 _NIM_READY_PATH = "/v1/health/ready"
@@ -92,6 +96,8 @@ _SPEECH_READY_ENDPOINTS = {
 }
 _TURN_LISTEN_PORT = 3478
 _INDEX_NO_CACHE_HEADERS = {"Cache-Control": "no-store"}
+_MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+_UPLOAD_READ_CHUNK_BYTES = 1024 * 1024
 _MULTI_WORKER_SESSION_CONFIG_MESSAGE = (
     "Session-config based WebRTC and WebSocket flows are disabled when "
     "UVICORN_WORKERS is greater than 1. Use a single worker, sticky routing, "
@@ -171,6 +177,7 @@ def _deployment_response(active: dict, options: list[dict]) -> dict:
     """
     active_deployment = dict(active)
     active_deployment.setdefault("slots", [])
+    active_deployment.setdefault("capabilities", [])
     transports = set(examples_registry.visible_transports())
     return {
         "active": active_deployment,
@@ -264,11 +271,38 @@ def _store_session_config(data: dict, fallback_example_key: str = "") -> str:
     return session_id
 
 
+def _session_capability_error(session_id: str, capability: str) -> JSONResponse | None:
+    """Return an upload rejection when session/capability validation fails."""
+    cleaned_session_id = session_id.strip()
+    config = _active_session_configs.get(cleaned_session_id) or _session_configs.get(cleaned_session_id)
+    if not cleaned_session_id or config is None:
+        return JSONResponse(status_code=404, content={"detail": "session not found"})
+    example = examples_registry.metadata(examples_registry.find(config.get("pipeline_mode", "")))
+    if capability not in set(example.get("capabilities") or []):
+        return JSONResponse(status_code=403, content={"detail": f"session does not support {capability}"})
+    return None
+
+
 async def _run_blocking(func, *args, timeout: float | None = None):
     task = asyncio.to_thread(func, *args)
     if timeout is None:
         return await task
     return await asyncio.wait_for(task, timeout=timeout)
+
+
+async def _read_upload_file_with_limit(file: UploadFile, *, max_bytes: int = _MAX_UPLOAD_BYTES) -> bytes:
+    """Read an upload body while enforcing a hard byte limit."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(_UPLOAD_READ_CHUNK_BYTES)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise ValueError(f"Upload exceeds {max_bytes // (1024 * 1024)}MB limit")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _build_ice_servers(request: Request) -> list[dict]:
@@ -447,6 +481,8 @@ async def _ensure_asr_ready_for_connection(config: dict, example: dict) -> None:
     """Run an ASR readiness check before starting the session."""
     if example.get("family") != "cascaded":
         return
+    if "asr" not in (example.get("slots") or []):
+        return
 
     asr_server = config.get("asr_server", "") or _get_default_asr_selection()
     ready_url = _local_speech_ready_url("ASR", asr_server)
@@ -602,6 +638,67 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
         session_id = _store_session_config(config, fallback_example_key=fallback_example_key)
         return {"webrtcUrl": f"/api/offer?session_id={session_id}"}
 
+    @app.post("/api/sessions/{session_id}/attachments")
+    async def upload_attachment(
+        session_id: str,
+        file: Annotated[UploadFile, File()],
+        kind: str = Query(default="image"),
+    ):
+        """Store an uploaded media attachment for a live voice session."""
+        if _multi_worker_mode_enabled():
+            return _multi_worker_session_config_response()
+        if (failure := _session_capability_error(session_id, "attachments")) is not None:
+            return failure
+        try:
+            data = await _read_upload_file_with_limit(file)
+            attachment = store_attachment(
+                session_id=session_id,
+                kind=kind,
+                name=file.filename or "attachment",
+                content_type=file.content_type or "",
+                data=data,
+            )
+        except ValueError as exc:
+            status_code = 413 if "limit" in str(exc).lower() else 400
+            return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+        logger.debug(
+            "Stored media attachment "
+            f"(session_id={session_id[:8]}..., kind={attachment.kind}, bytes={len(attachment.data)})"
+        )
+        return attachment.metadata()
+
+    @app.get("/api/webcam-config")
+    async def get_webcam_config():
+        """Return browser webcam capture defaults for capability-driven UI."""
+        return webcam_client_config()
+
+    @app.post("/api/sessions/{session_id}/webcam/frames")
+    async def upload_webcam_frame(
+        session_id: str,
+        file: Annotated[UploadFile, File()],
+    ):
+        """Store the latest browser webcam snapshot for a live voice session."""
+        if _multi_worker_mode_enabled():
+            return _multi_worker_session_config_response()
+        if (failure := _session_capability_error(session_id, "webcam")) is not None:
+            return failure
+        try:
+            data = await _read_upload_file_with_limit(file)
+            frame = store_webcam_frame(
+                session_id=session_id,
+                name=file.filename or "webcam-frame.jpg",
+                content_type=file.content_type or "image/jpeg",
+                data=data,
+            )
+        except ValueError as exc:
+            status_code = 413 if "limit" in str(exc).lower() else 400
+            return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+        logger.debug(
+            "Stored webcam frame "
+            f"(session_id={session_id}, name={frame.name}, bytes={len(frame.data)}, sequence={frame.sequence})"
+        )
+        return frame.metadata()
+
     # ---- WebRTC signaling ----
 
     @app.post("/api/offer")
@@ -617,14 +714,24 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
         example = _resolve_example(config)
         selected = examples_registry.find(config.get("pipeline_mode", fallback_example_key))
         bot_fn = examples_registry.resolve_bot(selected)
+        if session_id:
+            _active_session_configs[session_id] = dict(config)
+
+        async def run_bot_session(runner_args: SmallWebRTCRunnerArguments) -> None:
+            try:
+                await bot_fn(runner_args)
+            finally:
+                if session_id:
+                    _active_session_configs.pop(session_id, None)
 
         async def on_connection(connection: SmallWebRTCConnection):
             body = dict(request.request_data) if isinstance(request.request_data, dict) else {}
             body.update(config)
+            body["session_id"] = session_id
             _bind_example_context_by_key(example["key"])
             runner_args = SmallWebRTCRunnerArguments(webrtc_connection=connection, body=body)
             runner_args.pipeline_idle_timeout_secs = parse_env_int("PIPELINE_IDLE_TIMEOUT_SECS", 600, min_value=300)
-            background_tasks.add_task(bot_fn, runner_args)
+            background_tasks.add_task(run_bot_session, runner_args)
 
         return await handler.handle_web_request(
             request=request,
@@ -663,10 +770,12 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
             selected = examples_registry.find(config.get("pipeline_mode", fallback_example_key))
             bot_fn = examples_registry.resolve_bot(selected)
             _bind_example_context_by_key(example["key"])
+            if session_id:
+                _active_session_configs[session_id] = dict(config)
 
             runner_args = SimpleNamespace(
                 websocket=websocket,
-                body=config,
+                body={**config, "session_id": session_id},
                 handle_sigint=False,
                 pipeline_idle_timeout_secs=parse_env_int("PIPELINE_IDLE_TIMEOUT_SECS", 600, min_value=300),
             )
@@ -675,6 +784,8 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
             except Exception as e:
                 logger.error(f"WebSocket session error: {e}")
             finally:
+                if session_id:
+                    _active_session_configs.pop(session_id, None)
                 with contextlib.suppress(Exception):
                     await websocket.close()
 
@@ -686,18 +797,43 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
         catalog = load_prompt_catalog(module_file)
         registry_default_key = examples_registry.prompt_default_key(pipeline_mode or fallback_example_key)
         default_key = registry_default_key if registry_default_key in catalog else default_prompt_key(catalog)
-        return [
+        prompts = [
             {
                 "key": key,
                 "description": val.get("description", ""),
                 "content": val.get("content", ""),
                 "default": key == default_key,
                 "builtIn": True,
+                "selectable": True,
+                "scope": "session",
                 "tools": [t for t in (val.get("tools_available") or []) if isinstance(t, str)],
             }
             for key, val in catalog.items()
             if isinstance(val, dict) and "content" in val
         ]
+        agent_prompts = catalog.get("agent_prompts")
+        if isinstance(agent_prompts, dict):
+            for agent_key, agent_entries in agent_prompts.items():
+                if not isinstance(agent_entries, dict):
+                    continue
+                for prompt_key, val in agent_entries.items():
+                    if not isinstance(val, dict) or "content" not in val:
+                        continue
+                    prompts.append(
+                        {
+                            "key": f"{agent_key}.{prompt_key}",
+                            "description": val.get("description", ""),
+                            "content": val.get("content", ""),
+                            "default": False,
+                            "builtIn": True,
+                            "selectable": False,
+                            "scope": "agent",
+                            "agent": agent_key,
+                            "promptName": prompt_key,
+                            "tools": [],
+                        }
+                    )
+        return prompts
 
     @app.get("/api/tools")
     async def get_tools(pipeline_mode: str = Query(default="")):
