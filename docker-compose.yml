@@ -1,38 +1,48 @@
 name: nemotron-voice-agent
 
-# Compose deployments are per-example only. Each example gets its own
-# per-example profile that activates a dedicated app variant with the
-# matching ``EXAMPLE_SELECTION`` baked in. ``docker compose up`` without a
-# per-example profile starts nothing — pick an example explicitly to keep
-# deployment intent unambiguous.
+# Compose deployments are recipe-based. Every profile is a complete,
+# self-contained deployment recipe so users never have to AND two
+# profiles together.
 #
-# Selector modes (``cascaded/all``, ``speech-to-speech/all``, ``all``) are
-# host-native only today (``uv run python src/server.py`` with the matching
-# ``selection`` in ``examples_registry.yaml``); they are intentionally not
-# exposed as compose profiles.
+#   <family>/<example>                  cloud-only deployment
+#   <family>/<example>/<hardware>       on-prem deployment with the
+#                                        right LLM + ASR + TTS sidecars
 #
-# Profile names match the registry example keys verbatim
-# (``<family>/<example>``) so YAML and compose stay in lockstep.
+# Cloud-only and recipe profiles map 1:1 to the registry example key
+# (``<family>/<example>``), so the active example is unambiguous from
+# the profile name alone.
 #
-# Deployment pattern:
-#   docker compose --profile <example-key> [--profile <hardware>] [--profile <observability>] up
+# Selector modes (``cascaded/all``, ``speech-to-speech/all``, ``all``)
+# remain host-native only — they have no compose profile.
 #
-# Common invocations:
-#   docker compose --profile cascaded/generic up                            # cloud, Generic Cascaded
-#   docker compose --profile cascaded/agentic-airline up                    # cloud, Agentic Airline (+ booking-server)
-#   docker compose --profile speech-to-speech/generic up                    # cloud, Generic S2S
-#   docker compose --profile cascaded/generic --profile workstation up      # + local NIM ASR/TTS/LLM
-#   docker compose --profile cascaded/generic --profile dgxspark up         # + local NIM ASR/TTS + vLLM
-#   docker compose --profile cascaded/generic --profile jetson up           # + local Riva + vLLM
-#   docker compose --profile cascaded/generic --profile tracing up          # + Phoenix OTel collector
-#   docker compose --profile cascaded/generic --profile turn up             # + coturn TURN server
+# Cloud-only invocations:
+#   docker compose --profile cascaded/generic up
+#   docker compose --profile cascaded/agentic-airline up
+#   docker compose --profile cascaded/omni-assistant up
+#   docker compose --profile cascaded/omni-assistant-subagents up
+#   docker compose --profile speech-to-speech/generic up
 #
-# Each per-example profile sets ``EXAMPLE_SELECTION`` via a substitution
-# default so the container always runs the matching example. The shell env
-# var is treated as an advanced override (and is deliberately omitted from
-# ``.env.example``) — for day-to-day compose work prefer choosing a
-# different profile, and for host-native runs edit
-# ``examples_registry.yaml`` instead.
+# On-prem recipes:
+#   docker compose --profile cascaded/generic/workstation up
+#   docker compose --profile cascaded/generic/dgxspark up
+#   docker compose --profile cascaded/generic/jetson up
+#   docker compose --profile cascaded/agentic-airline/workstation up
+#   docker compose --profile cascaded/omni-assistant/workstation up
+#   docker compose --profile cascaded/omni-assistant/dgxspark up
+#   docker compose --profile cascaded/omni-assistant-subagents/dgxspark up
+#
+# (Omni examples do not support Jetson today: the 30B Omni NVFP4 model
+# does not fit on Orin-class hardware. Add jetson recipes once a smaller
+# Omni variant lands.)
+#
+# Observability profiles compose orthogonally with any recipe:
+#   docker compose --profile <recipe> --profile tracing up   # Phoenix OTel
+#   docker compose --profile <recipe> --profile turn up      # coturn TURN
+#
+# Each app service sets ``EXAMPLE_SELECTION`` via a substitution default
+# so the container always runs the matching example. The shell env var
+# is treated as an advanced override (and is deliberately omitted from
+# ``.env.example``).
 
 include:
   - path: src/cascaded/shared/docker-compose.yml
@@ -70,7 +80,11 @@ x-app: &app-base
 services:
   cascaded-generic:
     <<: *app-base
-    profiles: ["cascaded/generic"]
+    profiles:
+      - cascaded/generic
+      - cascaded/generic/workstation
+      - cascaded/generic/dgxspark
+      - cascaded/generic/jetson
     environment:
       APP_RUNTIME: container
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded/generic}
@@ -78,15 +92,39 @@ services:
 
   cascaded-agentic-airline:
     <<: *app-base
-    profiles: ["cascaded/agentic-airline"]
+    profiles:
+      - cascaded/agentic-airline
+      - cascaded/agentic-airline/workstation
     environment:
       APP_RUNTIME: container
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded/agentic-airline}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
+  cascaded-omni-assistant:
+    <<: *app-base
+    profiles:
+      - cascaded/omni-assistant
+      - cascaded/omni-assistant/workstation
+      - cascaded/omni-assistant/dgxspark
+    environment:
+      APP_RUNTIME: container
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded/omni-assistant}
+      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
+
+  cascaded-omni-assistant-subagents:
+    <<: *app-base
+    profiles:
+      - cascaded/omni-assistant-subagents
+      - cascaded/omni-assistant-subagents/dgxspark
+    environment:
+      APP_RUNTIME: container
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded/omni-assistant-subagents}
+      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
+
   speech-to-speech-generic:
     <<: *app-base
-    profiles: ["speech-to-speech/generic"]
+    profiles:
+      - speech-to-speech/generic
     environment:
       APP_RUNTIME: container
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-speech-to-speech/generic}

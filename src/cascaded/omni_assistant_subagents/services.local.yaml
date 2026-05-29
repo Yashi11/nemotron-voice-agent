@@ -1,0 +1,38 @@
+# On-prem catalog for the Nemotron Omni Assistant Subagents example.
+#
+# Pair with the ``cascaded/omni-assistant-subagents/dgxspark`` compose
+# recipe, which starts the ``nvidia-llm-vllm-omni`` sidecar (Nemotron Omni
+# vLLM) plus Magpie TTS. Jetson is not supported today: the 30B Omni NVFP4
+# model does not fit on Orin-class hardware. Add a ``jetson:`` block here,
+# the matching compose recipe, and the sidecar profile entry once a
+# smaller Omni variant lands.
+
+workstation:
+  llm:
+    nemotron-omni-nvfp4:
+      name: "Nemotron 3 Nano Omni 30B A3B Reasoning NVFP4"
+      model_id: "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4"
+      base_url: "http://nvidia-llm-vllm-omni:8002/v1"
+      system_prompt: ""
+      extra_params: '{"extra_body":{"top_k":1,"chat_template_kwargs":{"enable_thinking":false}}}'
+  tts:
+    magpie-tts:
+      name: "Magpie TTS"
+      server: "tts-service:50051"
+      voice_id: "Magpie-Multilingual.EN-US.Aria"
+      function_id: ""
+
+dgxspark:
+  llm:
+    nemotron-omni-nvfp4:
+      name: "Nemotron 3 Nano Omni 30B A3B Reasoning NVFP4"
+      model_id: "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4"
+      base_url: "http://nvidia-llm-vllm-omni:8002/v1"
+      system_prompt: ""
+      extra_params: '{"extra_body":{"top_k":1,"chat_template_kwargs":{"enable_thinking":false}}}'
+  tts:
+    magpie-tts:
+      name: "Magpie TTS"
+      server: "tts-service:50051"
+      voice_id: "Magpie-Multilingual.EN-US.Aria"
+      function_id: ""

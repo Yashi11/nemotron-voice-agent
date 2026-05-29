@@ -1,18 +1,18 @@
 name: cascaded-agentic-airline
 
-# Example-specific sidecar(s) for the Agentic Airline example. Gated by the
-# ``cascaded/agentic-airline`` per-example compose profile so a Generic-only
-# deployment does not spin up the booking server. The profile name matches the
-# registry example key verbatim.
+# Example-specific sidecar(s) for the Agentic Airline example. The booking
+# server is needed for every Agentic Airline deployment recipe (cloud and
+# on-prem), so it is gated by both the cloud and the workstation recipe
+# profiles.
 #
-#   docker compose --profile cascaded/agentic-airline up
-#
-# Combine with hardware profiles as needed, e.g.
-# ``--profile cascaded/agentic-airline --profile workstation``.
+#   docker compose --profile cascaded/agentic-airline up                 # cloud
+#   docker compose --profile cascaded/agentic-airline/workstation up     # local NIM
 
 services:
   booking-server:
-    profiles: ["cascaded/agentic-airline"]
+    profiles:
+      - cascaded/agentic-airline
+      - cascaded/agentic-airline/workstation
     build:
       context: ../../..
       dockerfile: Dockerfile

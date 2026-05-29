@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useApp } from "../../context/useApp";
 import { useConnectionState } from "../../hooks/useConnectionState";
 import type { Prompt } from "../../api";
@@ -11,6 +11,7 @@ function PromptRow({ prompt, isActive, canRemove, disabled }: Readonly<{ prompt:
   const [editing, setEditing] = useState(false);
   const [description, setDescription] = useState(prompt.description);
   const [content, setContent] = useState(prompt.content);
+  const displayName = prompt.scope === "agent" && prompt.promptName ? prompt.promptName : prompt.key;
 
   const resetForm = () => {
     setDescription(prompt.description);
@@ -58,9 +59,10 @@ function PromptRow({ prompt, isActive, canRemove, disabled }: Readonly<{ prompt:
     <div className={`prompt-card${isActive ? " prompt-card--selected" : ""}${disabled ? " prompt-card--disabled" : ""}`}>
       <div className="prompt-card__header">
         <span className="prompt-card__name">
-          {prompt.key}
+          {displayName}
         </span>
         <div className="prompt-card__actions">
+          {prompt.scope === "agent" && prompt.agent && <span className="prompt-card__badge">{prompt.agent}</span>}
           {isActive && <span className="prompt-card__badge">Active</span>}
           {!prompt.builtIn && (
             <>
@@ -93,7 +95,18 @@ export function PromptsPanel() {
   };
 
   const customPrompts = prompts.filter((p) => !p.builtIn);
-  const defaultPrompts = prompts.filter((p) => p.builtIn);
+  const defaultPrompts = prompts.filter((p) => p.builtIn && p.scope !== "agent");
+  const agentPromptsByAgent = useMemo(
+    () =>
+      prompts
+        .filter((p) => p.builtIn && p.scope === "agent")
+        .reduce<Record<string, Prompt[]>>((groups, prompt) => {
+          const agent = prompt.agent || "Agent";
+          groups[agent] = [...(groups[agent] ?? []), prompt];
+          return groups;
+        }, {}),
+    [prompts],
+  );
 
   const handleAdd = () => {
     if (!key.trim() || !content.trim()) return;
@@ -173,6 +186,17 @@ export function PromptsPanel() {
           </div>
         </>
       )}
+
+      {Object.entries(agentPromptsByAgent).map(([agent, agentPrompts]) => (
+        <div key={agent}>
+          <p className="prompts-section-label">Agent Prompts: {agent}</p>
+          <div className="prompts-list">
+            {agentPrompts.map((p) => (
+              <PromptRow key={p.key} prompt={p} isActive={false} canRemove={false} disabled={isLocked} />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

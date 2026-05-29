@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useConnectionState } from "../hooks/useConnectionState";
 import { useApp } from "../context/useApp";
+import { isSelectablePrompt } from "../utils";
 import { PanelSection } from "./PanelSection";
 
 const MULTILINGUAL_PROMPT_KEY = "multilingual_voice_assistant";
@@ -19,20 +20,27 @@ export function PromptSelector() {
   const asrDescriptor = [selectedASR?.id, selectedASR?.name, selectedASR?.model].filter(Boolean).join(" ");
   const ttsDescriptor = [selectedTTS?.id, selectedTTS?.name, selectedTTS?.voiceId].filter(Boolean).join(" ");
   const multilingualReady = hasMultilingualTerm(asrDescriptor) && hasMultilingualTerm(ttsDescriptor);
-  const visiblePrompts = multilingualReady ? prompts : prompts.filter((p) => p.key !== MULTILINGUAL_PROMPT_KEY);
+  const selectablePrompts = useMemo(() => prompts.filter(isSelectablePrompt), [prompts]);
+  const visiblePrompts = useMemo(
+    () =>
+      multilingualReady
+        ? selectablePrompts
+        : selectablePrompts.filter((p) => p.key !== MULTILINGUAL_PROMPT_KEY),
+    [multilingualReady, selectablePrompts],
+  );
 
   useEffect(() => {
     if (selectedPromptKey === MULTILINGUAL_PROMPT_KEY && !multilingualReady) {
-      const fallback = prompts.find((p) => p.key !== MULTILINGUAL_PROMPT_KEY);
+      const fallback = selectablePrompts.find((p) => p.key !== MULTILINGUAL_PROMPT_KEY);
       if (fallback) selectPrompt(fallback.key);
     }
-  }, [multilingualReady, prompts, selectPrompt, selectedPromptKey]);
+  }, [multilingualReady, selectablePrompts, selectPrompt, selectedPromptKey]);
 
   if (promptsLoading) {
     return <PanelSection label="PROMPT" loading loadingText="Loading..." />;
   }
 
-  if (prompts.length === 0) return null;
+  if (visiblePrompts.length === 0) return null;
 
   return (
     <PanelSection label="PROMPT">

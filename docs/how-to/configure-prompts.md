@@ -23,7 +23,7 @@ Prompt presets are defined per example. The generic cascaded example currently p
 
 ### Generic Assistant
 
-Tool calling is enabled automatically for this preset; the other built-in prompts run without function calls.
+Tool calling is enabled automatically for this preset. The other built-in prompts run without function calls.
 
 ### Multilingual Voice Assistant
 
@@ -43,7 +43,7 @@ my_prompt:
 
 ## Adding Built-In Prompts via `prompts.yaml`
 
-To make a prompt available as a built-in option for all users of an example, add an entry to that example's `prompts.yaml`, such as [`src/cascaded/generic/prompts.yaml`](../../src/cascaded/generic/prompts.yaml) or [`src/speech_to_speech/generic/prompts.yaml`](../../src/speech_to_speech/generic/prompts.yaml). The client loads built-in prompts for the active example; refresh open browser tabs after editing YAML.
+To make a prompt available as a built-in option for all users of an example, add an entry to that example's `prompts.yaml`, such as [`src/cascaded/generic/prompts.yaml`](../../src/cascaded/generic/prompts.yaml) or [`src/speech_to_speech/generic/prompts.yaml`](../../src/speech_to_speech/generic/prompts.yaml). The client loads built-in prompts for the active example. Refresh open browser tabs after editing YAML.
 
 ```yaml
 my_custom_prompt:

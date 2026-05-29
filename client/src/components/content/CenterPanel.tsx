@@ -23,15 +23,12 @@ const ALL_TABS: { id: Tab; label: string }[] = [
 function ConversationContent() {
   const { isConnected, isConnecting } = useConnectionState();
 
+  if (!isConnected) {
+    return <IdleHero connecting={isConnecting} fadingOut={false} />;
+  }
+
   return (
-    <>
-      <ConversationPanel />
-      {!isConnected && (
-        <div className="idle-hero-overlay">
-          <IdleHero connecting={isConnecting} fadingOut={false} />
-        </div>
-      )}
-    </>
+    <ConversationPanel />
   );
 }
 

@@ -8,26 +8,33 @@ Before you begin, ensure you have the following:
 
 - Access to NVIDIA NGC with valid credentials. Refer to the [NGC Getting Started Guide](https://docs.nvidia.com/ngc/ngc-overview/index.html#registering-activating-ngc-account).
 - Docker with NVIDIA GPU support installed. Refer to the [NIM documentation](https://docs.nvidia.com/nim/riva/asr/latest/getting-started.html#prerequisites).
+- Docker Compose v2.20 or newer (`docker compose version`). The root `docker-compose.yml` uses the `include:` directive added in Compose v2.20. Legacy `docker-compose` v1 (the Python binary) is not supported.
 - NVIDIA API key. Required for accessing NIM ASR, TTS, and LLM models and Docker images. Get yours at [build.nvidia.com](https://build.nvidia.com/).
 
 ## GPU Requirements
 
 **Cloud-only mode** (default): No local GPUs required. ASR, LLM, and TTS services run via NVIDIA cloud APIs.
 
-**Docker Compose profiles** (compose freely: pick one **example profile**, optionally combine with one **hardware** profile and any observability profiles):
+**Docker Compose recipes** (pick one **recipe profile**. Optionally combine with one or more observability profiles):
 
-| Axis | Profile | Hardware | Notes |
-|------|---------|----------|-------|
-| Example | `cascaded/generic` | None (cloud) | Generic Cascaded pipeline |
-| Example | `cascaded/agentic-airline` | None (cloud) | Agentic Airline + booking-server sidecar |
-| Example | `speech-to-speech/generic` | None (cloud) | NVIDIA Voice Chat (S2S) |
-| Hardware | `workstation` | 1 GPU (≥80 GB VRAM) | NIM ASR + TTS + NIM LLM |
-| Hardware | `dgxspark` | 1 GPU, 128 GB unified memory | NIM ASR + TTS + vLLM LLM |
-| Hardware | `jetson` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
-| Observability | `tracing` | — | Phoenix OTel collector |
-| Observability | `turn` | — | coturn TURN server |
+| Profile | Hardware | Notes |
+|---------|----------|-------|
+| `cascaded/generic` | None (cloud) | Generic Cascaded pipeline |
+| `cascaded/agentic-airline` | None (cloud) | Agentic Airline + booking-server sidecar |
+| `cascaded/omni-assistant` | None (cloud) | Nemotron Omni (single-model ASR + LLM) + Magpie TTS |
+| `cascaded/omni-assistant-subagents` | None (cloud) | Omni Assistant with media analyzer + webcam vision subagents |
+| `speech-to-speech/generic` | None (cloud) | NVIDIA Voice Chat (S2S) |
+| `cascaded/generic/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + NIM LLM |
+| `cascaded/generic/dgxspark` | 1 GPU, 128 GB unified memory | NIM ASR + TTS + vLLM LLM |
+| `cascaded/generic/jetson` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
+| `cascaded/agentic-airline/workstation` | 1 GPU (>=80 GB VRAM) | Agentic Airline with local NIM ASR + TTS + LLM |
+| `cascaded/omni-assistant/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
+| `cascaded/omni-assistant/dgxspark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
+| `cascaded/omni-assistant-subagents/dgxspark` | 1 GPU, 128 GB unified memory | Subagents with local Nemotron Omni vLLM + Magpie TTS |
+| `tracing` | Optional overlay | Phoenix OTel collector |
+| `turn` | Optional overlay | coturn TURN server |
 
-> Profile names match the registry example keys verbatim. Every deployment specifies exactly one example profile so the deployment intent is unambiguous.
+> Every deployment specifies exactly one recipe profile. Observability profiles (`tracing`, `turn`) can be added alongside any recipe. Omni examples support DGX Spark today. Jetson is not yet supported because the 30B Omni NVFP4 model does not fit on Orin-class hardware.
 
 ---
 
@@ -63,9 +70,11 @@ Before you begin, ensure you have the following:
 5. Deploy a cloud-only example:
 
     ```bash
-    docker compose --profile cascaded/generic up -d            # Generic Cascaded
-    docker compose --profile cascaded/agentic-airline up -d    # Agentic Airline (+ booking-server)
-    docker compose --profile speech-to-speech/generic up -d    # NVIDIA Voice Chat (S2S)
+    docker compose --profile cascaded/generic up -d                       # Generic Cascaded
+    docker compose --profile cascaded/agentic-airline up -d               # Agentic Airline (+ booking-server)
+    docker compose --profile cascaded/omni-assistant up -d                # Nemotron Omni Assistant
+    docker compose --profile cascaded/omni-assistant-subagents up -d      # Omni Assistant with subagents
+    docker compose --profile speech-to-speech/generic up -d               # NVIDIA Voice Chat (S2S)
     ```
 
     Pick the example profile that matches the registry key you want to run. `docker compose up` with no profile is intentionally a no-op so the deployment is always explicit.
@@ -95,16 +104,25 @@ DGX Spark and Jetson additionally need `HF_TOKEN` for the vLLM model download. I
 
 ```bash
 # Generic example — full local NIM stack on a workstation
-docker compose --profile cascaded/generic --profile workstation up -d
+docker compose --profile cascaded/generic/workstation up -d
 
 # Generic example — DGX Spark
-docker compose --profile cascaded/generic --profile dgxspark up -d
+docker compose --profile cascaded/generic/dgxspark up -d
 
 # Generic example — Jetson edge (set HF_TOKEN in .env)
-docker compose --profile cascaded/generic --profile jetson up -d
+docker compose --profile cascaded/generic/jetson up -d
 
 # Agentic Airline example — full local NIM stack on a workstation
-docker compose --profile cascaded/agentic-airline --profile workstation up -d
+docker compose --profile cascaded/agentic-airline/workstation up -d
+
+# Omni Assistant — local Omni vLLM + NIM TTS on a workstation
+docker compose --profile cascaded/omni-assistant/workstation up -d
+
+# Omni Assistant — local Omni vLLM + NIM TTS on DGX Spark
+docker compose --profile cascaded/omni-assistant/dgxspark up -d
+
+# Omni Assistant Subagents — local Omni vLLM + NIM TTS on DGX Spark
+docker compose --profile cascaded/omni-assistant-subagents/dgxspark up -d
 ```
 
 List compatible LLM NIM profiles for your hardware:
@@ -168,6 +186,8 @@ For development and debugging, you can run the server directly:
     |-----------------------------------------|-------------|
     | `cascaded/generic` | Lock to the Generic Cascaded example |
     | `cascaded/agentic-airline` | Lock to Agentic Airline |
+    | `cascaded/omni-assistant` | Lock to Nemotron Omni Assistant |
+    | `cascaded/omni-assistant-subagents` | Lock to Omni Assistant Subagents |
     | `speech-to-speech/generic` | Lock to NVIDIA Voice Chat (S2S) |
     | `cascaded/all` | Show every Cascaded example in the UI selector |
     | `all` | Show every registered example across all pipeline families |
@@ -191,8 +211,8 @@ Only needed when the browser connects from a different network than the host (NA
 A Coturn service ships in `docker-compose.yml` behind an opt-in `turn` profile. Add `--profile turn` to any deploy command:
 
 ```bash
-docker compose --profile cascaded/generic --profile turn up -d                       # cloud-only + TURN
-docker compose --profile cascaded/generic --profile workstation --profile turn up -d # local NIM + TURN
+docker compose --profile cascaded/generic --profile turn up -d              # cloud-only + TURN
+docker compose --profile cascaded/generic/workstation --profile turn up -d  # local NIM + TURN
 ```
 
 - Coturn binds host ports UDP `3478` and UDP `49160-49200`. These must be reachable from clients (open them on your cloud firewall / security group).

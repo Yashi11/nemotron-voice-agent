@@ -22,7 +22,7 @@ Zero-shot TTS allows you to clone any voice using a short audio sample (5+ secon
 
 3. Run the Magpie zero-shot NIM microservice following the instructions in the [NVIDIA NIM RIVA TTS documentation](https://docs.nvidia.com/nim/riva/tts/latest/getting-started.html#launching-the-nim).
 
-4. Add the zero-shot TTS service to the selected example's `services.local.yaml` under the active platform block (or to its `services.cloud.yaml` if you expose it as a built-in cloud entry). Use Compose network names for on-prem entries; the backend rewrites them to `localhost` when the app is run directly on the host:
+4. Add the zero-shot TTS service to the selected example's `services.local.yaml` under the active platform block (or to its `services.cloud.yaml` if you expose it as a built-in cloud entry). Use Compose network names for on-prem entries. The backend rewrites them to `localhost` when the app is run directly on the host:
 
     ```yaml
     workstation:

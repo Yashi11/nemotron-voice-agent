@@ -11,7 +11,7 @@
 #
 # The ``EXAMPLE_SELECTION`` environment variable overrides this value at
 # runtime so the same YAML can drive multiple compose profiles.
-selection: cascaded/all
+selection: cascaded/generic
 
 # Which transport(s) the UI exposes:
 #   all        → WebRTC and WebSocket
@@ -49,6 +49,23 @@ examples:
         asr: [nemotron-speech]
         tts: [magpie-tts]
       bot: cascaded.agentic_airline.pipeline:bot
+    omni-assistant:
+      label: Nemotron Omni Assistant
+      slots: [llm, tts]
+      defaults:
+        prompt: [generic_omni_assistant]
+        llm: [nemotron-omni-nvfp4]
+        tts: [magpie-tts]
+      bot: cascaded.omni_assistant.pipeline:bot
+    omni-assistant-subagents:
+      label: Nemotron Omni Assistant Subagents
+      slots: [llm, tts]
+      capabilities: [attachments, webcam]
+      defaults:
+        prompt: [generic_omni_assistant]
+        llm: [nemotron-omni-nvfp4]
+        tts: [magpie-tts]
+      bot: cascaded.omni_assistant_subagents.pipeline:bot
   speech-to-speech:
     generic:
       label: Speech to Speech

@@ -2,7 +2,9 @@ name: cascaded-shared
 
 services:
   nvidia-llm:
-    profiles: ["workstation"]
+    profiles:
+      - cascaded/generic/workstation
+      - cascaded/agentic-airline/workstation
     image: ${NVIDIA_LLM_IMAGE:-nvcr.io/nim/nvidia/nemotron-3-nano:1.7.0-variant}
     user: "0:0"
     environment:
@@ -39,7 +41,9 @@ services:
         max-file: "5"
 
   nvidia-llm-vllm:
-    profiles: ["dgxspark", "jetson"]
+    profiles:
+      - cascaded/generic/dgxspark
+      - cascaded/generic/jetson
     container_name: nvidia-llm-vllm
     runtime: nvidia
     image: nvcr.io/nvidia/vllm:25.12.post1-py3
@@ -101,8 +105,74 @@ services:
         max-size: "50m"
         max-file: "5"
 
+  nvidia-llm-vllm-omni:
+    profiles:
+      - cascaded/omni-assistant/workstation
+      - cascaded/omni-assistant/dgxspark
+      - cascaded/omni-assistant-subagents/dgxspark
+    container_name: vllm-nemotron-omni
+    image: vllm/vllm-openai:v0.20.0-cu130
+    pull_policy: if_not_present
+    ipc: host
+    shm_size: 16GB
+    cpuset: ${VLLM_CPUSET:-}
+    env_file:
+      - ../../../.env
+    environment:
+      - HF_HOME=/root/.cache/huggingface
+      - HF_HUB_CACHE=/root/.cache/huggingface/hub
+    ports:
+      - "8002:8002"
+    volumes:
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+      - llm_cache:/root/.cache/vllm
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    restart: unless-stopped
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        pip install "vllm[audio]==0.20.0" && \
+        vllm serve nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4 \
+          --host 0.0.0.0 \
+          --max-num-seqs 4 \
+          --max-model-len 32768 \
+          --port 8002 \
+          --trust-remote-code \
+          --gpu-memory-utilization 0.35 \
+          --limit-mm-per-prompt '{"video": 999, "image": 999, "audio": 999}' \
+          --media-io-kwargs '{"video": {"fps": 2,  "num_frames": 256}}' \
+          --enable-prefix-caching \
+          --max-num-batched-tokens 8192 \
+          --reasoning-parser nemotron_v3 \
+          --enable-auto-tool-choice \
+          --tool-call-parser qwen3_coder \
+          --reasoning-config '{"reasoning_start_str": "<think>", "reasoning_end_str": "\nI have to finalize the answer now.</think>"}'
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 1800s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
   asr-service:
-    profiles: ["workstation", "dgxspark"]
+    profiles:
+      - cascaded/generic/workstation
+      - cascaded/generic/dgxspark
+      - cascaded/agentic-airline/workstation
     image: ${ASR_DOCKER_IMAGE:-nvcr.io/nim/nvidia/nemotron-asr-streaming:1.0.0}
     user: "0:0"
     environment:
@@ -138,7 +208,13 @@ services:
         max-file: "5"
 
   tts-service:
-    profiles: ["workstation", "dgxspark"]
+    profiles:
+      - cascaded/generic/workstation
+      - cascaded/generic/dgxspark
+      - cascaded/agentic-airline/workstation
+      - cascaded/omni-assistant/workstation
+      - cascaded/omni-assistant/dgxspark
+      - cascaded/omni-assistant-subagents/dgxspark
     image: ${TTS_DOCKER_IMAGE:-nvcr.io/nvstaging/nim/magpie-tts-multilingual:1.9.0-51143266}
     user: "0:0"
     environment:
@@ -175,7 +251,8 @@ services:
         max-file: "5"
 
   nemotron-speech:
-    profiles: ["jetson"]
+    profiles:
+      - cascaded/generic/jetson
     container_name: nemotron-speech
     image: nvcr.io/nvidia/riva/riva-speech:2.24.0-l4t-aarch64
     runtime: nvidia

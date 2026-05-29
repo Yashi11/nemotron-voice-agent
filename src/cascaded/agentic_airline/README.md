@@ -45,30 +45,29 @@ The booking client reads its base URL from the active service catalog
 (`booking-server` entry). On host runs, the catalog rewrites
 `http://booking-server:8001` to `http://localhost:8001` automatically.
 
-Docker — pick the per-example profile, which activates both the app
-variant and the booking-server sidecar:
+Docker — pick the recipe profile that matches your deployment intent.
+Either recipe brings up the app variant and the `booking-server`
+sidecar. The workstation recipe additionally brings up the local NIM
+ASR / TTS / LLM sidecars.
 
 ```bash
+# Cloud (NVCF for ASR/LLM/TTS)
 docker compose --profile cascaded/agentic-airline up -d
+
+# Local NIM stack on a workstation
+docker compose --profile cascaded/agentic-airline/workstation up -d
 ```
 
-Add a hardware profile to layer local NIM ASR / TTS / LLM sidecars on
-top:
+Tear down with the same profile used at `up` time:
 
 ```bash
-docker compose --profile cascaded/agentic-airline --profile workstation up -d
+docker compose --profile cascaded/agentic-airline/workstation down
 ```
 
-Tear down with the same profile combination used at `up` time:
-
-```bash
-docker compose --profile cascaded/agentic-airline --profile workstation down
-```
-
-| Profile combination | Services |
+| Recipe profile | Services |
 | --- | --- |
 | `cascaded/agentic-airline` | `cascaded-agentic-airline` app + `booking-server` (cloud NVCF for ASR/LLM/TTS) |
-| `cascaded/agentic-airline` + `workstation` | adds `nvidia-llm`, `asr-service`, `tts-service` from `cascaded/shared/` |
+| `cascaded/agentic-airline/workstation` | adds `nvidia-llm`, `asr-service`, `tts-service` from `cascaded/shared/` |
 
 The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
 when `PIPELINE_TLS=false`.
@@ -100,7 +99,7 @@ with deployment and configuration:
 
 | Skill | Purpose |
 | --- | --- |
-| [`deploy`](../../../.agents/skills/deploy/SKILL.md) | hardware-mode selection, NGC login, and root-compose deploy across every example × hardware profile combination |
+| [`deploy`](../../../.agents/skills/deploy/SKILL.md) | recipe-profile selection, NGC login, and root-compose deploy across supported example/hardware stacks |
 | [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, example-local prompts, or example-local `services.{cloud,local}.yaml`, then re-apply |
 
 Install them into your coding agent with `npx skills add .` (see the

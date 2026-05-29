@@ -20,6 +20,7 @@ class ExampleEntry(TypedDict):
 
     label: str
     slots: list[str]
+    capabilities: list[str]
     defaults: dict[str, list[str]]
     bot: str
 
@@ -290,11 +291,16 @@ def _load_examples(data: dict) -> dict[str, dict[str, ExampleEntry]]:
             label = str(entry.get("label") or "").strip()
             bot_spec = str(entry.get("bot") or "").strip()
             slots = entry.get("slots", [])
+            capabilities = entry.get("capabilities", [])
             defaults = entry.get("defaults", {})
             if not label or not bot_spec:
                 raise RuntimeError(f"Example {family}/{example_id} requires label and bot")
             if not isinstance(slots, list) or not all(isinstance(slot, str) for slot in slots):
                 raise RuntimeError(f"Example {family}/{example_id} slots must be a list of strings")
+            if not isinstance(capabilities, list) or not all(
+                isinstance(capability, str) for capability in capabilities
+            ):
+                raise RuntimeError(f"Example {family}/{example_id} capabilities must be a list of strings")
             if not isinstance(defaults, dict):
                 raise RuntimeError(f"Example {family}/{example_id} defaults must be a mapping")
             normalized_defaults: dict[str, list[str]] = {}
@@ -307,6 +313,7 @@ def _load_examples(data: dict) -> dict[str, dict[str, ExampleEntry]]:
             examples[str(family)][str(example_id)] = {
                 "label": label,
                 "slots": list(slots),
+                "capabilities": list(capabilities),
                 "defaults": normalized_defaults,
                 "bot": bot_spec,
             }
@@ -467,6 +474,7 @@ def metadata(example: EnrichedExample) -> dict:
         "key": example["key"],
         "label": example["label"],
         "slots": example["slots"],
+        "capabilities": example["capabilities"],
         "defaults": defaults,
     }
 
