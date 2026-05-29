@@ -82,7 +82,7 @@ async def bot(runner_args: RunnerArguments) -> None:
         ),
     )
 
-    context = LLMContext([{"role": "user", "content": "Please introduce yourself to the user."}])
+    context = LLMContext([])
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(context)
 
     pipeline = Pipeline(
@@ -108,9 +108,10 @@ async def bot(runner_args: RunnerArguments) -> None:
         enable_tracing=IS_TRACING_ENABLED,
     )
 
-    @transport.event_handler("on_client_connected")
-    async def on_client_connected(transport, client):
-        logger.info("S2S client connected")
+    @task.rtvi.event_handler("on_client_ready")
+    async def on_client_ready(rtvi):
+        logger.info("S2S client ready")
+        context.add_message({"role": "user", "content": "Please introduce yourself to the user."})
         await task.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
