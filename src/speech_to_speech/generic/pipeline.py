@@ -12,7 +12,6 @@ import os
 
 from dotenv import load_dotenv
 from loguru import logger
-from pipecat.frames.frames import LLMRunFrame
 from pipecat.observers.loggers.transcription_log_observer import (
     TranscriptionLogObserver,
 )
@@ -111,8 +110,6 @@ async def bot(runner_args: RunnerArguments) -> None:
     @task.rtvi.event_handler("on_client_ready")
     async def on_client_ready(rtvi):
         logger.info("S2S client ready")
-        context.add_message({"role": "user", "content": "Please introduce yourself to the user."})
-        await task.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
