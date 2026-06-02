@@ -28,6 +28,8 @@ pipeline_families:
     label: Cascaded Multilingual
   - id: cascaded-omni
     label: Cascaded Omni
+  - id: cascaded-thinker-talker
+    label: Thinker Talker
   - id: speech-to-speech
     label: Speech to Speech
 
@@ -73,6 +75,19 @@ examples:
         llm: [nemotron-omni-nvfp4]
         tts: [magpie-tts]
       bot: cascaded.omni_assistant_subagents.pipeline:bot
+
+  cascaded-thinker-talker:
+    thinker-talker:
+      label: Thinker Talker
+      slots: [llm, thinker-llm, booking-server, asr, tts]
+      defaults:
+        prompt: [thinker_talker_talker]
+        llm: [nemotron-nano]
+        thinker-llm: [nemotron-nano]
+        booking-server: [default]
+        asr: [nemotron-speech]
+        tts: [magpie-tts]
+      bot: cascaded.thinker_talker.pipeline:bot
 
   speech-to-speech:
     voicechat:

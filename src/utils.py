@@ -37,7 +37,10 @@ def _services_local_path() -> Path:
 
 
 _SLOT_CONFIG_KEYS: dict[str, frozenset[str]] = {
-    "llm": frozenset({"llm_id", "model_id", "base_url", "system_prompt", "extra_params"}),
+    "llm": frozenset({"llm_id", "model_id", "base_url", "system_prompt", "max_tokens", "extra_params"}),
+    "thinker-llm": frozenset(
+        {"thinker_llm_id", "thinker_model_id", "thinker_base_url", "thinker_max_tokens", "thinker_extra_params"}
+    ),
     "asr": frozenset({"asr_id", "asr_server", "asr_model", "asr_function_id"}),
     "tts": frozenset({"tts_id", "tts_server", "tts_voice_id", "tts_function_id"}),
     "s2s": frozenset({"s2s_id", "s2s_server", "s2s_model", "s2s_function_id"}),
@@ -426,7 +429,13 @@ SESSION_CONFIG_KEYS: frozenset[str] = frozenset(
         "model_id",
         "base_url",
         "system_prompt",
+        "max_tokens",
         "extra_params",
+        "thinker_llm_id",
+        "thinker_model_id",
+        "thinker_base_url",
+        "thinker_extra_params",
+        "thinker_max_tokens",
         "prompt_key",
         "prompt_content",
         "s2s_server",
@@ -452,7 +461,18 @@ _CATALOG_HYDRATION: tuple[tuple[str, str, dict[str, str]], ...] = (
             "model_id": "model_id",
             "base_url": "base_url",
             "system_prompt": "system_prompt",
+            "max_tokens": "max_tokens",
             "extra_params": "extra_params",
+        },
+    ),
+    (
+        "thinker_llm_id",
+        "thinker-llm",
+        {
+            "model_id": "thinker_model_id",
+            "base_url": "thinker_base_url",
+            "max_tokens": "thinker_max_tokens",
+            "extra_params": "thinker_extra_params",
         },
     ),
     (

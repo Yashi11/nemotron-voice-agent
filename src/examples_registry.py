@@ -134,9 +134,48 @@ def _entry_endpoint(entry: dict) -> str:
     return str(entry.get("server") or entry.get("base_url") or "")
 
 
+def _rewrite_entry_for_host_runtime(entry: dict) -> dict:
+    """Convert Compose endpoints to host-accessible endpoints outside Docker."""
+    if os.getenv("APP_RUNTIME", "").strip().lower() == "container":
+        return dict(entry)
+    out = dict(entry)
+    for field in ("base_url", "server"):
+        value = out.get(field)
+        if not isinstance(value, str):
+            continue
+        if field == "base_url":
+            out[field] = (
+                value.replace("http://nvidia-llm:8000/v1", "http://localhost:18000/v1")
+                .replace("http://nvidia-llm-vllm:8000/v1", "http://localhost:18000/v1")
+                .replace("host.docker.internal", "localhost")
+            )
+        else:
+            out[field] = (
+                value.replace("tts-service:50051", "localhost:50151")
+                .replace("asr-service:50052", "localhost:50152")
+                .replace("nemotron-speech:50051", "localhost:50051")
+                .replace("booking-server:8001", "localhost:8001")
+                .replace("host.docker.internal", "localhost")
+            )
+    return out
+
+
+def _rewrite_catalog_for_host_runtime(catalog: dict[str, dict]) -> dict[str, dict]:
+    """Rewrite every local service endpoint for host-native metadata responses."""
+    if os.getenv("APP_RUNTIME", "").strip().lower() == "container":
+        return catalog
+    return {
+        category: {
+            key: _rewrite_entry_for_host_runtime(entry) if isinstance(entry, dict) else entry
+            for key, entry in section.items()
+        }
+        for category, section in catalog.items()
+    }
+
+
 def _first_reachable_variant(variants: list[tuple[str, dict]]) -> tuple[str, dict] | None:
     for platform_name, entry in variants:
-        if is_endpoint_reachable(_entry_endpoint(entry)):
+        if is_endpoint_reachable(_entry_endpoint(_rewrite_entry_for_host_runtime(entry))):
             return platform_name, entry
     return None
 
@@ -174,7 +213,7 @@ def _load_local_service_catalog(example_dir: Path) -> dict[str, dict]:
             for platform_name, entry in entries:
                 if platform_name != active_platform:
                     target[f"{service_key}-{platform_name}"] = entry
-    return merged
+    return _rewrite_catalog_for_host_runtime(merged)
 
 
 def _load_service_catalogs(example_dir: str) -> tuple[dict[str, dict], dict[str, dict]]:
