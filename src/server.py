@@ -86,7 +86,7 @@ from webcam_frame_store import store_webcam_frame, webcam_client_config
 CLIENT_DIST = PROJECT_ROOT / "client" / "dist"
 _session_configs: dict[str, dict] = {}
 _active_session_configs: dict[str, dict] = {}
-_CONNECT_PREWARM_TIMEOUT_SECS = 15
+_CONNECT_PREWARM_TIMEOUT_SECS = parse_env_int("CONNECT_PREWARM_TIMEOUT_SECS", 45)
 _CONNECT_HEALTH_TIMEOUT_SECS = 5
 _NIM_READY_PATH = "/v1/health/ready"
 _LOCAL_SERVICE_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "host.docker.internal"})
@@ -202,9 +202,9 @@ def _sanitize_session_config(data: dict, fallback_example_key: str = "") -> dict
 
 
 def _example_with_module_file(example_key: str = "") -> tuple[dict, Path]:
-    """Return ``(metadata, module_file)`` for a registry example key."""
+    """Return ``(registry_entry, module_file)`` for a registry example key."""
     selected = examples_registry.find(example_key)
-    return examples_registry.metadata(selected), examples_registry.example_module_file(selected)
+    return selected, examples_registry.example_module_file(selected)
 
 
 def _activate_example_catalog(module_file: Path, example: dict) -> None:
@@ -585,8 +585,8 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
     )
 
     def _resolve_example(config: dict) -> dict:
-        """Return the active example metadata. ``examples_registry.find()`` honors any selection lock."""
-        return examples_registry.metadata(examples_registry.find(config.get("pipeline_mode", "")))
+        """Return the active registry entry. ``examples_registry.find()`` honors any selection lock."""
+        return examples_registry.find(config.get("pipeline_mode", ""))
 
     async def _readiness_check_or_503(config: dict, log_label: str) -> JSONResponse | None:
         """Return a 503 response if any selected service is not ready, else ``None``."""
@@ -803,7 +803,7 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
                 "tools": [t for t in (val.get("tools_available") or []) if isinstance(t, str)],
             }
             for key, val in catalog.items()
-            if isinstance(val, dict) and "content" in val
+            if isinstance(val, dict) and "content" in val and val.get("internal") is not True
         ]
         agent_prompts = catalog.get("agent_prompts")
         if isinstance(agent_prompts, dict):

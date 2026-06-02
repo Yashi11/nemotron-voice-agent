@@ -11,6 +11,7 @@ name: nemotron-voice-agent
 #   cascaded-generic          Cascaded ASR + LLM + TTS Pipeline (Generic Assistant)
 #   cascaded-multilingual     Cascaded Multilingual ASR + LLM + TTS Pipeline (Multilingual Assistant)
 #   cascaded-omni             Cascaded Omni LLM + TTS Pipeline (Omni Assistant + Omni Assistant Subagents)
+#   cascaded-thinker-talker   Cascaded Thinker/Talker Pipeline (Airline Assistant)
 #   speech-to-speech         Full Duplex Speech-to-Speech model (Nemotron VoiceChat)
 #
 # Hardware targets:
@@ -22,6 +23,7 @@ name: nemotron-voice-agent
 #   docker compose --profile cascaded-generic up
 #   docker compose --profile cascaded-multilingual up
 #   docker compose --profile cascaded-omni up
+#   docker compose --profile cascaded-thinker-talker up
 #   docker compose --profile speech-to-speech up
 #
 # On-prem recipes:
@@ -48,6 +50,7 @@ include:
   - path: docker/docker-compose.speech-jetson.yaml
   - path: docker/docker-compose.coturn.yaml
   - path: docker/docker-compose.phoenix.yaml
+  - path: src/cascaded/agentic_airline/docker-compose.yml
 
 x-app: &app-base
   build:
@@ -111,6 +114,15 @@ services:
     environment:
       APP_RUNTIME: container
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded-omni/all}
+      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
+
+  cascaded-thinker-talker:
+    <<: *app-base
+    profiles:
+      - cascaded-thinker-talker
+    environment:
+      APP_RUNTIME: container
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded-thinker-talker/all}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
   speech-to-speech:
