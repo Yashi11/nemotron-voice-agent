@@ -66,10 +66,5 @@ select = [
 
 ignore = ["SIM108", "E402"]
 
-[tool.ruff.lint.per-file-ignores]
-"src/cascaded/agentic_airline/booking_server/server.py" = ["B008"]
-"src/cascaded/agentic_airline/booking_server/schemas.py" = ["D101"]
-"src/cascaded/agentic_airline/booking_server/seed.py" = ["E501"]
-
 [tool.ruff.lint.pydocstyle]
 convention = "google"

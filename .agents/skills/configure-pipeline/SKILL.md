@@ -27,18 +27,18 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 
 ## Instructions
 
-1. Identify the active example by inspecting the running app container (`cascaded-generic`, `cascaded-agentic-airline`, `cascaded-omni-assistant`, `cascaded-omni-assistant-subagents`, or `speech-to-speech-generic`). Each example has its own catalog under `src/<family>/<example>/`.
+1. Identify the active example by inspecting the running app container (`cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, or `speech-to-speech`). Each example has its own catalog under `src/<family>/<example>/`.
 
 2. Edit the smallest configuration surface that satisfies the request:
-   - `.env`: feature flags, tracing, S2S settings, chat history, audio debugging, buffering, and local NIM image overrides such as `ASR_DOCKER_IMAGE`, `ASR_NIM_TAGS`, and `TTS_DOCKER_IMAGE`.
+   - `.env`: feature flags, tracing, S2S settings, chat history, audio debugging, and buffering.
    - `examples_registry.yaml`: visible examples (`selection`), allowed transports (`transports`), and per-example slot defaults (`defaults`).
-   - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`, matching the example's supported `<example>/<hardware>` recipes): built-in LLM, ASR, TTS, S2S, and example-specific role catalogs (e.g. `fast-llm`, `orchestrator-llm`, `booking-server`).
+   - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`, matching the example's supported `<example>/<hardware>` recipes): built-in LLM, ASR, TTS, S2S, and example-specific role catalogs.
    - `<example-package>/prompts.yaml`: built-in prompt presets and prompt content for the active example.
 
 3. Validate:
    - Multilingual prompts must use multilingual-capable ASR and TTS from the active catalog (e.g. `magpie-tts`, `parakeet-rnnt`). Verify the keys exist before referencing them.
-   - Local catalog endpoints must use Compose service names (`asr-service:50052`, `tts-service:50051`, `nvidia-llm:8000`, `nvidia-llm-vllm:8000`, `nvidia-llm-vllm-omni:8002`, `nemotron-speech:50051`, `booking-server:8001`). Host-run backends auto-rewrite to the matching `localhost` ports.
-   - ASR/TTS image overrides keep the same Compose service names and ports. For Parakeet CTC/RNNT ASR images, set `ASR_NIM_TAGS=mode=str,vad=silero`. Keep `mode=str` for Nemotron ASR. DGX Spark TTS image overrides keep `server: "tts-service:50051"`.
+   - Local catalog endpoints must use Compose service names (`asr-service:50052`, `tts-service:50051`, `nvidia-llm:8000`, `nvidia-llm-vllm:8000`, `nvidia-llm-vllm-omni:8002`, `nemotron-speech:50051`). Host-run backends auto-rewrite to the matching `localhost` ports.
+   - ASR/TTS variants are selected via Compose profile (e.g. `parakeet-ctc-asr`, `parakeet-rnnt-asr`).
    - Workstation local Compose runs ASR/TTS and NIM LLM on GPU `0` by default. Single-GPU deployments are supported only when at least 80 GB of VRAM is available.
 
 4. Apply and verify using `references/apply-changes.md`.
@@ -48,14 +48,14 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 - `.env` changes: compose re-apply.
 - YAML catalog changes (`prompts.yaml`, `services.*.yaml`, `examples_registry.yaml`): compose restart of the example service. `./src` and `./examples_registry.yaml` are bind-mounted, so no rebuild needed.
 - Preserve unrelated keys, comments, and entries while editing.
-- Image-only local variants reuse `asr-service` / `tts-service`. Configure the image through `.env`.
+- ASR/TTS variants are selected by Compose profile. Parakeet variants use dedicated `parakeet-ctc-asr` / `parakeet-rnnt-asr` services; Magpie TTS uses `tts-service`.
 - Per-example slot defaults live in `examples_registry.yaml` `defaults`. The catalog file ordering only affects UI listings. The actual default is whatever `defaults` declares.
 
 ## Examples
 
 **Switch the default LLM to a different cloud model:**
 
-1. Open `examples_registry.yaml` and update the relevant `defaults` entry for the active example (e.g. change `llm: [nemotron-nano]` to `llm: [nemotron-super]`, or update `fast-llm` / `orchestrator-llm` for Agentic Airline). The catalog key must exist in the active example's `services.cloud.yaml` / `services.local.yaml`.
+1. Open `examples_registry.yaml` and update the relevant `defaults` entry for the active example (e.g. change `llm: [nemotron-nano]` to `llm: [nemotron-super]`). The catalog key must exist in the active example's `services.cloud.yaml` / `services.local.yaml`.
 2. Compose restart of the example service and refresh browser.
 
 **Add a multilingual persona prompt:**
@@ -78,4 +78,4 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 - **Local LLM/ASR/TTS missing from the Services tab** -> the corresponding sidecar is not deployed or is unreachable. The catalog filters local entries by TCP reachability.
 - **Local workstation profile hits OOM** -> lower `NIM_KV_CACHE_PERCENT` or `NIM_MAX_MODEL_LEN`. On multi-GPU hosts, choose a NIM profile with matching `tp` and expose that many GPUs.
 - **Multilingual responses do not use the right ASR/TTS** -> reorder catalog so a multilingual ASR/TTS sits first, or pick the entry from the UI Services tab.
-- **Local image override (`ASR_DOCKER_IMAGE` / `TTS_DOCKER_IMAGE`) image fails to pull** -> log in to `nvcr.io` with a `NVIDIA_API_KEY` that has access to the staging or private image.
+- **ASR/TTS sidecar image fails to pull** -> log in to `nvcr.io` with a `NVIDIA_API_KEY` that has access to the image. The active image is set in `docker/docker-compose.<variant>.yaml`.

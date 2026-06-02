@@ -41,6 +41,8 @@ class PromptCatalogTests(unittest.TestCase):
             PROJECT_ROOT / "src/cascaded/generic/prompts.yaml": {
                 "flowershop",
                 "generic_assistant",
+            },
+            PROJECT_ROOT / "src/cascaded/multilingual/prompts.yaml": {
                 "multilingual_voice_assistant",
             },
             PROJECT_ROOT / "src/speech_to_speech/generic/prompts.yaml": {"flowershop", "generic"},

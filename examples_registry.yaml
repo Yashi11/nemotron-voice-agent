@@ -11,7 +11,7 @@
 #
 # The ``EXAMPLE_SELECTION`` environment variable overrides this value at
 # runtime so the same YAML can drive multiple compose profiles.
-selection: cascaded/generic
+selection: cascaded-generic/all
 
 # Which transport(s) the UI exposes:
 #   all        → WebRTC and WebSocket
@@ -22,15 +22,19 @@ selection: cascaded/generic
 transports: all
 
 pipeline_families:
-  - id: cascaded
+  - id: cascaded-generic
     label: Cascaded
+  - id: cascaded-multilingual
+    label: Cascaded Multilingual
+  - id: cascaded-omni
+    label: Cascaded Omni
   - id: speech-to-speech
-    label: Speech-to-Speech
+    label: Speech to Speech
 
 examples:
-  cascaded:
-    generic:
-      label: Generic Cascaded
+  cascaded-generic:
+    generic-assistant:
+      label: Generic Assistant
       slots: [llm, asr, tts]
       defaults:
         prompt: [generic_assistant]
@@ -38,17 +42,19 @@ examples:
         asr: [parakeet-ctc]
         tts: [magpie-tts]
       bot: cascaded.generic.pipeline:bot
-    agentic-airline:
-      label: Agentic Airline
-      slots: [fast-llm, orchestrator-llm, booking-server, asr, tts]
+
+  cascaded-multilingual:
+    multilingual-assistant:
+      label: Multilingual Assistant
+      slots: [llm, asr, tts]
       defaults:
-        prompt: [airline_fast_agent]
-        fast-llm: [nemotron-nano]
-        orchestrator-llm: [nemotron-nano]
-        booking-server: [default]
-        asr: [nemotron-speech]
+        prompt: [multilingual_voice_assistant]
+        llm: [nemotron-super]
+        asr: [parakeet-rnnt]
         tts: [magpie-tts]
-      bot: cascaded.agentic_airline.pipeline:bot
+      bot: cascaded.multilingual.pipeline:bot
+
+  cascaded-omni:
     omni-assistant:
       label: Nemotron Omni Assistant
       slots: [llm, tts]
@@ -57,6 +63,7 @@ examples:
         llm: [nemotron-omni-nvfp4]
         tts: [magpie-tts]
       bot: cascaded.omni_assistant.pipeline:bot
+
     omni-assistant-subagents:
       label: Nemotron Omni Assistant Subagents
       slots: [llm, tts]
@@ -66,9 +73,10 @@ examples:
         llm: [nemotron-omni-nvfp4]
         tts: [magpie-tts]
       bot: cascaded.omni_assistant_subagents.pipeline:bot
+
   speech-to-speech:
-    generic:
-      label: Speech to Speech
+    voicechat:
+      label: Nemotron VoiceChat
       slots: [s2s]
       defaults:
         prompt: [generic]

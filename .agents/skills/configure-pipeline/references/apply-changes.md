@@ -6,7 +6,6 @@ Use this reference after editing `.env`, `examples_registry.yaml`, an example-lo
 
 - `.env` changes: compose re-apply (`up -d` with the same profile combination).
 - YAML changes (`examples_registry.yaml`, `prompts.yaml`, `services.*.yaml`): compose restart of the example service and refresh browser. `./src` and `./examples_registry.yaml` are bind-mounted, so no rebuild needed.
-- `ASR_DOCKER_IMAGE`, `ASR_NIM_TAGS`, `TTS_DOCKER_IMAGE` are `.env` changes that need a compose re-apply.
 
 ## Endpoint Rules
 
@@ -19,7 +18,6 @@ The catalog stores Compose DNS endpoints. The backend rewrites them to `localhos
 | `tts-service:50051` | `localhost:50151` |
 | `asr-service:50052` | `localhost:50152` |
 | `nemotron-speech:50051` | `localhost:50051` |
-| `booking-server:8001` | `localhost:8001` |
 
 Cloud catalog entries use NVCF endpoints (`grpc.nvcf.nvidia.com:443`, `https://integrate.api.nvidia.com/v1`, `wss://grpc.nvcf.nvidia.com/v1/realtime`) and are not rewritten.
 
@@ -29,24 +27,23 @@ Pick a single recipe profile (`<family>/<example>` for cloud or `<family>/<examp
 
 ```bash
 # Cloud-only (NVCF)
-docker compose --profile cascaded/generic up -d
-docker compose --profile cascaded/agentic-airline up -d
-docker compose --profile cascaded/omni-assistant up -d
-docker compose --profile cascaded/omni-assistant-subagents up -d
-docker compose --profile speech-to-speech/generic up -d
+docker compose --profile cascaded-generic up -d
+docker compose --profile cascaded-multilingual up -d
+docker compose --profile cascaded-omni up -d
+docker compose --profile speech-to-speech up -d
 
 # Workstation (local NIM ASR/TTS/LLM)
-docker compose --profile cascaded/generic/workstation up -d
-docker compose --profile cascaded/agentic-airline/workstation up -d
-docker compose --profile cascaded/omni-assistant/workstation up -d
+docker compose --profile cascaded-generic/workstation up -d
+docker compose --profile cascaded-multilingual/workstation up -d
+docker compose --profile cascaded-omni/workstation up -d
 
 # DGX Spark
-docker compose --profile cascaded/generic/dgxspark up -d
-docker compose --profile cascaded/omni-assistant/dgxspark up -d
-docker compose --profile cascaded/omni-assistant-subagents/dgxspark up -d
+docker compose --profile cascaded-generic/dgx-spark up -d
+docker compose --profile cascaded-multilingual/dgx-spark up -d
+docker compose --profile cascaded-omni/dgx-spark up -d
 
 # Jetson (Generic Cascaded only. Omni does not fit on Orin today)
-docker compose --profile cascaded/generic/jetson up -d
+docker compose --profile cascaded-generic/jetson-thor up -d
 ```
 
 For YAML-only edits that don't change env or sidecar membership, `docker compose restart <service>` is enough (e.g. `docker compose restart cascaded-generic`).
@@ -66,9 +63,9 @@ Add when:
 Add when clients connect from outside the host's network. Credentials come from `TURN_USERNAME` / `TURN_PASSWORD` in `.env` (defaults are `admin:admin`). Set `TURN_URL=turn:<host>:3478` if TURN runs on a different host. The client auto-fetches ICE config from `/api/ice-servers`.
 
 ```bash
-docker compose --profile cascaded/generic --profile tracing up -d
-docker compose --profile cascaded/generic/workstation --profile turn up -d
-docker compose --profile cascaded/generic/dgxspark --profile tracing --profile turn up -d
+docker compose --profile cascaded-generic --profile tracing up -d
+docker compose --profile cascaded-generic/workstation --profile turn up -d
+docker compose --profile cascaded-generic/dgx-spark --profile tracing --profile turn up -d
 ```
 
 ## Validation Checklist

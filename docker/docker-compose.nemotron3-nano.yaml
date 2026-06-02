@@ -1,0 +1,108 @@
+services:
+  nvidia-llm:
+    profiles:
+      - cascaded-generic/workstation
+      - cascaded-multilingual/workstation
+    image: nvcr.io/nim/nvidia/nemotron-3-nano:2.0.5
+    user: "0:0"
+    environment:
+      - NGC_API_KEY=${NVIDIA_API_KEY}
+      - NIM_HTTP_API_PORT=8000
+      - NIM_TAGS_SELECTOR=precision=fp8,tp=1
+      - NIM_KV_CACHE_PERCENT=0.45
+      - NIM_MAX_MODEL_LEN=32768
+    ports:
+      - "18000:8000"
+    volumes:
+      - llm_cache:/opt/nim/.cache
+    shm_size: 16GB
+    ulimits:
+      nofile: 2048
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/v1/health/ready\").read()' || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 1800s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  nvidia-llm-vllm:
+    profiles:
+      - cascaded-generic/dgx-spark
+      - cascaded-multilingual/dgx-spark
+      - cascaded-generic/jetson-thor
+    container_name: nvidia-llm-vllm
+    runtime: nvidia
+    image: nvcr.io/nvidia/vllm:25.12.post1-py3
+    pull_policy: if_not_present
+    ipc: host
+    shm_size: 16GB
+    cpuset: ${VLLM_CPUSET:-}
+    env_file:
+      - ../.env
+    environment:
+      - VLLM_USE_FLASHINFER_MOE_FP4=1
+      - VLLM_FLASHINFER_MOE_BACKEND=throughput
+      - FLASHINFER_DISABLE_VERSION_CHECK=1
+      - CUDA_MPS_PIPE_DIRECTORY=/tmp/nvidia-mps
+      - CUDA_MPS_LOG_DIRECTORY=/tmp/nvidia-log
+      - CUDA_MPS_ACTIVE_THREAD_PERCENTAGE=${VLLM_MPS_THREAD_PCT:-100}
+    ports:
+      - "18000:8000"
+    volumes:
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+      - llm_cache:/root/.cache/vllm
+      - /tmp/nvidia-mps:/tmp/nvidia-mps
+      - /tmp/nvidia-log:/tmp/nvidia-log
+    ulimits:
+      nofile: 2048
+    restart: unless-stopped
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        (sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null) || true && \
+        pip install --no-cache-dir "flashinfer-jit-cache==0.6.0+cu130" \
+          --index-url https://flashinfer.ai/whl/cu130 && \
+        vllm serve nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4 \
+          --host 0.0.0.0 \
+          --port 8000 \
+          --max-model-len 4096 \
+          --gpu-memory-utilization 0.35 \
+          --trust-remote-code \
+          --enable-auto-tool-choice \
+          --tool-call-parser qwen3_coder \
+          --async-scheduling \
+          --kv-cache-dtype fp8
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 1200s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+volumes:
+  llm_cache:

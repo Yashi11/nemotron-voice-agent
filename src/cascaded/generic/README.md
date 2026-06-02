@@ -9,8 +9,8 @@ Everything specific to the generic example lives under
 `src/cascaded/generic/`: pipeline entry point, service catalogs, prompts,
 and tool registrations. There is no per-example compose file because the
 generic example has no example-specific sidecars. The app container and
-shared sidecars are defined in the root and `cascaded/shared/`
-compose files.
+shared sidecars are defined in the root `docker-compose.yml` and
+`docker/` compose files.
 
 ## Layout
 
@@ -25,7 +25,7 @@ compose files.
 
 ## Running the example
 
-Host-native (no Docker), set `selection: cascaded/generic` in
+Host-native (no Docker), set `selection: cascaded-generic/all` in
 [`examples_registry.yaml`](../../../examples_registry.yaml) at the repo root, then:
 
 ```bash
@@ -36,34 +36,34 @@ Docker — pick the recipe profile that matches your deployment intent.
 Cloud-only:
 
 ```bash
-docker compose --profile cascaded/generic up -d
+docker compose --profile cascaded-generic up -d
 ```
 
 On-prem recipes layer the right LLM / ASR / TTS sidecars on top:
 
 ```bash
 # Workstation (local NIM ASR / TTS / LLM)
-docker compose --profile cascaded/generic/workstation up -d
+docker compose --profile cascaded-generic/workstation up -d
 
 # DGX Spark (vLLM LLM + NIM ASR / TTS)
-docker compose --profile cascaded/generic/dgxspark up -d
+docker compose --profile cascaded-generic/dgx-spark up -d
 
-# Jetson (vLLM LLM + Riva ASR + TTS via nemotron-speech)
-docker compose --profile cascaded/generic/jetson up -d
+# Jetson Thor (vLLM LLM + Riva ASR + TTS via nemotron-speech)
+docker compose --profile cascaded-generic/jetson-thor up -d
 ```
 
 Tear down with the same profile used at `up` time:
 
 ```bash
-docker compose --profile cascaded/generic/workstation down
+docker compose --profile cascaded-generic/workstation down
 ```
 
-| Recipe profile | App service | Shared sidecars pulled from `cascaded/shared/` |
+| Recipe profile | App service | Sidecars |
 | --- | --- | --- |
-| `cascaded/generic` | `cascaded-generic` | none (cloud NVCF) |
-| `cascaded/generic/workstation` | `cascaded-generic` | `nvidia-llm`, `asr-service`, `tts-service` |
-| `cascaded/generic/dgxspark` | `cascaded-generic` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
-| `cascaded/generic/jetson` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
+| `cascaded-generic` | `cascaded-generic` | none (cloud NVCF) |
+| `cascaded-generic/workstation` | `cascaded-generic` | `nvidia-llm`, `asr-service`, `tts-service` |
+| `cascaded-generic/dgx-spark` | `cascaded-generic` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
+| `cascaded-generic/jetson-thor` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
 
 The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
 when `PIPELINE_TLS=false`.

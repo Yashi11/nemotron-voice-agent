@@ -105,7 +105,3 @@ tts = NvidiaTTSService(
 ```
 
 All `MarkdownTextFilter` settings (`filter_code`, `filter_tables`) are inherited and work unchanged.
-
-### `AirlineSpeechTextFilter`
-
-A domain-specific subclass of `NemotronSpeechTextFilter` used by the `agentic_airline` pipeline. It applies the same reserved-character strip and adds airline-specific post-processing (flight numbers, PNRs, and IATA airport codes). It is set default in `src/cascaded/agentic_airline/pipeline.py` and does not need to be changed.

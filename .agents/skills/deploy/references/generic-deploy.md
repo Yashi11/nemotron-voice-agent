@@ -1,10 +1,10 @@
 # Generic Cascaded Example — Deployment Reference
 
-Use this reference from the `deploy` skill when deploying the cascaded/generic voice pipeline example (NVIDIA STT, NIM LLM, NVIDIA TTS with function calling).
+Use this reference from the `deploy` skill when deploying the cascaded-generic voice pipeline example (NVIDIA STT, NIM LLM, NVIDIA TTS with function calling).
 
 ## When to use
 
-Pinning a Docker Compose deployment to the Generic Cascaded example. Recipe profile names encode both the example and the hardware target. Selector modes (`cascaded/all`, `all`) are host-native only — they are not exposed as compose profiles.
+Pinning a Docker Compose deployment to the Generic Cascaded example. Recipe profile names encode both the example and the hardware target. Selector modes (`cascaded-generic/all`, `all`) are host-native only — they are not exposed as compose profiles.
 
 Per-example catalogs at `src/cascaded/generic/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active recipe.
 
@@ -16,12 +16,12 @@ Pick one recipe profile:
 docker compose --profile <recipe> up -d
 ```
 
-| Recipe profile | App service | Sidecars from `cascaded/shared/` |
+| Recipe profile | App service | Sidecars from `docker/` |
 | --- | --- | --- |
-| `cascaded/generic` | `cascaded-generic` | none (cloud NVCF) |
-| `cascaded/generic/workstation` | `cascaded-generic` | `nvidia-llm`, `asr-service`, `tts-service` |
-| `cascaded/generic/dgxspark` | `cascaded-generic` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
-| `cascaded/generic/jetson` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
+| `cascaded-generic` | `cascaded-generic` | none (cloud NVCF) |
+| `cascaded-generic/workstation` | `cascaded-generic` | `nvidia-llm`, `asr-service`, `tts-service` |
+| `cascaded-generic/dgx-spark` | `cascaded-generic` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
+| `cascaded-generic/jetson-thor` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
 
 Tear down with the same recipe used at `up` time:
 

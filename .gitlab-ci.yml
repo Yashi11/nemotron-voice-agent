@@ -100,7 +100,7 @@ build-app:
     IMAGE_NAME: nemotron-voice-agent/all-examples
     IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
   script:
-    - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f Dockerfile .
+    - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f docker/Dockerfile .
 
 deploy:
   stage: deploy
@@ -112,13 +112,10 @@ deploy:
     - if: $CI_COMMIT_BRANCH == "develop"
   before_script:
     - echo "NVIDIA_API_KEY=${NGC_API_KEY}" > .env
-    - echo "DEFAULT_LLM=nemotron-nano" >> .env
-    - echo "DEFAULT_TTS=magpie-tts" >> .env
-    - echo "DEFAULT_ASR=nemotron-speech" >> .env
     - echo "PIPELINE_APP_PORT=7860" >> .env
   script:
-    - docker compose --profile cascaded/generic build
-    - docker compose --profile cascaded/generic up -d --remove-orphans cascaded-generic
+    - docker compose --profile cascaded-generic build
+    - docker compose --profile cascaded-generic up -d --remove-orphans
     - echo "Generic Cascaded deployed at https://$(hostname):7860/"
   after_script:
     - rm -f .env

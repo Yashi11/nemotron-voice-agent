@@ -340,9 +340,7 @@ def _build_ice_servers(request: Request) -> list[dict]:
 
 def _should_skip_tts_prewarm(example: dict) -> bool:
     """Return whether TTS warm-up should be skipped for the active example."""
-    if example.get("family") != "cascaded":
-        return True
-    return example.get("id") == "agentic-airline"
+    return example.get("family") != "cascaded"
 
 
 def _service_host_port(server: str) -> tuple[str, int]:
@@ -464,12 +462,8 @@ async def _ensure_llm_ready_for_connection(config: dict, example: dict) -> None:
         return
 
     default_base_url, default_model_id = _get_default_llm_selection()
-    if example.get("id") == "agentic-airline":
-        base_url = config.get("base_url", "") or os.getenv("FAST_LLM_BASE_URL", "") or default_base_url
-        model_id = config.get("model_id", "") or os.getenv("FAST_LLM_MODEL", "") or default_model_id
-    else:
-        base_url = config.get("base_url", "") or default_base_url
-        model_id = config.get("model_id", "") or default_model_id
+    base_url = config.get("base_url", "") or default_base_url
+    model_id = config.get("model_id", "") or default_model_id
     health_url, expects_ready_json = _local_llm_health_url(base_url, model_id)
     if not health_url:
         return

@@ -32,24 +32,23 @@ Check the following requirements before you begin.
 
 ### Hardware Requirements
 
-Pick one **recipe** profile. Cloud recipes use `<family>/<example>`. On-prem recipes use `<family>/<example>/<hardware>`. Each recipe is a complete stack, so do not combine a separate hardware profile.
+Pick one **recipe** profile. Cloud recipes use `<family>`. On-prem recipes use `<family>/<hardware>`. Each recipe is a complete stack — do not combine separate hardware profiles.
 
 | Profile | Hardware | Services |
 |---------|----------|----------|
-| `cascaded/generic` | None | NVIDIA cloud ASR + LLM + TTS |
-| `cascaded/agentic-airline` | None | NVIDIA cloud ASR + LLM + TTS + booking-server sidecar |
-| `cascaded/omni-assistant` | None | NVIDIA cloud Nemotron Omni (ASR + LLM in one model) + cloud Magpie TTS |
-| `cascaded/omni-assistant-subagents` | None | Same as `cascaded/omni-assistant` plus media analyzer + webcam vision subagents |
-| `speech-to-speech/generic` | None | NVIDIA Voice Chat (S2S) over NVCF |
-| `cascaded/generic/workstation` | 1 GPU (~80 GB VRAM) | Local NIM ASR + TTS + LLM |
-| `cascaded/generic/dgxspark` | 1 GPU, 128 GB unified memory | Local NIM ASR + TTS + vLLM LLM |
-| `cascaded/generic/jetson` | 1 GPU, 128 GB unified memory | Local Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
-| `cascaded/agentic-airline/workstation` | 1 GPU (~80 GB VRAM) | Agentic Airline with local NIM ASR + TTS + LLM |
-| `cascaded/omni-assistant/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
-| `cascaded/omni-assistant/dgxspark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
-| `cascaded/omni-assistant-subagents/dgxspark` | 1 GPU, 128 GB unified memory | Subagents with local Nemotron Omni vLLM + Magpie TTS |
+| `cascaded-generic` | None | NVIDIA cloud ASR + LLM + TTS (Generic Assistant) |
+| `cascaded-multilingual` | None | NVIDIA cloud multilingual ASR + LLM + TTS |
+| `cascaded-omni` | None | NVIDIA cloud Nemotron Omni (ASR + LLM in one model) + Magpie TTS |
+| `speech-to-speech` | None | NVIDIA Voice Chat (S2S) over NVCF |
+| `cascaded-generic/workstation` | 1 GPU (~80 GB VRAM) | Local NIM ASR + TTS + LLM |
+| `cascaded-generic/dgx-spark` | 1 GPU, 128 GB unified memory | Local NIM ASR + TTS + vLLM LLM |
+| `cascaded-generic/jetson-thor` | 1 GPU, 128 GB unified memory | Local Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
+| `cascaded-multilingual/workstation` | 1 GPU (~80 GB VRAM) | Local Parakeet RNNT ASR + Magpie TTS + LLM |
+| `cascaded-multilingual/dgx-spark` | 1 GPU, 128 GB unified memory | Local Parakeet RNNT ASR + Magpie TTS + vLLM LLM |
+| `cascaded-omni/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
+| `cascaded-omni/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
 
-> Observability profiles (`tracing`, `turn`) can still be added alongside any recipe. Omni examples support DGX Spark today. Jetson is not yet supported because the 30B Omni NVFP4 model does not fit on Orin-class hardware.
+> Observability profiles (`tracing`, `turn`) can be added alongside any recipe.
 
 ### Software Requirements
 
@@ -87,10 +86,10 @@ Start the application following these steps.
 4. Deploy the application.
 
     ```bash
-    docker compose --profile cascaded/generic up -d
+    docker compose --profile cascaded-generic up -d
     ```
 
-    > **Note:** Deployment may take 30–60 minutes on first run. The example above runs the Generic Cascaded pipeline against NVIDIA cloud APIs. Swap the recipe profile (e.g. `cascaded/agentic-airline`, `cascaded/generic/dgxspark`, `speech-to-speech/generic`) to deploy a different stack. Each compose deployment is locked to a single recipe.
+    > **Note:** Deployment may take 30–60 minutes on first run. The example above runs the Generic Cascaded pipeline against NVIDIA cloud APIs. Swap the recipe profile (e.g. `cascaded-multilingual`, `cascaded-generic/workstation`, `speech-to-speech`) to deploy a different stack. Each compose deployment is locked to a single recipe.
 
 5. Access the application at `https://<machine-ip>:7860`. Set `PIPELINE_TLS=false` in `.env` to use `http://<machine-ip>:7860`.
 

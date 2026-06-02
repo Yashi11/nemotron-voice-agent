@@ -1,0 +1,39 @@
+services:
+  nemotron-speech:
+    profiles:
+      - cascaded-generic/jetson-thor
+    container_name: nemotron-speech
+    image: nvcr.io/nvidia/riva/riva-speech:2.24.0-l4t-aarch64
+    runtime: nvidia
+    ipc: host
+    cpuset: ${RIVA_CPUSET:-}
+    environment:
+      - CUDA_MPS_PIPE_DIRECTORY=/tmp/nvidia-mps
+      - CUDA_MPS_LOG_DIRECTORY=/tmp/nvidia-log
+      - CUDA_MPS_ACTIVE_THREAD_PERCENTAGE=${RIVA_MPS_THREAD_PCT:-100}
+    volumes:
+      - ${RIVA_MODEL_LOC:-/tmp/riva-model-repo-not-configured}:/data
+      - /tmp/nvidia-mps:/tmp/nvidia-mps
+      - /tmp/nvidia-log:/tmp/nvidia-log
+    ports:
+      - "50051:50051"
+    ulimits:
+      memlock: -1
+    command:
+      - start-riva
+      - --riva-uri=0.0.0.0:50051
+      - --asr_service=true
+      - --tts_service=true
+      - --nlp_service=false
+    healthcheck:
+      test: ["CMD", "/bin/grpc_health_probe", "-addr=:50051"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"

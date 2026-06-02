@@ -1,0 +1,41 @@
+services:
+  asr-service:
+    profiles:
+      - cascaded-generic/workstation
+      - cascaded-generic/dgx-spark
+    image: nvcr.io/nim/nvidia/nemotron-asr-streaming:1.0.0
+    user: "0:0"
+    environment:
+      - NGC_API_KEY=${NVIDIA_API_KEY}
+      - NIM_HTTP_API_PORT=9001
+      - NIM_GRPC_API_PORT=50052
+      - NIM_TAGS_SELECTOR=${ASR_NIM_TAGS:-mode=str,vad=silero}
+    ports:
+      - "50152:50052"
+      - "9001:9001"
+    volumes:
+      - asr_cache:/opt/nim/.cache
+    ulimits:
+      nofile: 2048
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import json, urllib.request; data=json.load(urllib.request.urlopen(\"http://127.0.0.1:9001/v1/health/ready\", timeout=5)); raise SystemExit(0 if data.get(\"status\") == \"ready\" or data.get(\"ready\") is True else 1)'"]
+      interval: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 2400s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+volumes:
+  asr_cache:

@@ -1,0 +1,37 @@
+# Cloud (NVCF) service catalog — used for plain `docker compose up -d`
+# and when `DEPLOYMENT_PLATFORM` is unset.
+#
+# On-prem (`DEPLOYMENT_PLATFORM=jetson|dgxspark|workstation`):
+# see `services.local.yaml`.
+
+# ── LLM Services (Cascaded pipeline) ──
+llm:
+  nemotron-nano:
+    name: "Nemotron 3 Nano 30B A3B"
+    model_id: "nvidia/nemotron-3-nano-30b-a3b"
+    base_url: "https://integrate.api.nvidia.com/v1"
+    system_prompt: ""
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+
+  nemotron-super:
+    name: "Nemotron 3 Super 120B A12B"
+    model_id: "nvidia/nemotron-3-super-120b-a12b"
+    base_url: "https://integrate.api.nvidia.com/v1"
+    system_prompt: ""
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+
+# ── TTS Services (Cascaded pipeline) ──
+tts:
+  magpie-tts:
+    name: "Magpie TTS Multilingual"
+    server: "grpc.nvcf.nvidia.com:443"
+    voice_id: "Magpie-Multilingual.EN-US.Aria"
+    function_id: ""
+
+# ── ASR Services (Cascaded pipeline) ──
+asr:
+  parakeet-rnnt:
+    name: "Parakeet 1.1B RNNT Multilingual ASR"
+    server: "grpc.nvcf.nvidia.com:443"
+    model: "parakeet-1.1b-rnnt-multilingual-asr"
+    function_id: "71203149-d3b7-4460-8231-1be2543a1fca"
