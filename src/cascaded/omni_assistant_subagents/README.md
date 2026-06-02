@@ -1,6 +1,6 @@
 # Nemotron Omni Assistant Subagents - cascaded pipeline example
 
-Multi-agent variant of [`cascaded/omni-assistant`](../omni_assistant/README.md)
+Multi-agent variant of [`cascaded-omni`](../omni_assistant/README.md)
 built on [`pipecat-ai-subagents`](https://pypi.org/project/pipecat-ai-subagents/).
 A transport agent owns I/O and TTS, a speaker agent owns spoken output,
 and two worker agents handle uploaded media and live webcam vision.
@@ -9,7 +9,7 @@ Everything specific to this example lives under
 `src/cascaded/omni_assistant_subagents/`: pipeline entry point,
 per-agent modules, service catalogs, and prompts. There is no
 per-example compose file. The app container and shared sidecars are
-defined in the root and `cascaded/shared/` compose files.
+defined in the root and `docker/` compose files.
 
 ## Layout
 
@@ -26,7 +26,7 @@ defined in the root and `cascaded/shared/` compose files.
 
 ## Running the example
 
-Host-native (no Docker), set `selection: cascaded/omni-assistant-subagents`
+Host-native (no Docker), set `selection: cascaded-omni`
 in [`examples_registry.yaml`](../../../examples_registry.yaml) at the
 repo root, then:
 
@@ -38,21 +38,21 @@ Docker — pick the recipe profile that matches your deployment intent.
 Cloud-only:
 
 ```bash
-docker compose --profile cascaded/omni-assistant-subagents up -d
+docker compose --profile cascaded-omni up -d
 ```
 
 DGX Spark (local Omni vLLM + NIM TTS):
 
 ```bash
-docker compose --profile cascaded/omni-assistant-subagents/dgxspark up -d
+docker compose --profile cascaded-omni/dgx-spark up -d
 ```
 
 Tear down with the same profile used at `up` time.
 
-| Recipe profile | App service | Shared sidecars pulled from `cascaded/shared/` |
+| Recipe profile | App service | Shared sidecars pulled from `docker/` |
 | --- | --- | --- |
-| `cascaded/omni-assistant-subagents` | `cascaded-omni-assistant-subagents` | none (cloud NVCF) |
-| `cascaded/omni-assistant-subagents/dgxspark` | `cascaded-omni-assistant-subagents` | `nvidia-llm-vllm-omni`, `tts-service` |
+| `cascaded-omni` | `cascaded-omni` | none (cloud NVCF) |
+| `cascaded-omni/dgx-spark` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
 
 > Jetson is not supported today: the 30B Omni NVFP4 model does not fit on Orin-class hardware. A jetson recipe will be added once a smaller Omni variant lands.
 

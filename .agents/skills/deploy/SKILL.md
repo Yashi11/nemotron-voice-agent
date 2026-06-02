@@ -49,20 +49,17 @@ Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that 
 
 | Goal | Recipe profile |
 | --- | --- |
-| Cloud-only Generic Cascaded | `cascaded/generic` |
-| Cloud-only Agentic Airline | `cascaded/agentic-airline` |
-| Cloud-only Omni Assistant | `cascaded/omni-assistant` |
-| Cloud-only Omni Assistant Subagents | `cascaded/omni-assistant-subagents` |
-| Cloud-only Speech-to-Speech | `speech-to-speech/generic` |
-| Generic Cascaded on a workstation | `cascaded/generic/workstation` |
-| Generic Cascaded on DGX Spark | `cascaded/generic/dgxspark` |
-| Generic Cascaded on Jetson Thor | `cascaded/generic/jetson` |
-| Agentic Airline on a workstation | `cascaded/agentic-airline/workstation` |
-| Omni Assistant on a workstation | `cascaded/omni-assistant/workstation` |
-| Omni Assistant on DGX Spark | `cascaded/omni-assistant/dgxspark` |
-| Omni Assistant Subagents on DGX Spark | `cascaded/omni-assistant-subagents/dgxspark` |
+| Cloud-only Generic Cascaded | `cascaded-generic` |
+| Cloud-only Omni Assistant | `cascaded-omni` |
+| Cloud-only Omni Assistant Subagents | `cascaded-omni` |
+| Cloud-only Speech-to-Speech | `speech-to-speech` |
+| Generic Cascaded on a workstation | `cascaded-generic/workstation` |
+| Generic Cascaded on DGX Spark | `cascaded-generic/dgx-spark` |
+| Generic Cascaded on Jetson Thor | `cascaded-generic/jetson-thor` |
+| Omni Assistant on a workstation | `cascaded-omni/workstation` |
+| Omni Assistant on DGX Spark | `cascaded-omni/dgx-spark` |
+| Omni Assistant Subagents on DGX Spark | `cascaded-omni/dgx-spark` |
 
-Omni examples are not supported on Jetson today: the 30B Omni NVFP4 model does not fit on Orin-class hardware. The Agentic Airline example does not currently support `dgxspark` or `jetson` recipes.
 
 For any on-prem recipe, log in to `nvcr.io` first.
 
@@ -81,12 +78,11 @@ docker compose ps
 docker compose logs --tail 200 <service-name>
 ```
 
-App service names follow the example: `cascaded-generic`, `cascaded-agentic-airline`, `cascaded-omni-assistant`, `cascaded-omni-assistant-subagents`, or `speech-to-speech-generic`. Sidecars keep their own names (`booking-server`, `nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `asr-service`, `tts-service`, `nemotron-speech`).
+App service names follow the active recipe family: `cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, or `speech-to-speech`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `asr-service`, `tts-service`, `nemotron-speech`).
 
 ## References
 
 - Hardware details and TURN: `references/platform-deployment.md`
 - Generic-only deploy: `references/generic-deploy.md`
-- Agentic Airline deploy: `references/agentic-airline-deploy.md`
 - Omni Assistant deploy: `references/omni-assistant-deploy.md`
 - Omni Assistant Subagents deploy: `references/omni-assistant-subagents-deploy.md`

@@ -4,54 +4,55 @@ name: nemotron-voice-agent
 # self-contained deployment recipe so users never have to AND two
 # profiles together.
 #
-#   <family>/<example>                  cloud-only deployment
-#   <family>/<example>/<hardware>       on-prem deployment with the
-#                                        right LLM + ASR + TTS sidecars
+#   <family>                   cloud-only models
+#   <family>/<hardware>        on-prem models with local sidecars
 #
-# Cloud-only and recipe profiles map 1:1 to the registry example key
-# (``<family>/<example>``), so the active example is unambiguous from
-# the profile name alone.
+# Families:
+#   cascaded-generic          Cascaded ASR + LLM + TTS Pipeline (Generic Assistant)
+#   cascaded-multilingual     Cascaded Multilingual ASR + LLM + TTS Pipeline (Multilingual Assistant)
+#   cascaded-omni             Cascaded Omni LLM + TTS Pipeline (Omni Assistant + Omni Assistant Subagents)
+#   speech-to-speech         Full Duplex Speech-to-Speech model (Nemotron VoiceChat)
 #
-# Selector modes (``cascaded/all``, ``speech-to-speech/all``, ``all``)
-# remain host-native only — they have no compose profile.
+# Hardware targets:
+#   workstation               Single GPU with 80+ GB VRAM or modify to support multiple GPUs
+#   dgx-spark                 DGX Spark with 128 GB unified memory
+#   jetson-thor               Jetson Thor with 128 GB unified memory
 #
-# Cloud-only invocations:
-#   docker compose --profile cascaded/generic up
-#   docker compose --profile cascaded/agentic-airline up
-#   docker compose --profile cascaded/omni-assistant up
-#   docker compose --profile cascaded/omni-assistant-subagents up
-#   docker compose --profile speech-to-speech/generic up
+# Cloud-only recipes:
+#   docker compose --profile cascaded-generic up
+#   docker compose --profile cascaded-multilingual up
+#   docker compose --profile cascaded-omni up
+#   docker compose --profile speech-to-speech up
 #
 # On-prem recipes:
-#   docker compose --profile cascaded/generic/workstation up
-#   docker compose --profile cascaded/generic/dgxspark up
-#   docker compose --profile cascaded/generic/jetson up
-#   docker compose --profile cascaded/agentic-airline/workstation up
-#   docker compose --profile cascaded/omni-assistant/workstation up
-#   docker compose --profile cascaded/omni-assistant/dgxspark up
-#   docker compose --profile cascaded/omni-assistant-subagents/dgxspark up
-#
-# (Omni examples do not support Jetson today: the 30B Omni NVFP4 model
-# does not fit on Orin-class hardware. Add jetson recipes once a smaller
-# Omni variant lands.)
+#   docker compose --profile cascaded-generic/workstation up
+#   docker compose --profile cascaded-generic/dgx-spark up
+#   docker compose --profile cascaded-generic/jetson-thor up
+#   docker compose --profile cascaded-multilingual/workstation up
+#   docker compose --profile cascaded-multilingual/dgx-spark up
+#   docker compose --profile cascaded-omni/workstation up
+#   docker compose --profile cascaded-omni/dgx-spark up
 #
 # Observability profiles compose orthogonally with any recipe:
 #   docker compose --profile <recipe> --profile tracing up   # Phoenix OTel
 #   docker compose --profile <recipe> --profile turn up      # coturn TURN
-#
-# Each app service sets ``EXAMPLE_SELECTION`` via a substitution default
-# so the container always runs the matching example. The shell env var
-# is treated as an advanced override (and is deliberately omitted from
-# ``.env.example``).
 
 include:
-  - path: src/cascaded/shared/docker-compose.yml
-  - path: src/cascaded/agentic_airline/docker-compose.yml
+  - path: docker/docker-compose.nemotron3-nano.yaml
+  - path: docker/docker-compose.nemotron3-super.yaml
+  - path: docker/docker-compose.nemotron-asr.yaml
+  - path: docker/docker-compose.parakeet-asr.yaml
+  - path: docker/docker-compose.magpie-tts.yaml
+  - path: docker/docker-compose.chatterbox-tts.yaml
+  - path: docker/docker-compose.nemotron3-omni.yaml
+  - path: docker/docker-compose.speech-jetson.yaml
+  - path: docker/docker-compose.coturn.yaml
+  - path: docker/docker-compose.phoenix.yaml
 
 x-app: &app-base
   build:
     context: .
-    dockerfile: Dockerfile
+    dockerfile: docker/Dockerfile
   image: nemotron-voice-agent:latest
   cpuset: ${PIPECAT_CPUSET:-}
   command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0"]
@@ -81,89 +82,42 @@ services:
   cascaded-generic:
     <<: *app-base
     profiles:
-      - cascaded/generic
-      - cascaded/generic/workstation
-      - cascaded/generic/dgxspark
-      - cascaded/generic/jetson
+      - cascaded-generic
+      - cascaded-generic/workstation
+      - cascaded-generic/dgx-spark
+      - cascaded-generic/jetson-thor
     environment:
       APP_RUNTIME: container
-      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded/generic}
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded-generic/all}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
-  cascaded-agentic-airline:
+  cascaded-multilingual:
     <<: *app-base
     profiles:
-      - cascaded/agentic-airline
-      - cascaded/agentic-airline/workstation
+      - cascaded-multilingual
+      - cascaded-multilingual/workstation
+      - cascaded-multilingual/dgx-spark
     environment:
       APP_RUNTIME: container
-      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded/agentic-airline}
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded-multilingual/all}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
-  cascaded-omni-assistant:
+  cascaded-omni:
     <<: *app-base
     profiles:
-      - cascaded/omni-assistant
-      - cascaded/omni-assistant/workstation
-      - cascaded/omni-assistant/dgxspark
+      - cascaded-omni
+      - cascaded-omni/workstation
+      - cascaded-omni/dgx-spark
     environment:
       APP_RUNTIME: container
-      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded/omni-assistant}
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded-omni/all}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
-  cascaded-omni-assistant-subagents:
+  speech-to-speech:
     <<: *app-base
     profiles:
-      - cascaded/omni-assistant-subagents
-      - cascaded/omni-assistant-subagents/dgxspark
+      - speech-to-speech
     environment:
       APP_RUNTIME: container
-      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded/omni-assistant-subagents}
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-speech-to-speech/all}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
-
-  speech-to-speech-generic:
-    <<: *app-base
-    profiles:
-      - speech-to-speech/generic
-    environment:
-      APP_RUNTIME: container
-      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-speech-to-speech/generic}
-      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
-
-  # OpenTelemetry trace collector & UI (opt-in via ENABLE_TRACING).
-  phoenix:
-    profiles: ["tracing"]
-    image: arizephoenix/phoenix:latest
-    ports:
-      - "6006:6006"
-      - "4317:4317"
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
-
-  # TURN server for remote WebRTC clients (opt-in).
-  coturn:
-    profiles: ["turn"]
-    image: instrumentisto/coturn:4
-    network_mode: host
-    command:
-      - "-n"
-      - "--log-file=stdout"
-      - "--listening-port=3478"
-      - "--min-port=49160"
-      - "--max-port=49200"
-      - "--realm=voiceagent"
-      - "--lt-cred-mech"
-      - "--user=${TURN_USERNAME:-admin}:${TURN_PASSWORD:-admin}"
-      - "--no-multicast-peers"
-      - "--no-cli"
-      - "--fingerprint"
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"

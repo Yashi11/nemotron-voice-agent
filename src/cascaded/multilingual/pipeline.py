@@ -1,12 +1,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-"""Generic cascaded pipeline: NVIDIA STT -> Nemotron LLM -> NVIDIA TTS with function calling.
+"""Multilingual cascaded pipeline: NVIDIA STT -> Nemotron LLM -> Magpie TTS.
 
-Uses pipecat's built-in NVIDIA classes directly:
-  - NvidiaSTTService  (Nemotron Streaming ASR)
-  - NvidiaLLMService  (NIM-compatible LLM)
-  - NvidiaTTSService  (Magpie TTS)
+Always runs in multilingual mode: the LLM emits ``Language: <code> Text: <reply>
+MetaData: <info>`` and the pipeline switches the TTS voice on every detected
+language change.
 """
 
 import asyncio
@@ -23,14 +22,23 @@ from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
 )
+from pipecat.processors.aggregators.llm_text_processor import LLMTextProcessor
+from pipecat.processors.frameworks.rtvi import RTVIObserverParams
 from pipecat.processors.frameworks.rtvi.frames import RTVIServerMessageFrame
 from pipecat.runner.types import RunnerArguments
 from pipecat.services.nvidia.llm import NvidiaLLMService, NvidiaLLMSettings
 from pipecat.services.nvidia.stt import NvidiaSTTService
 from pipecat.services.nvidia.tts import NvidiaTTSService, NvidiaTTSSettings
 
-from cascaded.generic.tools import TOOL_HANDLERS, build_tools_schema
+import config_store
 from cascaded.shared.audio_recorder import create_audio_recorder
+from cascaded.shared.multilingual_processor import (
+    SKIP_TTS_AGGREGATIONS,
+    MultilingualTextAggregator,
+    RTVISpokenTextEmitter,
+    get_lang_codes,
+    make_language_handler,
+)
 from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 from cascaded.shared.pipeline_utils import (
     apply_pinned_prompt_summary,
@@ -38,6 +46,7 @@ from cascaded.shared.pipeline_utils import (
     build_user_aggregator_params,
     create_transport,
 )
+from cascaded.shared.prewarm import prewarm_tts
 from tracing import IS_TRACING_ENABLED
 from utils import (
     is_nvcf,
@@ -47,15 +56,26 @@ from utils import (
     parse_env_int,
     parse_json_dict,
     resolve_prompt,
-    resolve_tools_available,
 )
 
 load_dotenv(override=True)
 CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 10)
 
 
+async def _build_multilingual_pipeline(
+    tts_server: str,
+    tts_voice: str,
+) -> tuple[MultilingualTextAggregator, LLMTextProcessor, RTVISpokenTextEmitter, str]:
+    """Prewarm the voice catalog and build the multilingual processors."""
+    if not config_store.get("tts"):
+        await asyncio.to_thread(prewarm_tts, tts_server, tts_voice)
+    aggregator = MultilingualTextAggregator()
+    text_processor = LLMTextProcessor(text_aggregator=aggregator)
+    return aggregator, text_processor, RTVISpokenTextEmitter(), get_lang_codes()
+
+
 async def bot(runner_args: RunnerArguments) -> None:
-    """Build and run the NVIDIA cascaded pipeline for a single session."""
+    """Build and run the multilingual NVIDIA cascaded pipeline for a single session."""
     transport = create_transport(runner_args)
     body = runner_args.body if isinstance(runner_args.body, dict) else {}
     prompt_key, base_system_content = resolve_prompt(
@@ -63,7 +83,7 @@ async def bot(runner_args: RunnerArguments) -> None:
         body.get("prompt_content", ""),
         body.get("prompt_key", ""),
     )
-    logger.info(f"Starting generic cascaded pipeline (prompt={prompt_key}, tools={list(TOOL_HANDLERS)})")
+    logger.info(f"Starting multilingual cascaded pipeline (prompt={prompt_key})")
     default_llm = load_service_entry("llm", "")
     default_tts = load_service_entry("tts", "")
     default_asr = load_service_entry("asr", "")
@@ -110,17 +130,6 @@ async def bot(runner_args: RunnerArguments) -> None:
         settings=llm_settings,
     )
 
-    tools_available = resolve_tools_available(__file__, prompt_key)
-    tools_schema, registered_tools = build_tools_schema(__file__, tools_available)
-    tools_enabled = tools_schema is not None
-
-    if tools_enabled:
-        for name in registered_tools:
-            llm.register_function(name, TOOL_HANDLERS[name])
-            logger.info(f"Registered tool handler: {name}")
-    else:
-        logger.info(f"Tool calling disabled for prompt_key={prompt_key!r} (no tools_available in prompts.yaml)")
-
     # --- TTS ---
     tts_server = body.get("tts_server", "") or default_tts.get("server", "grpc.nvcf.nvidia.com:443")
     tts_ssl = is_nvcf(tts_server)
@@ -134,17 +143,28 @@ async def bot(runner_args: RunnerArguments) -> None:
         use_ssl=tts_ssl,
         text_filters=[NemotronSpeechTextFilter()],
         custom_dictionary=custom_dictionary,
+        skip_aggregator_types=list(SKIP_TTS_AGGREGATIONS),
     )
 
-    logger.info(f"TTS: server={tts_server}, ssl={tts_ssl}, voice={tts_voice}, text_filters=[NemotronSpeechTextFilter]")
+    (
+        multilingual_aggregator,
+        multilingual_text_processor,
+        multilingual_rtvi_emitter,
+        lang_codes,
+    ) = await _build_multilingual_pipeline(tts_server, tts_voice)
+
+    logger.info(
+        f"TTS: server={tts_server}, ssl={tts_ssl}, voice={tts_voice}, "
+        f"lang_codes={lang_codes or '(no voices discovered)'}, "
+        f"text_filters=[NemotronSpeechTextFilter]"
+    )
 
     # --- Context ---
-    messages = build_context_messages(base_system_content, system_prompt)
+    if lang_codes:
+        base_system_content = base_system_content.replace("{lang_codes}", lang_codes)
 
-    if tools_enabled:
-        context = LLMContext(messages, tools=tools_schema, tool_choice="auto")
-    else:
-        context = LLMContext(messages)
+    messages = build_context_messages(base_system_content, system_prompt)
+    context = LLMContext(messages)
     preserve_prompt_messages = len(messages)
 
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
@@ -164,6 +184,8 @@ async def bot(runner_args: RunnerArguments) -> None:
             stt,
             user_aggregator,
             llm,
+            multilingual_text_processor,
+            multilingual_rtvi_emitter,
             tts,
             transport.output(),
             *([audio_recorder] if audio_recorder else []),
@@ -185,8 +207,6 @@ async def bot(runner_args: RunnerArguments) -> None:
                 summary_system_prompt=system_prompt,
             )
 
-    # Forward custom latency samples over RTVI so the benchmark can stay fully
-    # client-driven and avoid server log scraping.
     @latency_observer.event_handler("on_first_bot_speech_latency")
     async def on_first_bot_speech(observer, latency):
         logger.info(f"First bot speech latency: {latency:.3f}s")
@@ -239,6 +259,10 @@ async def bot(runner_args: RunnerArguments) -> None:
         idle_timeout_secs=runner_args.pipeline_idle_timeout_secs,
         observers=[latency_observer],
         enable_tracing=IS_TRACING_ENABLED,
+        rtvi_observer_params=RTVIObserverParams(
+            ignored_sources=[llm],
+            skip_aggregator_types=list(SKIP_TTS_AGGREGATIONS),
+        ),
     )
 
     @user_aggregator.event_handler("on_user_turn_stopped")
@@ -254,6 +278,21 @@ async def bot(runner_args: RunnerArguments) -> None:
             )
         )
 
+    async def _notify_language_switched(language: str, voice_id: str) -> None:
+        await task.queue_frame(
+            RTVIServerMessageFrame(
+                data={
+                    "type": "language-switched",
+                    "language": language,
+                    "voice_id": voice_id,
+                }
+            )
+        )
+
+    multilingual_aggregator.set_on_language(
+        make_language_handler(tts, task, on_language_switched=_notify_language_switched)
+    )
+
     @task.rtvi.event_handler("on_client_ready")
     async def on_client_connected(rtvi):
         logger.info("Client connected")
@@ -267,27 +306,24 @@ async def bot(runner_args: RunnerArguments) -> None:
         logger.info("Client disconnected")
         await task.cancel()
 
-    async def _apply_set_voice(payload: dict) -> None:
-        voice_id = payload.get("voice_id", "")
-        language = payload.get("language", "")
-        if not voice_id:
-            return
-        settings_kwargs: dict = {"voice": voice_id}
-        if language:
-            settings_kwargs["language"] = normalize_lang_code(language)
-        await task.queue_frame(
-            TTSUpdateSettingsFrame(
-                delta=NvidiaTTSSettings(**settings_kwargs),
-                service=tts,
-            )
-        )
-        logger.info(f"Voice switched → {voice_id}, language={settings_kwargs.get('language', '(unchanged)')}")
-
     @task.rtvi.event_handler("on_client_message")
     async def on_client_message(rtvi, message):
         payload = message.data if isinstance(message.data, dict) else {}
         if message.type == "set-voice":
-            await _apply_set_voice(payload)
+            voice_id = payload.get("voice_id", "")
+            language = payload.get("language", "")
+            if not voice_id:
+                return
+            settings_kwargs: dict = {"voice": voice_id}
+            if language:
+                settings_kwargs["language"] = normalize_lang_code(language)
+            await task.queue_frame(
+                TTSUpdateSettingsFrame(
+                    delta=NvidiaTTSSettings(**settings_kwargs),
+                    service=tts,
+                )
+            )
+            logger.info(f"Voice switched → {voice_id}, language={settings_kwargs.get('language', '(unchanged)')}")
 
     runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
     await runner.run(task)

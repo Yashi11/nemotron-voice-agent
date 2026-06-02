@@ -14,25 +14,25 @@ Hardware support: cloud-only, `workstation`, and `dgxspark`. The 30B Omni NVFP4 
 
 ```bash
 # Cloud (NVCF)
-docker compose --profile cascaded/omni-assistant up -d
+docker compose --profile cascaded-omni up -d
 
 # Workstation / DGX Spark (local Omni vLLM + NIM TTS)
-docker compose --profile cascaded/omni-assistant/workstation up -d
-docker compose --profile cascaded/omni-assistant/dgxspark up -d
+docker compose --profile cascaded-omni/workstation up -d
+docker compose --profile cascaded-omni/dgx-spark up -d
 ```
 
 | Recipe profile | App service | Sidecars from `cascaded/shared/` |
 | --- | --- | --- |
-| `cascaded/omni-assistant` | `cascaded-omni-assistant` | none (cloud NVCF) |
-| `cascaded/omni-assistant/workstation` | `cascaded-omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
-| `cascaded/omni-assistant/dgxspark` | `cascaded-omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
+| `cascaded-omni` | `cascaded-omni` | none (cloud NVCF) |
+| `cascaded-omni/workstation` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
+| `cascaded-omni/dgx-spark` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
 
 Tear down with the same recipe used at `up` time.
 
 ## Verify
 
 - UI at `https://<host>:7860/` by default, or `http://<host>:7860/` when `PIPELINE_TLS=false`.
-- App logs: `docker compose logs --tail 200 cascaded-omni-assistant`.
+- App logs: `docker compose logs --tail 200 cascaded-omni`.
 - Omni vLLM logs (local recipes only): `docker compose logs --tail 200 nvidia-llm-vllm-omni`.
 - Omni vLLM health: `curl -f http://localhost:8002/health` from the host or `curl -f http://nvidia-llm-vllm-omni:8002/health` from inside the compose network.
 

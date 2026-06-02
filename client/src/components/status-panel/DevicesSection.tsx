@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 import { useState, useRef, useEffect } from "react";
-import { 
-  usePipecatClientMicControl, 
+import {
+  usePipecatClientMicControl,
   usePipecatClientMediaDevices,
-  VoiceVisualizer 
+  VoiceVisualizer
 } from "@pipecat-ai/client-react";
 
 export function DevicesSection() {
@@ -37,7 +37,7 @@ export function DevicesSection() {
   return (
     <div className="header-devices" ref={menuRef}>
       <div className="device-row">
-        <button 
+        <button
           className={`device-item device-button ${!isMicEnabled ? 'device-disabled' : ''}`}
           onClick={handleMicToggle}
           title={isMicEnabled ? "Click to mute" : "Click to unmute"}
@@ -56,7 +56,7 @@ export function DevicesSection() {
             />
           </div>
         </button>
-        <button 
+        <button
           className="device-dropdown-btn"
           onClick={() => setShowDeviceMenu(!showDeviceMenu)}
           title="Select microphone"

@@ -1,6 +1,6 @@
 # Configure Services
 
-The Nemotron Voice Agent uses example-local service catalogs to manage LLM, ASR, TTS, S2S, and example-specific services (e.g. Agentic Airline `fast-llm`, `orchestrator-llm`, `booking-server`). Built-in entries come from each example's `services.cloud.yaml` (remote / NVCF) and `services.local.yaml` (Compose-managed sidecars). The active UI example determines which catalog is loaded.
+The Nemotron Voice Agent uses example-local service catalogs to manage LLM, ASR, TTS, S2S, and example-specific services. Built-in entries come from each example's `services.cloud.yaml` (remote / NVCF) and `services.local.yaml` (Compose-managed sidecars). The active UI example determines which catalog is loaded.
 
 ## How catalog selection works
 
@@ -60,7 +60,6 @@ When the same default key exists in both `services.cloud.yaml` and `services.loc
 | `tts-service:50051` | `localhost:50151` |
 | `asr-service:50052` | `localhost:50152` |
 | `nemotron-speech:50051` | `localhost:50051` |
-| `booking-server:8001` | `localhost:8001` |
 
 ## Adding built-in cloud services
 
@@ -99,13 +98,11 @@ tts:
 Pick the recipe profile that matches the example and hardware target. The catalog picks up the matching sidecars automatically once they are reachable.
 
 ```bash
-docker compose --profile cascaded/generic/workstation up -d
-docker compose --profile cascaded/generic/dgxspark up -d
-docker compose --profile cascaded/generic/jetson up -d
-docker compose --profile cascaded/agentic-airline/workstation up -d
-docker compose --profile cascaded/omni-assistant/workstation up -d
-docker compose --profile cascaded/omni-assistant/dgxspark up -d
-docker compose --profile cascaded/omni-assistant-subagents/dgxspark up -d
+docker compose --profile cascaded-generic/workstation up -d
+docker compose --profile cascaded-generic/dgx-spark up -d
+docker compose --profile cascaded-generic/jetson-thor up -d
+docker compose --profile cascaded-omni/workstation up -d
+docker compose --profile cascaded-omni/dgx-spark up -d
 ```
 
-Running a cloud-only profile (e.g. `--profile cascaded/generic`) stays cloud-only and uses just `services.cloud.yaml`.
+Running a cloud-only profile (e.g. `--profile cascaded-generic`) stays cloud-only and uses just `services.cloud.yaml`.

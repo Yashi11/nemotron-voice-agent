@@ -1,0 +1,72 @@
+# Multilingual - cascaded pipeline example
+
+Dedicated multilingual cascaded voice pipeline using pipecat's built-in NVIDIA services
+(`NvidiaSTTService` -> `NvidiaLLMService` -> `NvidiaTTSService`). The pipeline always
+runs in multilingual mode: the LLM emits structured `Language: / Text: / MetaData:`
+output and the pipeline automatically switches the active TTS voice on each detected
+language change.
+
+Everything specific to this example lives under `src/cascaded/multilingual/`: pipeline
+entry point, service catalogs, and prompts. Shared pipeline helpers live in
+`src/cascaded/shared/pipeline_utils.py`.
+
+## Layout
+
+| Path | Role |
+| --- | --- |
+| `pipeline.py` | pipecat entry point — multilingual mode always on |
+| `prompts.yaml` | multilingual prompt catalog |
+| `services.cloud.yaml`, `services.local.yaml` | service catalogs; defaults to `parakeet-rnnt` for ASR |
+
+## How it works
+
+1. The LLM returns each response in this format:
+   ```
+   Language: <LangCode> Text: <DirectResponse> MetaData: <AdditionalInfo>
+   ```
+2. `MultilingualTextAggregator` parses the structured output and fires a language-switch
+   callback the moment the `Language:` code is detected.
+3. The pipeline queues a `TTSUpdateSettingsFrame` to switch the TTS voice before the
+   first sentence of the response is spoken.
+4. Only the `Text:` content is forwarded to TTS and shown in the client transcript.
+   `Language:` and `MetaData:` segments are dropped from both audio and the UI.
+
+## Running the example
+
+Host-native (no Docker), set `selection: cascaded-multilingual/all` in
+[`examples_registry.yaml`](../../../examples_registry.yaml) at the repo root, then:
+
+```bash
+uv run python3 src/server.py
+```
+
+Docker — cloud-only:
+
+```bash
+docker compose --profile cascaded-multilingual up -d
+```
+
+On-prem recipes with local ASR / TTS / LLM sidecars:
+
+```bash
+# Workstation (Parakeet RNNT ASR + Magpie TTS + NIM LLM)
+docker compose --profile cascaded-multilingual/workstation up -d
+
+# DGX Spark (Parakeet RNNT ASR + Magpie TTS + vLLM LLM)
+docker compose --profile cascaded-multilingual/dgx-spark up -d
+```
+
+Tear down with the same profile used at `up` time:
+
+```bash
+docker compose --profile cascaded-multilingual/workstation down
+```
+
+| Recipe profile | App service | Sidecars |
+| --- | --- | --- |
+| `cascaded-multilingual` | `cascaded-multilingual` | none (cloud NVCF) |
+| `cascaded-multilingual/workstation` | `cascaded-multilingual` | `nvidia-llm`, `parakeet-rnnt-asr`, `tts-service` |
+| `cascaded-multilingual/dgx-spark` | `cascaded-multilingual` | `nvidia-llm-vllm`, `parakeet-rnnt-asr`, `tts-service` |
+
+The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
+when `PIPELINE_TLS=false`.

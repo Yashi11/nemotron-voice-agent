@@ -1,50 +1,78 @@
 # Enable Multilingual Voice Agent
 
-This guide explains how to enable multilingual support in the cascaded pipeline. When a multilingual prompt is selected, the agent can respond in the detected language and automatically switch the active TTS language and voice.
+This guide explains how to use the dedicated multilingual cascaded pipeline. The agent
+detects the speaker's language per turn and automatically switches the TTS voice and
+language to match.
 
 ## How Multilingual Support Works
 
-The multilingual flow is prompt-driven. There is no separate environment flag to enable it.
+1. The LLM returns each response in this structured format:
 
-1. Select a multilingual prompt from the UI or set a multilingual prompt key that exists in the active example's `prompts.yaml`.
-2. The LLM returns structured output in this format:
+   ```text
+   Language: <LangCode> Text: <DirectResponse> MetaData: <AdditionalInfo>
+   ```
 
-```text
-Language: <LangCode> Text: <DirectResponse> MetaData: <AdditionalInfo>
+2. The multilingual pipeline:
+   - switches the active TTS language and voice the moment `Language: <code>` is parsed
+   - forwards only the `Text:` block to TTS and to the client transcript
+   - drops `Language:` and `MetaData:` segments — they are never spoken or shown
+
+## Deploying the Multilingual Example
+
+Use the `cascaded-multilingual` pipeline family:
+
+```bash
+# Cloud-only (Parakeet RNNT ASR + Magpie TTS via NVCF)
+docker compose --profile cascaded-multilingual up -d
+
+# Workstation — local Parakeet RNNT ASR + Magpie TTS + NIM LLM
+docker compose --profile cascaded-multilingual/workstation up -d
+
+# DGX Spark — local Parakeet RNNT ASR + Magpie TTS + vLLM LLM
+docker compose --profile cascaded-multilingual/dgx-spark up -d
 ```
 
-3. The cascaded multilingual processor:
-   - extracts only the `Text` block for speech and UI transcripts
-   - switches the active TTS language and voice from the detected `Language`
-   - drops the `MetaData` block so it is not spoken
+For host-native runs, set `selection: cascaded-multilingual/all` in
+`examples_registry.yaml` and start the server normally.
 
 ## Requirements
 
-- Use a multilingual-capable ASR service such as Parakeet RNNT Multilingual
-- Use a multilingual-capable TTS service such as Magpie Multilingual
-- Use a prompt that instructs the model to emit `Language: / Text: / MetaData:` output
-- Use an LLM that follows that structured format reliably
+- **ASR**: Parakeet RNNT Multilingual (`parakeet-1.1b-rnnt-multilingual-asr`) — the
+  default ASR in `services.cloud.yaml` and local profiles for this example.
+- **TTS**: Magpie TTS Multilingual — provides per-language voice switching.
+- **LLM**: Any Nemotron model that follows the `Language: / Text: / MetaData:` format
+  reliably (Nemotron Super recommended).
 
 ## Configuration
 
-Multilingual mode is enabled automatically when the selected prompt key contains `multilingual`.
+TTS voices and supported language codes are discovered at runtime by prewarming the
+configured TTS service. The `{lang_codes}` placeholder in the prompt is replaced
+automatically with the discovered codes — no manual language list is needed.
 
-TTS voices and supported language codes are discovered at runtime from the configured TTS service, so no additional multilingual TTS configuration is required beyond choosing a multilingual-capable service.
+To customise the prompt or swap service endpoints, edit the files under
+`src/cascaded/multilingual/`:
+
+| File | Purpose |
+| --- | --- |
+| `prompts.yaml` | Multilingual prompt (`multilingual_voice_assistant`) |
+| `services.cloud.yaml` | Cloud service endpoints and defaults |
+| `services.local.yaml` | On-prem service endpoints (workstation / dgx-spark) |
 
 ## Testing
 
-1. Start the app with a multilingual prompt selected.
-2. Speak in one language, for example English.
-3. Speak again in another supported language, for example German or French.
+1. Start the app with the `cascaded-multilingual` profile.
+2. Speak in English and verify the bot responds in English.
+3. Speak in another supported language (e.g. German, French, Spanish).
 4. Verify that:
    - the spoken response switches to the new language
-   - the disabled language dropdown reflects the switched language
-   - the transcript shows only the spoken `Text` content
+   - the transcript shows only the clean spoken text (no `Language:` / `MetaData:` markers)
+   - the UI language indicator reflects the switched language
 
 ## Troubleshooting
 
 | Issue | Cause | What to check |
 |-------|-------|---------------|
-| Response stays in English | LLM did not emit the expected structured format | Verify the selected prompt is multilingual and the LLM follows `Language: / Text: / MetaData:` |
-| TTS uses the wrong voice or language | Detected language is not supported by the active TTS service | Check the configured TTS service exposes that language |
-| Transcript shows raw structured output | Multilingual processor is not active for the session | Verify the selected prompt key contains `multilingual` |
+| Response stays in English | LLM did not emit the expected structured format | Verify the selected prompt instructs the model to use `Language: / Text: / MetaData:` |
+| TTS uses the wrong voice or language | Detected language is not supported by the active TTS service | Check the configured TTS service exposes that language code |
+| Transcript shows raw structured output | `skip_aggregator_types` not applied | Confirm you are using the `cascaded-multilingual` pipeline, not `cascaded-generic` |
+| No voices discovered at startup | TTS prewarm failed | Check TTS sidecar health (`docker compose ps`) and `NVIDIA_API_KEY` |

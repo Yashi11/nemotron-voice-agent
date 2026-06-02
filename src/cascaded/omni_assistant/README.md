@@ -3,13 +3,13 @@
 Cascaded voice pipeline that uses Nemotron 3 Nano Omni as a single
 audio-input model for ASR and LLM, then hands the text reply to Magpie
 TTS. This example enables only text/audio inputs. Uploaded media and webcam
-vision are covered by `cascaded/omni-assistant-subagents`.
+vision are covered by `cascaded-omni`.
 
 Everything specific to this example lives under
 `src/cascaded/omni_assistant/`: pipeline entry point, the Omni
 multimodal service, service catalogs, and prompts. There is no
 per-example compose file. The app container and shared sidecars are
-defined in the root and `cascaded/shared/` compose files.
+defined in the root and `docker/` compose files.
 
 ## Layout
 
@@ -23,7 +23,7 @@ defined in the root and `cascaded/shared/` compose files.
 
 ## Running the example
 
-Host-native (no Docker), set `selection: cascaded/omni-assistant` in
+Host-native (no Docker), set `selection: cascaded-omni` in
 [`examples_registry.yaml`](../../../examples_registry.yaml) at the repo
 root, then:
 
@@ -35,23 +35,23 @@ Docker — pick the recipe profile that matches your deployment intent.
 Cloud-only:
 
 ```bash
-docker compose --profile cascaded/omni-assistant up -d
+docker compose --profile cascaded-omni up -d
 ```
 
 Workstation or DGX Spark (local Omni vLLM + NIM TTS):
 
 ```bash
-docker compose --profile cascaded/omni-assistant/workstation up -d
-docker compose --profile cascaded/omni-assistant/dgxspark up -d
+docker compose --profile cascaded-omni/workstation up -d
+docker compose --profile cascaded-omni/dgx-spark up -d
 ```
 
 Tear down with the same profile used at `up` time.
 
-| Recipe profile | App service | Shared sidecars pulled from `cascaded/shared/` |
+| Recipe profile | App service | Shared sidecars pulled from `docker/` |
 | --- | --- | --- |
-| `cascaded/omni-assistant` | `cascaded-omni-assistant` | none (cloud NVCF) |
-| `cascaded/omni-assistant/workstation` | `cascaded-omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
-| `cascaded/omni-assistant/dgxspark` | `cascaded-omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
+| `cascaded-omni` | `cascaded-omni` | none (cloud NVCF) |
+| `cascaded-omni/workstation` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
+| `cascaded-omni/dgx-spark` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
 
 > Jetson is not supported today: the 30B Omni NVFP4 model does not fit on Orin-class hardware. A jetson recipe will be added once a smaller Omni variant lands.
 
