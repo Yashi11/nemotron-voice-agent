@@ -10,7 +10,7 @@ This example declares `capabilities: [attachments, webcam]` in `examples_registr
 
 Per-example catalogs at `src/cascaded/omni_assistant_subagents/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active recipe.
 
-Hardware support: cloud-only and `dgxspark`, matching `cascaded-omni`.
+Hardware support: cloud-only, workstation, and `dgxspark`, matching `cascaded-omni`.
 
 ## Compose deploy
 
@@ -18,13 +18,17 @@ Hardware support: cloud-only and `dgxspark`, matching `cascaded-omni`.
 # Cloud (NVCF)
 docker compose --profile cascaded-omni up -d
 
+# Workstation (local Omni vLLM + NIM TTS)
+docker compose --profile cascaded-omni/workstation up -d
+
 # DGX Spark (local Omni vLLM + NIM TTS)
 docker compose --profile cascaded-omni/dgx-spark up -d
 ```
 
-| Recipe profile | App service | Sidecars from `cascaded/shared/` |
+| Recipe profile | App service | Sidecars from `docker/` |
 | --- | --- | --- |
 | `cascaded-omni` | `cascaded-omni` | none (cloud NVCF) |
+| `cascaded-omni/workstation` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
 | `cascaded-omni/dgx-spark` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
 
 Tear down with the same recipe used at `up` time.
