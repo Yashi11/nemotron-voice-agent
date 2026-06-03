@@ -41,7 +41,13 @@ Cloud-only:
 docker compose --profile cascaded-omni up -d
 ```
 
-DGX Spark (local Omni vLLM + NIM TTS):
+Workstation local Omni vLLM + NIM TTS:
+
+```bash
+docker compose --profile cascaded-omni/workstation up -d
+```
+
+DGX Spark local Omni vLLM + NIM TTS:
 
 ```bash
 docker compose --profile cascaded-omni/dgx-spark up -d
@@ -52,6 +58,7 @@ Tear down with the same profile used at `up` time.
 | Recipe profile | App service | Shared sidecars pulled from `docker/` |
 | --- | --- | --- |
 | `cascaded-omni` | `cascaded-omni` | none (cloud NVCF) |
+| `cascaded-omni/workstation` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
 | `cascaded-omni/dgx-spark` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
 
 > Jetson is not supported today: the 30B Omni NVFP4 model does not fit on Orin-class hardware. A jetson recipe will be added once a smaller Omni variant lands.

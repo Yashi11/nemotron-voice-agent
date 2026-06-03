@@ -40,5 +40,5 @@ Tear down with the same recipe used at `up` time.
 
 - **`pull access denied` / `unauthorized`** -> NGC login was not done or expired. See the root `deploy` skill.
 - **Omni vLLM stuck on first-run model download** -> initial download of `nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4` from Hugging Face requires `HF_TOKEN` in `.env`. Allow up to 30 minutes on first start.
-- **Out-of-memory on local Omni recipes** -> lower `--gpu-memory-utilization` or `--max-model-len` in `src/cascaded/shared/docker-compose.yml` under the `nvidia-llm-vllm-omni` command.
+- **Out-of-memory on local Omni recipes** -> lower `--gpu-memory-utilization` or `--max-model-len` in `docker/docker-compose.nemotron3-omni.yaml` under the `nvidia-llm-vllm-omni` command.
 - **Tear-down leaves orphan services after a service rename** -> rerun `up` or `down` with `--remove-orphans`.

@@ -58,6 +58,14 @@ Tear down with the same profile used at `up` time.
 The UI is served at `https://localhost:7860/` by default, or
 `http://localhost:7860/` when `PIPELINE_TLS=false`.
 
+## Tunables
+
+| Env var | Default | Purpose |
+| --- | --- | --- |
+| `CHAT_HISTORY_RECENT_TURNS` | `20` | Number of recent non-prompt messages retained in the Talker context window |
+| `THINKER_FILLER_THRESHOLD_SECONDS` | `0.3` | Delay before optional `call_thinker.filler_text` is spoken while Thinker work is still running |
+| `THINKER_TOOL_TIMEOUT_SECONDS` | `30.0` | Timeout for `call_thinker` / `cancel_thinker` tool handlers |
+
 ## Import convention
 
 Top-level `src/` is on `PYTHONPATH`, so imports should use:
