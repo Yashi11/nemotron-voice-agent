@@ -69,7 +69,7 @@ def init_db() -> None:
     try:
         apply_schema(conn)
         if is_empty(conn):
-            from cascaded.agentic_airline.booking_server.seed import seed_all
+            from cascaded.thinker_talker.airline.database.seed import seed_all
 
             logger.info(f"booking db empty at {db_path()}, seeding fixtures")
             seed_all(conn)

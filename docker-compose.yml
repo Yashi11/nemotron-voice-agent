@@ -34,6 +34,7 @@ name: nemotron-voice-agent
 #   docker compose --profile cascaded-multilingual/dgx-spark up
 #   docker compose --profile cascaded-omni/workstation up
 #   docker compose --profile cascaded-omni/dgx-spark up
+#   docker compose --profile cascaded-thinker-talker/workstation up
 #
 # Observability profiles compose orthogonally with any recipe:
 #   docker compose --profile <recipe> --profile tracing up   # Phoenix OTel
@@ -50,7 +51,7 @@ include:
   - path: docker/docker-compose.speech-jetson.yaml
   - path: docker/docker-compose.coturn.yaml
   - path: docker/docker-compose.phoenix.yaml
-  - path: src/cascaded/agentic_airline/docker-compose.yml
+  - path: src/cascaded/thinker_talker/airline/database/docker-compose.yml
 
 x-app: &app-base
   build:
@@ -120,6 +121,7 @@ services:
     <<: *app-base
     profiles:
       - cascaded-thinker-talker
+      - cascaded-thinker-talker/workstation
     environment:
       APP_RUNTIME: container
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded-thinker-talker/all}

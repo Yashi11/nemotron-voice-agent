@@ -27,7 +27,7 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 
 ## Instructions
 
-1. Identify the active example by inspecting the running app container (`cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, or `speech-to-speech`). Each example has its own catalog under `src/<family>/<example>/`.
+1. Identify the active example by inspecting the running app container (`cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, `cascaded-thinker-talker`, or `speech-to-speech`). Each example has its own catalog under `src/<family>/<example>/`.
 
 2. Edit the smallest configuration surface that satisfies the request:
    - `.env`: feature flags, tracing, S2S settings, chat history, audio debugging, and buffering.
@@ -37,7 +37,7 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 
 3. Validate:
    - Multilingual prompts must use multilingual-capable ASR and TTS from the active catalog (e.g. `magpie-tts`, `parakeet-rnnt`). Verify the keys exist before referencing them.
-   - Local catalog endpoints must use Compose service names (`asr-service:50052`, `tts-service:50051`, `nvidia-llm:8000`, `nvidia-llm-vllm:8000`, `nvidia-llm-vllm-omni:8002`, `nemotron-speech:50051`). Host-run backends auto-rewrite to the matching `localhost` ports.
+   - Local catalog endpoints must use Compose service names (`asr-service:50052`, `tts-service:50051`, `nvidia-llm:8000`, `nvidia-llm-vllm:8000`, `nvidia-llm-vllm-omni:8002`, `nemotron-speech:50051`, `booking-server:8001`). Host-run backends auto-rewrite to the matching `localhost` ports.
    - ASR/TTS variants are selected via Compose profile (e.g. `parakeet-ctc-asr`, `parakeet-rnnt-asr`).
    - Workstation local Compose runs ASR/TTS and NIM LLM on GPU `0` by default. Single-GPU deployments are supported only when at least 80 GB of VRAM is available.
 

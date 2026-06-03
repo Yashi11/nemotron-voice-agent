@@ -3,6 +3,7 @@ services:
     profiles:
       - cascaded-generic/workstation
       - cascaded-generic/dgx-spark
+      - cascaded-thinker-talker/workstation
     image: nvcr.io/nim/nvidia/nemotron-asr-streaming:1.0.0
     user: "0:0"
     environment:

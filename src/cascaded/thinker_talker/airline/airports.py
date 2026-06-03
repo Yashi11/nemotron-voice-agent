@@ -41,11 +41,34 @@ AIRPORT_SPOKEN_NAMES: dict[str, str] = {
     "LAS": "Las Vegas",
 }
 
+AIRPORT_CITY_ALIASES: dict[str, str] = {
+    "boston": "BOS",
+    "chicago": "ORD",
+    "dallas": "DFW",
+    "dallas fort worth": "DFW",
+    "denver": "DEN",
+    "las vegas": "LAS",
+    "los angeles": "LAX",
+    "la": "LAX",
+    "miami": "MIA",
+    "new york": "JFK",
+    "new york city": "JFK",
+    "nyc": "JFK",
+    "newark": "EWR",
+    "phoenix": "PHX",
+    "salt lake city": "SLC",
+    "san francisco": "SFO",
+    "seattle": "SEA",
+}
+
 
 def iata_code(value: str) -> str | None:
-    """Return a normalized IATA code when ``value`` is already a code."""
-    code = value.strip().upper()
-    return code if len(code) == 3 and code.isalpha() else None
+    """Return a normalized IATA code for a code or known route city."""
+    normalized = value.strip()
+    code = normalized.upper()
+    if len(code) == 3 and code.isalpha():
+        return code
+    return AIRPORT_CITY_ALIASES.get(normalized.lower())
 
 
 def airport_display_name(code: str) -> str:
@@ -66,5 +89,5 @@ def spoken_time(iso_timestamp: str) -> str:
         timestamp = datetime.fromisoformat(iso_timestamp)
     except ValueError:
         return iso_timestamp
-    hour = timestamp.strftime("%I").lstrip("0") or "12"
+    hour = str(int(timestamp.strftime("%I")))
     return f"{hour}:{timestamp:%M} {timestamp:%p}"

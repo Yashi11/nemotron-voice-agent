@@ -1,118 +1,24 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-"""Booking backend clients for the independent Thinker/Talker example."""
+"""Booking-server row transformation helpers for the Thinker/Talker example."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import date, datetime, timedelta
-from typing import Any, Protocol
+from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
-import httpx
-
-from cascaded.thinker_talker.airports import airport_display_name
+from cascaded.thinker_talker.airline.airports import airport_display_name
 
 
-class BookingBackend(Protocol):
-    """Backend interface used by the Thinker internal tools."""
-
-    async def search_flights(
-        self,
-        *,
-        origin: str,
-        destination: str,
-        travel_date: str,
-        sorting: str | None = None,
-    ) -> list[dict[str, Any]]:
-        """Return matching flight options."""
-
-    async def create_booking(
-        self,
-        *,
-        passenger_name: str | None,
-        flight: dict[str, Any],
-        seat_pref: str | None = None,
-        meal_pref: str | None = None,
-    ) -> dict[str, Any] | None:
-        """Create a booking for ``flight``."""
-
-    async def get_pnr(self, pnr_code: str) -> dict[str, Any] | None:
-        """Return a booking record by PNR."""
-
-
-class HTTPBookingBackend:
-    """HTTP client for the shared booking-server sidecar."""
-
-    def __init__(self, base_url: str, *, timeout: float = 10.0) -> None:
-        """Create a backend client for ``base_url``."""
-        self._base_url = base_url.rstrip("/")
-        self._timeout = timeout
-
-    async def search_flights(
-        self,
-        *,
-        origin: str,
-        destination: str,
-        travel_date: str,
-        sorting: str | None = None,
-    ) -> list[dict[str, Any]]:
-        """Return flights from the booking server."""
-        async with httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout) as client:
-            response = await client.get(
-                "/flights",
-                params={"origin": origin, "destination": destination, "date": travel_date},
-            )
-        response.raise_for_status()
-        rows = response.json()
-        flights = [_server_flight_to_option(row, fallback_date=travel_date) for row in rows if isinstance(row, dict)]
-        return _sort_flights(_unique_flights(flights), sorting)[:5]
-
-    async def create_booking(
-        self,
-        *,
-        passenger_name: str | None,
-        flight: dict[str, Any],
-        seat_pref: str | None = None,
-        meal_pref: str | None = None,
-    ) -> dict[str, Any] | None:
-        """Create a PNR through the booking server."""
-        payload = {
-            "passenger": passenger_name or "Guest",
-            "origin": flight["origin_airport"],
-            "destination": flight["dest_airport"],
-            "flight_number": flight["flight_id"],
-            "departure": flight.get("departure_time"),
-            "seat": seat_pref,
-            "meal": meal_pref,
-        }
-        async with httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout) as client:
-            response = await client.post("/pnrs", json={key: value for key, value in payload.items() if value})
-        if response.status_code == 404:
-            return None
-        response.raise_for_status()
-        return _server_booking_to_record(
-            response.json(),
-            flight=flight,
-            passenger_name=passenger_name,
-            seat_pref=seat_pref,
-            meal_pref=meal_pref,
-        )
-
-    async def get_pnr(self, pnr_code: str) -> dict[str, Any] | None:
-        """Look up PNR status through the booking server."""
-        async with httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout) as client:
-            response = await client.get(f"/pnrs/{pnr_code.strip().upper()}")
-        if response.status_code == 404:
-            return None
-        response.raise_for_status()
-        return _server_pnr_to_record(response.json())
-
-
-def _server_flight_to_option(row: dict[str, Any], *, fallback_date: str) -> dict[str, Any]:
-    departure, arrival = _materialize_timestamps(
-        str(row.get("departure") or ""),
-        str(row.get("arrival") or ""),
+def server_flight_to_option(row: dict[str, Any], *, fallback_date: str) -> dict[str, Any]:
+    """Convert a booking-server flight row into a Thinker flight option."""
+    raw_departure = row.get("departure")
+    raw_arrival = row.get("arrival")
+    departure, arrival = materialize_timestamps(
+        "" if raw_departure is None else str(raw_departure),
+        "" if raw_arrival is None else str(raw_arrival),
         fallback_date,
     )
     origin = str(row.get("origin") or "").upper()
@@ -127,13 +33,13 @@ def _server_flight_to_option(row: dict[str, Any], *, fallback_date: str) -> dict
         "date": departure[:10] or fallback_date,
         "departure_time": departure,
         "arrival_time": arrival,
-        "duration_minutes": 0,
+        "duration_minutes": duration_minutes(departure, arrival),
         "price_usd": None,
         "cabin": row.get("cabin"),
     }
 
 
-def _materialize_timestamps(departure: str, arrival: str, travel_date: str) -> tuple[str, str]:
+def materialize_timestamps(departure: str, arrival: str, travel_date: str) -> tuple[str, str]:
     """Move seed timestamps onto ``travel_date`` while preserving duration."""
     if not departure or "T" not in departure:
         return departure, arrival
@@ -156,7 +62,39 @@ def _materialize_timestamps(departure: str, arrival: str, travel_date: str) -> t
         return materialized_departure, materialized_arrival
 
 
-def _unique_flights(flights: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+def duration_minutes(departure: str | int | float | None, arrival: str | int | float | None) -> int:
+    """Return non-negative whole minutes between departure and arrival."""
+    departure_dt = parse_timestamp(departure)
+    arrival_dt = parse_timestamp(arrival)
+    if departure_dt is None or arrival_dt is None:
+        return 0
+    delta = arrival_dt - departure_dt
+    if delta.total_seconds() < 0:
+        delta += timedelta(days=1)
+    return max(0, int(delta.total_seconds() / 60))
+
+
+def parse_timestamp(value: str | int | float | None) -> datetime | None:
+    """Parse ISO or epoch timestamps into UTC datetimes."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value, UTC)
+    text = value.strip()
+    if not text:
+        return None
+    try:
+        if text.isdigit():
+            return datetime.fromtimestamp(int(text), UTC)
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except (OSError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def unique_flights(flights: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
     """Collapse repeated daily seed rows into one option per flight/time."""
     unique: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str, str]] = set()
@@ -174,7 +112,7 @@ def _unique_flights(flights: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
     return unique
 
 
-def _server_booking_to_record(
+def server_booking_to_record(
     data: dict[str, Any],
     *,
     flight: dict[str, Any],
@@ -182,6 +120,7 @@ def _server_booking_to_record(
     seat_pref: str | None,
     meal_pref: str | None,
 ) -> dict[str, Any]:
+    """Convert a booking-server PNR creation response into a Thinker record."""
     pnr = str(data.get("pnr") or "").upper()
     response_passenger = str(data.get("passenger") or "").strip()
     provided_passenger = str(passenger_name or "").strip()
@@ -203,7 +142,8 @@ def _server_booking_to_record(
     }
 
 
-def _server_pnr_to_record(data: dict[str, Any]) -> dict[str, Any]:
+def server_pnr_to_record(data: dict[str, Any]) -> dict[str, Any]:
+    """Convert a booking-server PNR lookup response into a Thinker record."""
     origin = str(data.get("origin") or "").upper()
     destination = str(data.get("destination") or "").upper()
     ancillaries = data.get("ancillaries") if isinstance(data.get("ancillaries"), dict) else {}
@@ -222,9 +162,22 @@ def _server_pnr_to_record(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _sort_flights(flights: Sequence[dict[str, Any]], sorting: str | None) -> list[dict[str, Any]]:
+def sort_flights(flights: Sequence[dict[str, Any]], sorting: str | None) -> list[dict[str, Any]]:
+    """Sort flight options according to planner/user preference."""
     if sorting == "departure_time":
         return sorted(flights, key=lambda item: str(item.get("departure_time") or ""))
     if sorting == "duration":
         return sorted(flights, key=lambda item: int(item.get("duration_minutes") or 0))
     return sorted(flights, key=lambda item: int(item.get("price_usd") or 0))
+
+
+# Backwards-compatible aliases for tests and any local callers using the old
+# private names during the module split.
+_server_flight_to_option = server_flight_to_option
+_materialize_timestamps = materialize_timestamps
+_duration_minutes = duration_minutes
+_parse_timestamp = parse_timestamp
+_unique_flights = unique_flights
+_server_booking_to_record = server_booking_to_record
+_server_pnr_to_record = server_pnr_to_record
+_sort_flights = sort_flights
