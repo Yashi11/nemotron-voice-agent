@@ -39,6 +39,7 @@ Pick one **recipe** profile. Cloud recipes use `<family>`. On-prem recipes use `
 | `cascaded-generic` | None | NVIDIA cloud ASR + LLM + TTS (Generic Assistant) |
 | `cascaded-multilingual` | None | NVIDIA cloud multilingual ASR + LLM + TTS |
 | `cascaded-omni` | None | NVIDIA cloud Nemotron Omni (ASR + LLM in one model) + Magpie TTS |
+| `cascaded-thinker-talker` | None | NVIDIA cloud ASR + Talker LLM + Thinker LLM + TTS, plus local booking-server sidecar |
 | `speech-to-speech` | None | NVIDIA Voice Chat (S2S) over NVCF |
 | `cascaded-generic/workstation` | 1 GPU (~80 GB VRAM) | Local NIM ASR + TTS + LLM |
 | `cascaded-generic/dgx-spark` | 1 GPU, 128 GB unified memory | Local NIM ASR + TTS + vLLM LLM |
@@ -47,6 +48,7 @@ Pick one **recipe** profile. Cloud recipes use `<family>`. On-prem recipes use `
 | `cascaded-multilingual/dgx-spark` | 1 GPU, 128 GB unified memory | Local Parakeet RNNT ASR + Magpie TTS + vLLM LLM |
 | `cascaded-omni/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
 | `cascaded-omni/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
+| `cascaded-thinker-talker/workstation` | 1 GPU (~80 GB VRAM) | Local NIM ASR + TTS + Talker/Thinker LLM, plus local booking-server sidecar |
 
 > Observability profiles (`tracing`, `turn`) can be added alongside any recipe.
 
@@ -89,7 +91,7 @@ Start the application following these steps.
     docker compose --profile cascaded-generic up -d
     ```
 
-    > **Note:** Deployment may take 30–60 minutes on first run. The example above runs the Generic Cascaded pipeline against NVIDIA cloud APIs. Swap the recipe profile (e.g. `cascaded-multilingual`, `cascaded-generic/workstation`, `speech-to-speech`) to deploy a different stack. Each compose deployment is locked to a single recipe.
+    > **Note:** Deployment may take 30–60 minutes on first run. The example above runs the Generic Cascaded pipeline against NVIDIA cloud APIs. Swap the recipe profile (e.g. `cascaded-multilingual`, `cascaded-thinker-talker`, `cascaded-generic/workstation`, `cascaded-thinker-talker/workstation`, `speech-to-speech`) to deploy a different stack. Each compose deployment is locked to a single recipe.
 
 5. Access the application at `https://<machine-ip>:7860`. Set `PIPELINE_TLS=false` in `.env` to use `http://<machine-ip>:7860`.
 

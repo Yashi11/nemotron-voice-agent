@@ -16,12 +16,13 @@ Required `.env` keys:
 
 ## Workstation
 
-Recipes: `cascaded-generic/workstation`, `cascaded-multilingual/workstation`, `cascaded-omni/workstation`.
+Recipes: `cascaded-generic/workstation`, `cascaded-multilingual/workstation`, `cascaded-omni/workstation`, `cascaded-thinker-talker/workstation`.
 
 Services depend on the recipe:
 - `cascaded-generic/workstation`: `cascaded-generic`, `nvidia-llm`, `asr-service`, `tts-service`
 - `cascaded-multilingual/workstation`: `cascaded-multilingual`, `nvidia-llm`, `parakeet-rnnt-asr`, `tts-service`
 - `cascaded-omni/workstation`: `cascaded-omni`, `nvidia-llm-vllm-omni`, `tts-service`
+- `cascaded-thinker-talker/workstation`: `cascaded-thinker-talker`, `booking-server`, `nvidia-llm`, `asr-service`, `tts-service`
 
 Requires enough GPU VRAM for the selected local NIM services. Single-GPU hosts are valid when capacity is sufficient. Multi-GPU hosts may split ASR/TTS and LLM across devices.
 
@@ -30,6 +31,7 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
 docker compose --profile cascaded-generic/workstation up -d
 # or: docker compose --profile cascaded-multilingual/workstation up -d
 # or: docker compose --profile cascaded-omni/workstation up -d
+# or: docker compose --profile cascaded-thinker-talker/workstation up -d
 ```
 
 ## DGX Spark

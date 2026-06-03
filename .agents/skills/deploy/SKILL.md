@@ -52,6 +52,7 @@ Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that 
 | Cloud-only Generic Cascaded | `cascaded-generic` |
 | Cloud-only Omni Assistant | `cascaded-omni` |
 | Cloud-only Omni Assistant Subagents | `cascaded-omni` |
+| Cloud-only Thinker/Talker Airline Assistant | `cascaded-thinker-talker` |
 | Cloud-only Speech-to-Speech | `speech-to-speech` |
 | Generic Cascaded on a workstation | `cascaded-generic/workstation` |
 | Generic Cascaded on DGX Spark | `cascaded-generic/dgx-spark` |
@@ -59,6 +60,7 @@ Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that 
 | Omni Assistant on a workstation | `cascaded-omni/workstation` |
 | Omni Assistant on DGX Spark | `cascaded-omni/dgx-spark` |
 | Omni Assistant Subagents on DGX Spark | `cascaded-omni/dgx-spark` |
+| Thinker/Talker Airline Assistant on a workstation | `cascaded-thinker-talker/workstation` |
 
 
 For any on-prem recipe, log in to `nvcr.io` first.
@@ -78,7 +80,7 @@ docker compose ps
 docker compose logs --tail 200 <service-name>
 ```
 
-App service names follow the active recipe family: `cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, or `speech-to-speech`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `asr-service`, `tts-service`, `nemotron-speech`).
+App service names follow the active recipe family: `cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, `cascaded-thinker-talker`, or `speech-to-speech`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `asr-service`, `tts-service`, `nemotron-speech`, `booking-server`).
 
 ## References
 
@@ -86,3 +88,4 @@ App service names follow the active recipe family: `cascaded-generic`, `cascaded
 - Generic-only deploy: `references/generic-deploy.md`
 - Omni Assistant deploy: `references/omni-assistant-deploy.md`
 - Omni Assistant Subagents deploy: `references/omni-assistant-subagents-deploy.md`
+- Thinker/Talker deploy: `references/thinker-talker-deploy.md`

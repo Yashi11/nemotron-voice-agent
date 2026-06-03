@@ -22,6 +22,7 @@ Before you begin, ensure you have the following:
 | `cascaded-generic` | None (cloud) | Generic Cascaded pipeline (Generic Assistant) |
 | `cascaded-multilingual` | None (cloud) | Multilingual Cascaded pipeline |
 | `cascaded-omni` | None (cloud) | Nemotron Omni (single-model ASR + LLM) + Magpie TTS |
+| `cascaded-thinker-talker` | None (cloud) | Thinker/Talker airline pipeline with local booking-server sidecar |
 | `speech-to-speech` | None (cloud) | NVIDIA Voice Chat (S2S) |
 | `cascaded-generic/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + NIM LLM |
 | `cascaded-generic/dgx-spark` | 1 GPU, 128 GB unified memory | NIM ASR + TTS + vLLM LLM |
@@ -30,6 +31,7 @@ Before you begin, ensure you have the following:
 | `cascaded-multilingual/dgx-spark` | 1 GPU, 128 GB unified memory | Parakeet RNNT ASR + Magpie TTS + vLLM LLM |
 | `cascaded-omni/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
 | `cascaded-omni/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
+| `cascaded-thinker-talker/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + Talker/Thinker NIM LLM, plus local booking-server sidecar |
 | `tracing` | Optional overlay | Phoenix OTel collector |
 | `turn` | Optional overlay | coturn TURN server |
 
@@ -72,6 +74,7 @@ Before you begin, ensure you have the following:
     docker compose --profile cascaded-generic up -d         # Generic Cascaded
     docker compose --profile cascaded-multilingual up -d    # Multilingual Cascaded
     docker compose --profile cascaded-omni up -d            # Nemotron Omni Assistant
+    docker compose --profile cascaded-thinker-talker up -d  # Thinker/Talker Airline Assistant
     docker compose --profile speech-to-speech up -d         # NVIDIA Voice Chat (S2S)
     ```
 
@@ -121,6 +124,9 @@ docker compose --profile cascaded-omni/workstation up -d
 
 # Omni Assistant — local Omni vLLM + NIM TTS on DGX Spark
 docker compose --profile cascaded-omni/dgx-spark up -d
+
+# Thinker/Talker Airline Assistant — workstation (local NIM ASR / TTS / LLM + booking server)
+docker compose --profile cascaded-thinker-talker/workstation up -d
 ```
 
 List compatible LLM NIM profiles for your hardware:

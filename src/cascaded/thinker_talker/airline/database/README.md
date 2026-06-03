@@ -151,7 +151,7 @@ airports automatically.
 ```bash
 # Demo mode — wipe and reseed
 rm -f data/bookings.db
-PYTHONPATH=src uv run python3 -m cascaded.agentic_airline.booking_server.server
+PYTHONPATH=src uv run python3 -m cascaded.thinker_talker.airline.database.server
 # → seeds 6,701 flights + 11 PNRs on first boot
 #   (6,690 from flights.jsonl + 11 PNR-fixture flights inserted as separate rows)
 ```

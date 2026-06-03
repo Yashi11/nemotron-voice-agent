@@ -103,6 +103,7 @@ docker compose --profile cascaded-generic/dgx-spark up -d
 docker compose --profile cascaded-generic/jetson-thor up -d
 docker compose --profile cascaded-omni/workstation up -d
 docker compose --profile cascaded-omni/dgx-spark up -d
+docker compose --profile cascaded-thinker-talker/workstation up -d
 ```
 
 Running a cloud-only profile (e.g. `--profile cascaded-generic`) stays cloud-only and uses just `services.cloud.yaml`.

@@ -6,24 +6,30 @@
 import asyncio
 import sqlite3
 import unittest
+from contextlib import suppress
 from datetime import date
 from typing import Any
 
 from pipecat.frames.frames import LLMFullResponseEndFrame, LLMFullResponseStartFrame, LLMTextFrame
 from pipecat.services.llm_service import FunctionCallParams
 
-from cascaded.agentic_airline.booking_server.api import BookingAPI
-from cascaded.agentic_airline.booking_server.db import apply_schema
-from cascaded.thinker_talker.backend import _server_booking_to_record
-from cascaded.thinker_talker.protocol import ThinkerLifecycleEvent, is_speakable_payload
-from cascaded.thinker_talker.thinker import ThinkerBackend
-from cascaded.thinker_talker.tool_handlers import (
+from cascaded.thinker_talker.airline.airports import spoken_time
+from cascaded.thinker_talker.airline.database.api import BookingAPI
+from cascaded.thinker_talker.airline.database.db import apply_schema
+from cascaded.thinker_talker.airline.state import MAX_LIFECYCLE_EVENTS, ThinkerSessionState
+from cascaded.thinker_talker.airline.thinker import ThinkerBackend
+from cascaded.thinker_talker.airline.tools import CALL_THINKER_TOOL, CANCEL_THINKER_TOOL
+from cascaded.thinker_talker.airline.transform import _server_booking_to_record, _server_flight_to_option
+from cascaded.thinker_talker.src.protocol import ThinkerLifecycleEvent, is_speakable_payload
+from cascaded.thinker_talker.src.tool_handlers import (
     _emit_talker_response,
     _normalize_arguments,
     build_handlers,
 )
-from cascaded.thinker_talker.tools import CALL_THINKER_TOOL, CANCEL_THINKER_TOOL
-from cascaded.thinker_talker.tts_filter import ThinkerTalkerPronunciationTextFilter, ThinkerTalkerSpeechTextFilter
+from cascaded.thinker_talker.src.tts_filter import (
+    ThinkerTalkerPronunciationTextFilter,
+    ThinkerTalkerSpeechTextFilter,
+)
 
 
 def _today() -> date:
@@ -210,6 +216,41 @@ class _ConcurrentBackend(_TestBookingBackend):
         return await super().get_pnr(pnr_code)
 
 
+class _FailingBookingBackend(_TestBookingBackend):
+    async def create_booking(self, **kwargs):
+        raise RuntimeError("booking backend unavailable")
+
+    async def get_pnr(self, pnr_code: str) -> dict[str, Any] | None:
+        raise RuntimeError("pnr backend unavailable")
+
+
+class _PartiallyFailingBackend(_TestBookingBackend):
+    async def get_pnr(self, pnr_code: str) -> dict[str, Any] | None:
+        raise RuntimeError("pnr backend unavailable")
+
+
+class _BlockingCreateBackend(_TestBookingBackend):
+    def __init__(self) -> None:
+        super().__init__()
+        self.create_started = asyncio.Event()
+
+    async def create_booking(self, **kwargs):
+        self.create_started.set()
+        await asyncio.sleep(10)
+        return await super().create_booking(**kwargs)
+
+
+class _RaisingThinker:
+    async def call(self, query: str, slots: dict[str, Any] | None = None, *, on_started=None) -> dict[str, Any]:
+        raise RuntimeError("thinker exploded")
+
+    def cancel_active(self, reason: str = "new_user_query") -> bool:
+        return False
+
+    def cancel_pending_booking(self) -> bool:
+        return False
+
+
 class _FrameCapturingLLM:
     def __init__(self) -> None:
         self.frames = []
@@ -290,6 +331,41 @@ def _has_route_fields(slots: dict[str, Any]) -> bool:
 
 
 class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
+    def test_spoken_time_preserves_ten_oclock_hours(self) -> None:
+        self.assertEqual(spoken_time("2026-05-26T10:05:00"), "10:05 AM")
+        self.assertEqual(spoken_time("2026-05-26T22:45:00"), "10:45 PM")
+        self.assertEqual(spoken_time("not-a-timestamp"), "not-a-timestamp")
+
+    def test_server_flight_options_compute_duration_minutes(self) -> None:
+        daytime = _server_flight_to_option(
+            {
+                "flight_number": "AA2116",
+                "origin": "JFK",
+                "destination": "SEA",
+                "departure": "2026-04-22T08:00:00",
+                "arrival": "2026-04-22T13:57:00",
+            },
+            fallback_date="2026-05-26",
+        )
+        overnight = _server_flight_to_option(
+            {
+                "flight_number": "AA2117",
+                "origin": "JFK",
+                "destination": "SEA",
+                "departure": "2026-04-22T23:30:00",
+                "arrival": "2026-04-22T01:00:00",
+            },
+            fallback_date="2026-05-26",
+        )
+        epoch = _server_flight_to_option(
+            {"flight_number": "AA2118", "origin": "JFK", "destination": "SEA", "departure": 0, "arrival": 5400},
+            fallback_date="2026-05-26",
+        )
+
+        self.assertEqual(daytime["duration_minutes"], 357)
+        self.assertEqual(overnight["duration_minutes"], 90)
+        self.assertEqual(epoch["duration_minutes"], 90)
+
     async def test_tts_filter_strips_asterisks_and_keeps_base_cleanup(self) -> None:
         filtered = await ThinkerTalkerSpeechTextFilter().filter("PNR **ABC123** <break> {AA123}")
 
@@ -318,6 +394,15 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(started.marker, "ThinkerStarted")
         self.assertFalse(started.speakable)
         self.assertNotIn("ThinkerStarted", payload["response_text"])
+
+    def test_lifecycle_history_is_bounded(self) -> None:
+        state = ThinkerSessionState()
+
+        for index in range(MAX_LIFECYCLE_EVENTS + 3):
+            state.add_event(ThinkerLifecycleEvent(marker="ThinkerStarted", call_id=str(index)))
+
+        self.assertEqual(len(state.lifecycle_events), MAX_LIFECYCLE_EVENTS)
+        self.assertEqual(state.lifecycle_events[0].call_id, "3")
 
     async def test_flight_search_then_selected_flight_booking_happy_path(self) -> None:
         thinker = _make_thinker()
@@ -440,6 +525,83 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(booked["data"]["booking"]["seat_pref"], "window")
         self.assertEqual(booked["data"]["booking"]["meal_pref"], "vegetarian")
 
+    async def test_waiting_for_preferences_name_update_stays_in_preferences_state(self) -> None:
+        thinker = _make_thinker()
+
+        await thinker.call(
+            "Search flights from New York to Seattle tomorrow",
+            slots={
+                "origin_airport": "JFK",
+                "dest_airport": "SEA",
+                "date": "2026-05-26",
+            },
+        )
+        await thinker.call("I want flight 1", slots={"flight_selected": "1"})
+
+        payload = await thinker.call("The passenger name is Ava Chen", slots={"passenger_name": "Ava Chen"})
+
+        self.assertEqual(payload["type"], "response_hint")
+        self.assertEqual(payload["reason"], "params_optional")
+        self.assertEqual(payload["action"], "req_params")
+        self.assertEqual(thinker.state.booking_draft.passenger_name, "Ava Chen")
+        self.assertTrue(thinker.state.waiting_for_preferences)
+        self.assertFalse(thinker.state.waiting_for_confirmation)
+
+    async def test_flight_change_while_waiting_for_preferences_keeps_preferences_prompt(self) -> None:
+        thinker = _make_thinker()
+
+        await thinker.call(
+            "Search flights from New York to Seattle tomorrow",
+            slots={
+                "origin_airport": "JFK",
+                "dest_airport": "SEA",
+                "date": "2026-05-26",
+            },
+        )
+        await thinker.call("I want flight 1", slots={"flight_selected": "1"})
+
+        payload = await thinker.call("Actually make it the second flight", slots={"flight_selected": "2"})
+
+        self.assertEqual(payload["type"], "response_hint")
+        self.assertEqual(payload["reason"], "params_optional")
+        self.assertEqual(thinker.state.booking_draft.flight["flight_id"], "AA315")
+        self.assertTrue(thinker.state.waiting_for_preferences)
+        self.assertFalse(thinker.state.waiting_for_confirmation)
+
+    async def test_confirmation_includes_user_provided_passenger_name_only(self) -> None:
+        thinker = _make_thinker()
+
+        await thinker.call(
+            "Search flights from New York to Seattle tomorrow",
+            slots={
+                "origin_airport": "JFK",
+                "dest_airport": "SEA",
+                "date": "2026-05-26",
+            },
+        )
+        guest_confirm = await thinker.call(
+            "Book the first one with defaults", slots={"flight_selected": "1", "use_defaults": True}
+        )
+        self.assertNotIn("passenger_name", guest_confirm["summary"])
+        self.assertNotIn("Guest", guest_confirm["response_text"])
+
+        thinker = _make_thinker()
+        await thinker.call(
+            "Search flights from New York to Seattle tomorrow",
+            slots={
+                "origin_airport": "JFK",
+                "dest_airport": "SEA",
+                "date": "2026-05-26",
+            },
+        )
+        named_confirm = await thinker.call(
+            "Book the first one for Ava Chen with defaults",
+            slots={"flight_selected": "1", "passenger_name": "Ava Chen", "use_defaults": True},
+        )
+
+        self.assertEqual(named_confirm["summary"]["passenger_name"], "Ava Chen")
+        self.assertIn("Ava Chen", named_confirm["response_text"])
+
     async def test_invalid_flight_selection_during_confirmation_clears_draft(self) -> None:
         thinker = _make_thinker()
 
@@ -475,6 +637,48 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(replacement_confirm["type"], "response_hint")
         self.assertEqual(replacement_confirm["reason"], "confirm_required")
         self.assertEqual(replacement_confirm["summary"]["flight_id"], "AA315")
+
+    async def test_cancel_thinker_clears_pending_search_and_booking_context(self) -> None:
+        thinker = _make_thinker()
+        llm = _FrameCapturingLLM()
+        results = []
+
+        await thinker.call(
+            "Search flights from New York to Seattle tomorrow",
+            slots={
+                "origin_airport": "JFK",
+                "dest_airport": "SEA",
+                "date": "2026-05-26",
+            },
+        )
+        await thinker.call("I want flight 1", slots={"flight_selected": "1"})
+
+        async def result_callback(result, *, properties=None) -> None:
+            results.append((result, properties))
+
+        params = FunctionCallParams(
+            function_name="cancel_thinker",
+            tool_call_id="cancel_test",
+            arguments={},
+            llm=llm,
+            context=None,
+            result_callback=result_callback,
+        )
+
+        await build_handlers(thinker)["cancel_thinker"](params)
+
+        self.assertEqual(results[-1][0]["reason"], "cancelled")
+        self.assertEqual(thinker.state.search_results, [])
+        self.assertEqual(thinker.state.search_context, {})
+        self.assertIsNone(thinker.state.booking_draft)
+
+        replacement_confirm = await thinker.call(
+            "Book the second one with defaults",
+            slots={"flight_selected": "2", "use_defaults": True},
+        )
+
+        self.assertEqual(replacement_confirm["type"], "response_hint")
+        self.assertEqual(replacement_confirm["action"], "req_flight_search")
 
     async def test_new_flight_search_overrides_pending_booking_confirmation(self) -> None:
         thinker = _make_thinker()
@@ -655,6 +859,28 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(llm.frames, [])
         self.assertEqual(results[-1][0]["type"], "tool_result")
 
+    async def test_call_thinker_returns_result_callback_on_backend_exception(self) -> None:
+        llm = _FrameCapturingLLM()
+        results = []
+
+        async def result_callback(result, *, properties=None) -> None:
+            results.append((result, properties))
+
+        params = FunctionCallParams(
+            function_name="call_thinker",
+            tool_call_id="call_test",
+            arguments={"query": "Search flights from New York to Seattle tomorrow"},
+            llm=llm,
+            context=None,
+            result_callback=result_callback,
+        )
+
+        await build_handlers(_RaisingThinker())["call_thinker"](params)
+
+        self.assertEqual(results[-1][0]["type"], "response_hint")
+        self.assertEqual(results[-1][0]["reason"], "tool_error")
+        self.assertIn("try again", results[-1][0]["response_text"].lower())
+
     async def test_cancel_thinker_cancels_active_call_and_suppresses_stale_result(self) -> None:
         thinker = _make_thinker(tool_delay_seconds=1.0)
         llm = _FrameCapturingLLM()
@@ -816,6 +1042,34 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(record["ancillaries"]["seat"], "WINDOW")
         self.assertEqual(record["ancillaries"]["meal"], "VGML")
 
+    def test_booking_server_rejects_invalid_departure_override(self) -> None:
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        apply_schema(conn)
+        conn.execute(
+            """
+            INSERT INTO flights (flight_number, origin, destination, departure, arrival, cabin)
+            VALUES ('AA2116', 'JFK', 'SEA', '2026-04-22T08:00:00', '2026-04-22T13:57:00', 'economy')
+            """
+        )
+        conn.commit()
+        api = BookingAPI(conn)
+
+        with self.assertRaises(ValueError):
+            api.create_booking(
+                passenger="Guest",
+                origin="JFK",
+                destination="SEA",
+                flight_number="AA2116",
+                departure="2026-05-26Tbad",
+            )
+
+        flights = conn.execute("SELECT departure FROM flights ORDER BY departure").fetchall()
+        self.assertEqual([row["departure"] for row in flights], ["2026-04-22T08:00:00"])
+        pnr_count = conn.execute("SELECT COUNT(*) AS n FROM pnrs").fetchone()
+        self.assertEqual(pnr_count["n"], 0)
+
     def test_http_booking_record_uses_passenger_name_when_available(self) -> None:
         flight = _materialize_test_flight(_TEST_FLIGHT_TEMPLATES[0], "2026-05-26")
 
@@ -884,6 +1138,40 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["type"], "tool_result")
         self.assertEqual(payload["data"]["booking"]["pnr"], "GHI789")
 
+    async def test_pnr_status_backend_error_returns_response_hint(self) -> None:
+        thinker = _make_thinker(backend=_FailingBookingBackend())
+
+        payload = await thinker.call("Check PNR ABC123", slots={"pnr_code": "ABC123"})
+
+        self.assertEqual(payload["type"], "response_hint")
+        self.assertEqual(payload["reason"], "tool_error")
+        self.assertIn("could not check", payload["response_text"].lower())
+
+    async def test_booking_backend_error_returns_response_hint_without_hanging(self) -> None:
+        thinker = _make_thinker(backend=_FailingBookingBackend())
+        thinker.state.search_results = [_materialize_test_flight(_TEST_FLIGHT_TEMPLATES[0], "2026-05-26")]
+        thinker.state.search_context = {"origin_airport": "JFK", "dest_airport": "SEA", "date": "2026-05-26"}
+
+        await thinker.call("Book the first one with defaults", slots={"flight_selected": "1", "use_defaults": True})
+        payload = await thinker.call("Yes, confirm", slots={"confirmed": True})
+
+        self.assertEqual(payload["type"], "response_hint")
+        self.assertEqual(payload["reason"], "tool_error")
+        self.assertIn("could not complete", payload["response_text"].lower())
+
+    async def test_flight_search_accepts_city_names_when_planner_omits_iata_codes(self) -> None:
+        thinker = _make_thinker()
+
+        payload = await thinker.call(
+            "Search flights from New York to Seattle tomorrow",
+            slots={"origin_city": "New York", "dest_city": "Seattle", "date": "2026-05-26"},
+        )
+
+        self.assertEqual(payload["type"], "tool_result")
+        self.assertEqual(payload["tool"], "flight_search")
+        self.assertEqual(payload["data"]["search_context"]["origin_airport"], "JFK")
+        self.assertEqual(payload["data"]["search_context"]["dest_airport"], "SEA")
+
     async def test_thinker_runs_independent_tool_calls_in_parallel(self) -> None:
         backend = _ConcurrentBackend()
         planner = _StaticPlanner(
@@ -918,6 +1206,32 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(backend.search_started.is_set())
         self.assertTrue(backend.pnr_started.is_set())
 
+    async def test_parallel_tool_calls_merge_successes_when_one_tool_fails(self) -> None:
+        planner = _StaticPlanner(
+            {
+                "tool_calls": [
+                    {
+                        "tool": "flight_search",
+                        "params": {
+                            "origin_airport": "JFK",
+                            "dest_airport": "SEA",
+                            "date": "2026-05-26",
+                        },
+                    },
+                    {"tool": "pnr_status", "params": {"pnr_code": "ABC123"}},
+                ]
+            }
+        )
+        thinker = ThinkerBackend(backend=_PartiallyFailingBackend(), planner=planner, today_provider=_today)
+
+        payload = await thinker.call("Search New York to Seattle and check PNR ABC123")
+
+        self.assertEqual(payload["type"], "response_hint")
+        self.assertEqual(payload["context"], "multi_tool")
+        self.assertEqual(len(payload["data"]["results"]), 2)
+        self.assertEqual(payload["data"]["results"][0]["tool"], "flight_search")
+        self.assertEqual(payload["data"]["results"][1]["reason"], "tool_error")
+
     async def test_abort_records_internal_marker_and_does_not_return_speakable_payload(self) -> None:
         thinker = _make_thinker(tool_delay_seconds=1.0)
 
@@ -940,6 +1254,105 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
         aborted = [event for event in thinker.state.lifecycle_events if event.marker == "ThinkerAborted"]
         self.assertEqual(len(aborted), 1)
         self.assertFalse(aborted[0].speakable)
+
+    async def test_new_call_waits_for_previous_cancellation_before_started_callback(self) -> None:
+        thinker = _make_thinker(tool_delay_seconds=0.1)
+        first_call = asyncio.create_task(
+            thinker.call(
+                "Search flights from New York to Seattle tomorrow",
+                slots={
+                    "origin_airport": "JFK",
+                    "dest_airport": "SEA",
+                    "date": "2026-05-26",
+                },
+            )
+        )
+        await asyncio.sleep(0)
+        self.assertIsNotNone(thinker.state.active_task)
+
+        started_call_ids = []
+        observed_active_call_ids = []
+
+        async def on_started(event: ThinkerLifecycleEvent) -> None:
+            started_call_ids.append(event.call_id)
+            await asyncio.sleep(0)
+            observed_active_call_ids.append(thinker.state.active_call_id)
+
+        payload = await thinker.call(
+            "Search flights from San Francisco to Los Angeles tomorrow",
+            slots={
+                "origin_airport": "SFO",
+                "dest_airport": "LAX",
+                "date": "2026-05-26",
+            },
+            on_started=on_started,
+        )
+
+        with self.assertRaises(asyncio.CancelledError):
+            await first_call
+        self.assertEqual(observed_active_call_ids, started_call_ids)
+        self.assertEqual(payload["type"], "tool_result")
+        self.assertEqual(payload["tool"], "flight_search")
+
+    async def test_current_call_cancellation_not_swallowed_while_waiting_for_previous_task(self) -> None:
+        thinker = _make_thinker()
+        previous_cancellation_started = asyncio.Event()
+
+        async def slow_previous_task() -> None:
+            try:
+                await asyncio.sleep(10)
+            except asyncio.CancelledError:
+                previous_cancellation_started.set()
+                await asyncio.sleep(10)
+                raise
+
+        previous_task = asyncio.create_task(slow_previous_task())
+        thinker.state.active_task = previous_task
+        thinker.state.active_call_id = "previous"
+
+        current_call = asyncio.create_task(
+            thinker.call(
+                "Search flights from New York to Seattle tomorrow",
+                slots={
+                    "origin_airport": "JFK",
+                    "dest_airport": "SEA",
+                    "date": "2026-05-26",
+                },
+            )
+        )
+        await previous_cancellation_started.wait()
+        current_call.cancel()
+
+        with self.assertRaises(asyncio.CancelledError):
+            await current_call
+        self.assertEqual(thinker.state.lifecycle_events, [])
+        self.assertIs(thinker.state.active_task, previous_task)
+        previous_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await previous_task
+
+    async def test_booking_finalization_cancellation_clears_pending_draft(self) -> None:
+        backend = _BlockingCreateBackend()
+        thinker = _make_thinker(backend=backend)
+
+        await thinker.call(
+            "Search flights from New York to Seattle tomorrow",
+            slots={
+                "origin_airport": "JFK",
+                "dest_airport": "SEA",
+                "date": "2026-05-26",
+            },
+        )
+        await thinker.call("Book the first one with defaults", slots={"flight_selected": "1", "use_defaults": True})
+        confirm_task = asyncio.create_task(thinker.call("Yes, confirm", slots={"confirmed": True}))
+        await backend.create_started.wait()
+        confirm_task.cancel()
+
+        with self.assertRaises(asyncio.CancelledError):
+            await confirm_task
+        self.assertIsNone(thinker.state.booking_draft)
+        self.assertFalse(thinker.state.waiting_for_preferences)
+        self.assertFalse(thinker.state.waiting_for_confirmation)
 
 
 if __name__ == "__main__":

@@ -1,16 +1,18 @@
 # Booking server sidecar used by the Thinker Talker airline example.
 #
 #   docker compose --profile cascaded-thinker-talker up
+#   docker compose --profile cascaded-thinker-talker/workstation up
 
 services:
   booking-server:
     profiles:
       - cascaded-thinker-talker
+      - cascaded-thinker-talker/workstation
     build:
-      context: ../../..
+      context: ../../../../..
       dockerfile: docker/Dockerfile
     image: nemotron-voice-agent:latest
-    command: ["uv", "run", "python", "-m", "cascaded.agentic_airline.booking_server.server"]
+    command: ["uv", "run", "python", "-m", "cascaded.thinker_talker.airline.database.server"]
     environment:
       APP_RUNTIME: container
       PYTHONPATH: /app/src

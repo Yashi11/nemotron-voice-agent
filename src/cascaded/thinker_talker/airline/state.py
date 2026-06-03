@@ -9,7 +9,9 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
-from cascaded.thinker_talker.protocol import ThinkerLifecycleEvent
+from cascaded.thinker_talker.src.protocol import ThinkerLifecycleEvent
+
+MAX_LIFECYCLE_EVENTS = 200
 
 
 @dataclass(slots=True)
@@ -50,6 +52,9 @@ class ThinkerSessionState:
     def add_event(self, event: ThinkerLifecycleEvent) -> None:
         """Append an internal lifecycle/history event."""
         self.lifecycle_events.append(event)
+        excess = len(self.lifecycle_events) - MAX_LIFECYCLE_EVENTS
+        if excess > 0:
+            del self.lifecycle_events[:excess]
 
     def lifecycle_as_dicts(self) -> list[dict[str, Any]]:
         """Return serializable lifecycle history."""

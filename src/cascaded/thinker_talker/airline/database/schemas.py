@@ -4,7 +4,7 @@
 """Pydantic request / response models for the booking HTTP surface.
 
 Kept intentionally loose on response bodies — most endpoints return a
-pass-through dict from :class:`cascaded.agentic_airline.booking_server.api.BookingAPI`.  Only
+pass-through dict from :class:`cascaded.thinker_talker.airline.database.api.BookingAPI`.  Only
 the mutation request bodies get strict models so invalid payloads
 fail at the boundary instead of deep in the DB layer.
 """

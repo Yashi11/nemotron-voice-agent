@@ -32,12 +32,12 @@ from pipecat.transports.base_transport import TransportParams
 from pipecat.turns.user_mute import MuteUntilFirstBotCompleteUserMuteStrategy
 
 from cascaded.shared.audio_recorder import create_audio_recorder
-from cascaded.thinker_talker.backend import HTTPBookingBackend
-from cascaded.thinker_talker.planner import NvidiaThinkerPlanner
-from cascaded.thinker_talker.thinker import ThinkerBackend
-from cascaded.thinker_talker.tool_handlers import build_handlers
-from cascaded.thinker_talker.tools import TOOLS_SCHEMA
-from cascaded.thinker_talker.tts_filter import (
+from cascaded.thinker_talker.airline.backend import HTTPBookingBackend
+from cascaded.thinker_talker.airline.thinker import ThinkerBackend
+from cascaded.thinker_talker.airline.tools import TOOLS_SCHEMA
+from cascaded.thinker_talker.src.planner import NvidiaThinkerPlanner
+from cascaded.thinker_talker.src.tool_handlers import build_handlers
+from cascaded.thinker_talker.src.tts_filter import (
     ThinkerTalkerSpeechTextFilter,
     apply_thinker_talker_pronunciation_for_tts,
 )
@@ -61,6 +61,7 @@ THINKER_PROMPT_KEY = "thinker_talker_thinker"
 THINKER_TOOL_DELAY_MIN_SECONDS = 0.1
 THINKER_TOOL_DELAY_MAX_SECONDS = 0.5
 THINKER_FILLER_THRESHOLD_SECONDS = parse_env_float("THINKER_FILLER_THRESHOLD_SECONDS", 0.3, min_value=0.0)
+THINKER_TOOL_TIMEOUT_SECONDS = parse_env_float("THINKER_TOOL_TIMEOUT_SECONDS", 30.0, min_value=1.0)
 
 
 def _build_context_messages(base_prompt: str, system_prompt: str = "") -> list[dict]:
@@ -194,12 +195,18 @@ async def bot(runner_args: RunnerArguments) -> None:
     )
     logger.info(f"Thinker tool delay: {THINKER_TOOL_DELAY_MIN_SECONDS:.3f}s-{THINKER_TOOL_DELAY_MAX_SECONDS:.3f}s")
     logger.info(f"Thinker filler threshold: {THINKER_FILLER_THRESHOLD_SECONDS:.3f}s")
+    logger.info(f"Thinker tool timeout: {THINKER_TOOL_TIMEOUT_SECONDS:.3f}s")
     for name, handler in build_handlers(
         thinker,
         filler_threshold_seconds=THINKER_FILLER_THRESHOLD_SECONDS,
     ).items():
         cancel_on_interruption = name != "call_thinker"
-        talker_llm.register_function(name, handler, cancel_on_interruption=cancel_on_interruption)
+        talker_llm.register_function(
+            name,
+            handler,
+            cancel_on_interruption=cancel_on_interruption,
+            timeout_secs=THINKER_TOOL_TIMEOUT_SECONDS,
+        )
         logger.info(f"Registered Talker tool: {name}, cancel_on_interruption={cancel_on_interruption}")
 
     # --- TTS ---

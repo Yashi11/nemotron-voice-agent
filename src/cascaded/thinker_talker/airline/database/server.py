@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-"""FastAPI layer over :class:`cascaded.agentic_airline.booking_server.api.BookingAPI`.
+"""FastAPI layer over :class:`cascaded.thinker_talker.airline.database.api.BookingAPI`.
 
 Run directly::
 
-    python -m cascaded.agentic_airline.booking_server.server
+    python -m cascaded.thinker_talker.airline.database.server
 
-or via ``uvicorn cascaded.agentic_airline.booking_server.server:app --port 8001``.
+or via ``uvicorn cascaded.thinker_talker.airline.database.server:app --port 8001``.
 
 Endpoint surface (one method per :class:`BookingAPI` call):
 
@@ -37,9 +37,9 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from loguru import logger
 
-from cascaded.agentic_airline.booking_server.api import BookingAPI
-from cascaded.agentic_airline.booking_server.db import connect, init_db
-from cascaded.agentic_airline.booking_server.schemas import (
+from cascaded.thinker_talker.airline.database.api import BookingAPI
+from cascaded.thinker_talker.airline.database.db import connect, init_db
+from cascaded.thinker_talker.airline.database.schemas import (
     ActivityEvent,
     AncillariesDiff,
     Booking,
@@ -283,4 +283,4 @@ if __name__ == "__main__":
 
     host = os.environ.get("BOOKING_HOST", "0.0.0.0")
     port = int(os.environ.get("BOOKING_PORT", "8001"))
-    uvicorn.run("cascaded.agentic_airline.booking_server.server:app", host=host, port=port, log_level="info")
+    uvicorn.run("cascaded.thinker_talker.airline.database.server:app", host=host, port=port, log_level="info")

@@ -10,7 +10,7 @@ import re
 from pipecat.utils.text.base_text_filter import BaseTextFilter
 
 from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
-from cascaded.thinker_talker.airports import AIRPORT_SPOKEN_NAMES, airport_spoken_name
+from cascaded.thinker_talker.airline.airports import AIRPORT_SPOKEN_NAMES, airport_spoken_name
 
 _PNR_ACRONYM_RE = re.compile(r"\bPNR(?:(['’])s)?\b")
 _PNR_CODE_RE = re.compile(r"\b([A-Z]{3})(\d{3})\b")

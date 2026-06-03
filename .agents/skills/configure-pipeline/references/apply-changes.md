@@ -30,12 +30,14 @@ Pick a single recipe profile (`<family>/<example>` for cloud or `<family>/<examp
 docker compose --profile cascaded-generic up -d
 docker compose --profile cascaded-multilingual up -d
 docker compose --profile cascaded-omni up -d
+docker compose --profile cascaded-thinker-talker up -d
 docker compose --profile speech-to-speech up -d
 
 # Workstation (local NIM ASR/TTS/LLM)
 docker compose --profile cascaded-generic/workstation up -d
 docker compose --profile cascaded-multilingual/workstation up -d
 docker compose --profile cascaded-omni/workstation up -d
+docker compose --profile cascaded-thinker-talker/workstation up -d
 
 # DGX Spark
 docker compose --profile cascaded-generic/dgx-spark up -d

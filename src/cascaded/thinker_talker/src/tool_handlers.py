@@ -7,19 +7,37 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 from loguru import logger
 from pipecat.frames.frames import LLMFullResponseEndFrame, LLMFullResponseStartFrame, LLMTextFrame
 from pipecat.services.llm_service import FunctionCallResultProperties
 
-from cascaded.thinker_talker.protocol import ThinkerLifecycleEvent
-from cascaded.thinker_talker.thinker import ThinkerBackend
+from cascaded.thinker_talker.src.protocol import ThinkerLifecycleEvent
 
 if TYPE_CHECKING:
     from pipecat.services.llm_service import FunctionCallParams
+
+
+class ThinkerBackend(Protocol):
+    """Minimal runtime interface required by Talker's tool handlers."""
+
+    async def call(
+        self,
+        query: str,
+        slots: dict[str, Any] | None = None,
+        *,
+        on_started: Callable[[ThinkerLifecycleEvent], Awaitable[None]] | None = None,
+    ) -> dict[str, Any]:
+        """Run one Thinker invocation."""
+
+    def cancel_active(self, reason: str = "new_user_query") -> bool:
+        """Cancel any active Thinker invocation."""
+
+    def cancel_pending_booking(self) -> bool:
+        """Cancel pending domain work that has no active task."""
 
 
 def build_handlers(thinker: ThinkerBackend, *, filler_threshold_seconds: float = 0.8) -> dict[str, Callable]:
@@ -83,6 +101,19 @@ def build_handlers(thinker: ThinkerBackend, *, filler_threshold_seconds: float =
                     "speakable": False,
                 },
                 properties=FunctionCallResultProperties(run_llm=False),
+            )
+            return
+        except Exception as exc:
+            logger.exception(f"call_thinker failed before producing a result: {exc}")
+            await params.result_callback(
+                {
+                    "type": "response_hint",
+                    "reason": "tool_error",
+                    "action": "retry",
+                    "error": str(exc),
+                    "response_text": "I could not complete that request right now. Please try again.",
+                    "context": "call_thinker",
+                }
             )
             return
         await params.result_callback(payload)
