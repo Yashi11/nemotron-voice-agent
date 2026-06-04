@@ -4,7 +4,7 @@ Use this reference from the `deploy` skill when deploying the cascaded/omni_assi
 
 ## When to use
 
-Pinning a Docker Compose deployment to the Omni Assistant example. Recipe profile names encode both the example and the hardware target. Selector modes (`cascaded/all`, `all`) are host-native only — they are not exposed as compose profiles.
+Pinning a Docker Compose deployment to the Omni Assistant example. Recipe profile names are `<family>` for cloud-only and `<family>/<hardware>` for on-prem; the `cascaded-omni` family serves both Omni examples, and the active one is resolved from `examples_registry.yaml` (not encoded in the profile name). Selector modes (`cascaded-omni/all`, `all`) are host-native only — they are not exposed as compose profiles.
 
 Per-example catalogs at `src/cascaded/omni_assistant/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active recipe.
 
@@ -21,7 +21,7 @@ docker compose --profile cascaded-omni/workstation up -d
 docker compose --profile cascaded-omni/dgx-spark up -d
 ```
 
-| Recipe profile | App service | Sidecars from `cascaded/shared/` |
+| Recipe profile | App service | Sidecars from `docker/` |
 | --- | --- | --- |
 | `cascaded-omni` | `cascaded-omni` | none (cloud NVCF) |
 | `cascaded-omni/workstation` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |

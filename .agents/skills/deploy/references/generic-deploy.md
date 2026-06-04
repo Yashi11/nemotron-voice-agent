@@ -4,7 +4,7 @@ Use this reference from the `deploy` skill when deploying the cascaded-generic v
 
 ## When to use
 
-Pinning a Docker Compose deployment to the Generic Cascaded example. Recipe profile names encode both the example and the hardware target. Selector modes (`cascaded-generic/all`, `all`) are host-native only — they are not exposed as compose profiles.
+Pinning a Docker Compose deployment to the Generic Cascaded example. Recipe profile names are `<family>` for cloud-only and `<family>/<hardware>` for on-prem (the active example is resolved from `examples_registry.yaml`, not encoded in the profile name). Selector modes (`cascaded-generic/all`, `all`) are host-native only — they are not exposed as compose profiles.
 
 Per-example catalogs at `src/cascaded/generic/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active recipe.
 
@@ -41,7 +41,7 @@ docker compose --profile <recipe> down
 ```bash
 docker run --rm --gpus all \
   -e NGC_API_KEY="$NVIDIA_API_KEY" \
-  nvcr.io/nim/nvidia/nemotron-3-nano:1.7.0-variant \
+  nvcr.io/nim/nvidia/nemotron-3-nano:2.0.5 \
   list-model-profiles
 ```
 

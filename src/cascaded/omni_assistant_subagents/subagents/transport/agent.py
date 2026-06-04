@@ -56,7 +56,7 @@ from cascaded.omni_assistant_subagents.subagents.transport.webcam_controller imp
 from cascaded.omni_assistant_subagents.subagents.webcam import WebcamAgent
 from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 from tracing import IS_TRACING_ENABLED
-from utils import load_ipa_dictionary, parse_env_bool, parse_env_float, parse_env_int
+from utils import load_ipa_dictionary, parse_env_float, parse_env_int
 from webcam_frame_store import clear_session_webcam_frames
 
 # Delay before emitting a follow-up assistant turn from a completed analyzer task.
@@ -135,7 +135,7 @@ class OmniTransportAgent(BaseAgent):
             server=self._tts_server,
             settings=NvidiaTTSSettings(voice=self._tts_voice),
             use_ssl=self._tts_ssl,
-            text_filters=[NemotronSpeechTextFilter()] if parse_env_bool("ENABLE_TTS_TEXT_FILTER", default=True) else [],
+            text_filters=[NemotronSpeechTextFilter()],
             custom_dictionary=load_ipa_dictionary(),
             stop_frame_timeout_s=parse_env_float("TTS_STOP_FRAME_TIMEOUT_S", 30.0, min_value=5.0),
         )

@@ -136,7 +136,6 @@ async def bot(runner_args: RunnerArguments) -> None:
     tts_server = body.get("tts_server", "") or default_tts.get("server", "grpc.nvcf.nvidia.com:443")
     tts_ssl = is_nvcf(tts_server)
     tts_voice = body.get("tts_voice_id", "") or default_tts.get("voice_id", "Magpie-Multilingual.EN-US.Aria")
-    enable_text_filter = parse_env_bool("ENABLE_TTS_TEXT_FILTER", default=True)
     custom_dictionary = load_ipa_dictionary()
 
     tts = NvidiaTTSService(
@@ -144,7 +143,7 @@ async def bot(runner_args: RunnerArguments) -> None:
         server=tts_server,
         settings=NvidiaTTSSettings(voice=tts_voice),
         use_ssl=tts_ssl,
-        text_filters=[NemotronSpeechTextFilter()] if enable_text_filter else [],
+        text_filters=[NemotronSpeechTextFilter()],
         custom_dictionary=custom_dictionary,
         stop_frame_timeout_s=parse_env_float("TTS_STOP_FRAME_TIMEOUT_S", 30.0, min_value=5.0),
     )

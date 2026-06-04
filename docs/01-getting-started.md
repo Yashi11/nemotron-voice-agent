@@ -48,7 +48,7 @@ Before you begin, ensure you have the following:
     cd nemotron-voice-agent
     ```
 
-2. Configure the environment. Copy the example environment file [.env.example](.env.example) to the root directory.
+2. Configure the environment. Copy the example environment file [.env.example](../.env.example) to the root directory.
 
     ```bash
     cp .env.example .env
@@ -134,7 +134,7 @@ List compatible LLM NIM profiles for your hardware:
 ```bash
 docker run --rm --gpus all \
   -e NGC_API_KEY="$NVIDIA_API_KEY" \
-  nvcr.io/nim/nvidia/nemotron-3-nano:1.7.0-variant \
+  nvcr.io/nim/nvidia/nemotron-3-nano:2.0.5 \
   list-model-profiles
 ```
 

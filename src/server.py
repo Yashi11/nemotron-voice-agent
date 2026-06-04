@@ -91,8 +91,8 @@ _CONNECT_HEALTH_TIMEOUT_SECS = 5
 _NIM_READY_PATH = "/v1/health/ready"
 _LOCAL_SERVICE_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "host.docker.internal"})
 _SPEECH_READY_ENDPOINTS = {
-    "asr": ("asr-service", 50052, 50152, 9001),
-    "tts": ("tts-service", 50051, 50151, 9000),
+    "asr": (("asr-service", "parakeet-ctc-asr", "parakeet-rnnt-asr"), 50052, 50152, 9001),
+    "tts": (("tts-service",), 50051, 50151, 9000),
 }
 _TURN_LISTEN_PORT = 3478
 _INDEX_NO_CACHE_HEADERS = {"Cache-Control": "no-store"}
@@ -339,8 +339,8 @@ def _build_ice_servers(request: Request) -> list[dict]:
 
 
 def _should_skip_tts_prewarm(example: dict) -> bool:
-    """Return whether TTS warm-up should be skipped for the active example."""
-    return example.get("family") != "cascaded"
+    """Skip TTS warm-up for examples without a ``tts`` slot (e.g. speech-to-speech)."""
+    return "tts" not in (example.get("slots") or [])
 
 
 def _service_host_port(server: str) -> tuple[str, int]:
@@ -375,13 +375,13 @@ def _local_speech_ready_url(label: str, server: str) -> str:
     """Return the NIM HTTP readiness URL for built-in local ASR/TTS endpoints."""
     host, port = _service_host_port(server)
     normalized_host = host.strip("[]").lower()
-    service_host, container_port, host_port, http_port = _SPEECH_READY_ENDPOINTS.get(
+    service_hosts, container_port, host_port, http_port = _SPEECH_READY_ENDPOINTS.get(
         label.lower(),
-        ("", 0, 0, 0),
+        ((), 0, 0, 0),
     )
 
-    if normalized_host == service_host and port == container_port:
-        return f"http://{service_host}:{http_port}{_NIM_READY_PATH}"
+    if normalized_host in service_hosts and port == container_port:
+        return f"http://{normalized_host}:{http_port}{_NIM_READY_PATH}"
     if normalized_host in _LOCAL_SERVICE_HOSTS and port == host_port:
         return f"http://{_http_host(host)}:{http_port}{_NIM_READY_PATH}"
 
@@ -404,11 +404,15 @@ def _local_llm_health_url(base_url: str, model_id: str) -> tuple[str, bool]:
         return f"{scheme}://nvidia-llm:8000{_NIM_READY_PATH}", False
     if normalized_host == "nvidia-llm-vllm" and port == 8000:
         return f"{scheme}://nvidia-llm-vllm:8000/health", False
+    if normalized_host == "nvidia-llm-vllm-omni" and port == 8002:
+        return f"{scheme}://nvidia-llm-vllm-omni:8002/health", False
 
     if normalized_host in _LOCAL_SERVICE_HOSTS and port == 18000:
         is_vllm = "30b-a3b" in model_id.lower() or "nvfp4" in model_id.lower()
         health_path = "/health" if is_vllm else _NIM_READY_PATH
         return f"{scheme}://{http_host}:18000{health_path}", False
+    if normalized_host in _LOCAL_SERVICE_HOSTS and port == 8002:
+        return f"{scheme}://{http_host}:8002/health", False
 
     return "", False
 
@@ -472,9 +476,7 @@ async def _ensure_llm_ready_for_connection(config: dict, example: dict) -> None:
 
 
 async def _ensure_asr_ready_for_connection(config: dict, example: dict) -> None:
-    """Run an ASR readiness check before starting the session."""
-    if example.get("family") != "cascaded":
-        return
+    """Run an ASR readiness check before starting the session (examples with an ``asr`` slot)."""
     if "asr" not in (example.get("slots") or []):
         return
 

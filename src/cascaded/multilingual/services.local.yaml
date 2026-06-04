@@ -1,5 +1,7 @@
-# On-prem catalog — used when `DEPLOYMENT_PLATFORM` is set explicitly to
-# `workstation`, `dgxspark`, or `jetson`.
+# On-prem catalog. Entries are grouped by platform name for readability; the
+# backend merges all sections and exposes only the reachable ones. Compose
+# endpoints are rewritten to localhost for host-native runs.
+# ASR uses the parakeet-rnnt-asr sidecar this recipe starts (not asr-service).
 
 workstation:
   llm:
@@ -18,7 +20,7 @@ workstation:
   asr:
     parakeet-rnnt:
       name: "Parakeet 1.1B RNNT Multilingual ASR"
-      server: "asr-service:50052"
+      server: "parakeet-rnnt-asr:50052"
       model: "parakeet-1.1b-rnnt-multilingual-asr"
       function_id: ""
 
@@ -39,6 +41,6 @@ dgxspark:
   asr:
     parakeet-rnnt:
       name: "Parakeet 1.1B RNNT Multilingual ASR"
-      server: "asr-service:50052"
+      server: "parakeet-rnnt-asr:50052"
       model: "parakeet-1.1b-rnnt-multilingual-asr"
       function_id: ""

@@ -15,8 +15,12 @@ The Nemotron Voice Agent uses example-local service catalogs to manage LLM, ASR,
 
 | Model | Key | Description |
 |-------|-----|-------------|
-| [Nemotron 3 Nano 30B A3B](https://build.nvidia.com/nvidia/nemotron-3-nano-30b-a3b/modelcard) | `nemotron-nano` | Default. Fast, efficient reasoning model |
-| [Nemotron 3 Super 120B A12B](https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b/modelcard) | `nemotron-super` | Higher capability for complex tasks |
+| [Nemotron 3 Nano 30B A3B](https://build.nvidia.com/nvidia/nemotron-3-nano-30b-a3b/modelcard) | `nemotron-nano` | Fast, efficient model (reasoning off) |
+| Nemotron 3 Nano 30B A3B (Reasoning) | `nemotron-nano-reasoning` | Same model with chain-of-thought reasoning on |
+| [Nemotron 3 Super 120B A12B](https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b/modelcard) | `nemotron-super` | Higher capability for complex tasks (reasoning off) |
+| Nemotron 3 Super 120B A12B (Reasoning) | `nemotron-super-reasoning` | Same model with chain-of-thought reasoning on |
+
+> The active default per slot is set in `examples_registry.yaml` (`defaults`), not by this table. See [Changing built-in defaults](#changing-built-in-defaults).
 
 ### ASR
 
@@ -42,11 +46,36 @@ The Nemotron Voice Agent uses example-local service catalogs to manage LLM, ASR,
 
 The Services tab lists all services exposed by the active catalog (cloud and reachable local entries). Click an entry to make it the active selection for that category. Selections persist in browser localStorage. Custom services added through the UI also live in localStorage.
 
+## LLM reasoning (thinking) on/off
+
+Nemotron LLMs support a chain-of-thought "thinking" mode. It is controlled per
+catalog entry through `extra_params`, which is forwarded to the model as
+`extra_body`:
+
+```yaml
+llm:
+  # Reasoning OFF — lowest latency (recommended default for spoken pipelines)
+  nemotron-nano:
+    model_id: "nvidia/nemotron-3-nano-30b-a3b"
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+
+  # Reasoning ON — better on complex tasks, higher time-to-first-response
+  nemotron-nano-reasoning:
+    model_id: "nvidia/nemotron-3-nano-30b-a3b"
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true}}}'
+```
+
+- Reasoning OFF: `chat_template_kwargs.enable_thinking: false`. Reasoning ON: `enable_thinking: true`.
+- The `*-reasoning` variants are **cloud (NVCF) only**. On NVCF the thinking comes back in a separate `reasoning_content` field, so TTS speaks only the final answer (`content`); the local Nano NIM emits it inline in `content`, so reasoning isn't offered on-prem.
+- Select a variant from the Services tab, or set it as the default in `examples_registry.yaml`.
+
 ## Changing built-in defaults
 
 Each example declares its default service per slot via `defaults` in `examples_registry.yaml`. The pipeline resolves that default at startup, and the UI uses it as the initial selection. Edit `defaults` (and optionally reorder entries in the `services.cloud.yaml` / `services.local.yaml` for visual ordering in the UI) to change defaults. Host-run development reads these files directly. The Docker images mount `./src` and `./examples_registry.yaml` read-only so changes are picked up after `docker compose restart <service>`.
 
 When the same default key exists in both `services.cloud.yaml` and `services.local.yaml`, the resolver prefers the **self-hosted** variant so that deploying local NIM sidecars automatically promotes them to the active default — no UI click needed. If the self-hosted endpoint is unreachable at session-start time, the runtime falls back to the cloud variant.
+
+> **On-prem note:** self-hosted promotion only applies when the `defaults` key also exists in `services.local.yaml`. A default with no on-prem entry (e.g. a cloud-only `nemotron-super`) resolves to the cloud model even on an on-prem recipe — point `defaults` at a local key or pick the model from the Services tab.
 
 ## On-prem catalog
 
@@ -59,6 +88,8 @@ When the same default key exists in both `services.cloud.yaml` and `services.loc
 | `http://nvidia-llm-vllm-omni:8002/v1` | `http://localhost:8002/v1` |
 | `tts-service:50051` | `localhost:50151` |
 | `asr-service:50052` | `localhost:50152` |
+| `parakeet-ctc-asr:50052` | `localhost:50152` |
+| `parakeet-rnnt-asr:50052` | `localhost:50152` |
 | `nemotron-speech:50051` | `localhost:50051` |
 
 ## Adding built-in cloud services

@@ -4,7 +4,7 @@ Use this reference from the `deploy` skill when deploying the cascaded/omni_assi
 
 ## When to use
 
-Pinning a Docker Compose deployment to the Omni Assistant Subagents example. Recipe profile names encode both the example and the hardware target. Selector modes (`cascaded/all`, `all`) are host-native only — they are not exposed as compose profiles.
+Pinning a Docker Compose deployment to the Omni Assistant Subagents example. Recipe profile names are `<family>` for cloud-only and `<family>/<hardware>` for on-prem; the `cascaded-omni` family serves both Omni examples, and the active one is resolved from `examples_registry.yaml` (not encoded in the profile name). Selector modes (`cascaded-omni/all`, `all`) are host-native only — they are not exposed as compose profiles.
 
 This example declares `capabilities: [attachments, webcam]` in `examples_registry.yaml`. The browser UI gates the attachment upload control and the webcam panel on these capabilities, and the backend exposes `POST /api/sessions/{id}/attachments`, `POST /api/sessions/{id}/webcam/frames`, and `GET /api/webcam-config` for them.
 
