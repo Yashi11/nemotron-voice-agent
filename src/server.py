@@ -10,7 +10,7 @@ Routes:
   WebSocket /api/ws          - WebSocket transport
   GET       /api/deployment  - Active example metadata
   GET       /api/prompts     - Prompt catalog
-  GET       /api/services    - Service catalog (LLM, TTS, ASR, S2S)
+  GET       /api/services    - Service catalog (LLM, TTS, ASR)
   GET       /api/tts-config  - TTS voices & languages
   GET       /                - Built client UI (from client/dist/)
 
@@ -339,7 +339,7 @@ def _build_ice_servers(request: Request) -> list[dict]:
 
 
 def _should_skip_tts_prewarm(example: dict) -> bool:
-    """Skip TTS warm-up for examples without a ``tts`` slot (e.g. speech-to-speech)."""
+    """Skip TTS warm-up for examples without a ``tts`` slot."""
     return "tts" not in (example.get("slots") or [])
 
 

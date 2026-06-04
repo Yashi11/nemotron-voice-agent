@@ -54,7 +54,6 @@ Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that 
 | Cloud-only Omni Assistant | `cascaded-omni` |
 | Cloud-only Omni Assistant Subagents | `cascaded-omni` |
 | Cloud-only Thinker/Talker Airline Assistant | `cascaded-thinker-talker` |
-| Cloud-only Speech-to-Speech | `speech-to-speech` |
 | Generic Cascaded on a workstation | `cascaded-generic/workstation` |
 | Generic Cascaded on DGX Spark | `cascaded-generic/dgx-spark` |
 | Generic Cascaded on Jetson Thor | `cascaded-generic/jetson-thor` |
@@ -83,7 +82,7 @@ docker compose ps
 docker compose logs --tail 200 <service-name>
 ```
 
-App service names follow the active recipe family: `cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, `cascaded-thinker-talker`, or `speech-to-speech`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `asr-service`, `tts-service`, `nemotron-speech`, `booking-server`).
+App service names follow the active recipe family: `cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, or `cascaded-thinker-talker`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `asr-service`, `tts-service`, `nemotron-speech`, `booking-server`).
 
 ## References
 

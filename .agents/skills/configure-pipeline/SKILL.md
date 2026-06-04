@@ -1,6 +1,6 @@
 ---
 name: configure-pipeline
-description: Configure Nemotron Voice Agent runtime via `.env`, example-local `services.{cloud,local}.yaml`, and example-local `prompts.yaml`. Use when changing prompts, tracing, S2S endpoint, audio knobs, exposed pipelines or transports, or local NIM image overrides.
+description: Configure Nemotron Voice Agent runtime via `.env`, example-local `services.{cloud,local}.yaml`, and example-local `prompts.yaml`. Use when changing prompts, tracing, audio knobs, exposed pipelines or transports, or local NIM image overrides.
 version: "1.0.0"
 metadata:
   author: Ashutosh Rautela <arautela@nvidia.com>
@@ -27,12 +27,12 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 
 ## Instructions
 
-1. Identify the active example by inspecting the running app container (`cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, `cascaded-thinker-talker`, or `speech-to-speech`). Each example has its own catalog under `src/<family>/<example>/`.
+1. Identify the active example by inspecting the running app container (`cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, or `cascaded-thinker-talker`). Each example has its own catalog under `src/<family>/<example>/`.
 
 2. Edit the smallest configuration surface that satisfies the request:
-   - `.env`: feature flags, tracing, S2S settings, chat history, audio debugging, and buffering.
+   - `.env`: feature flags, tracing, chat history, audio debugging, and buffering.
    - `examples_registry.yaml`: visible examples (`selection`), allowed transports (`transports`), and per-example slot defaults (`defaults`).
-   - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`, matching the example's supported `<family>/<hardware>` recipes): built-in LLM, ASR, TTS, S2S, and example-specific role catalogs.
+   - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`, matching the example's supported `<family>/<hardware>` recipes): built-in LLM, ASR, TTS, and example-specific role catalogs.
    - `<example-package>/prompts.yaml`: built-in prompt presets and prompt content for the active example.
 
 3. Validate:

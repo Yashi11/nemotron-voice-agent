@@ -1,6 +1,6 @@
 # Configure Services
 
-The Nemotron Voice Agent uses example-local service catalogs to manage LLM, ASR, TTS, S2S, and example-specific services. Built-in entries come from each example's `services.cloud.yaml` (remote / NVCF) and `services.local.yaml` (Compose-managed sidecars). The active UI example determines which catalog is loaded.
+The Nemotron Voice Agent uses example-local service catalogs to manage LLM, ASR, TTS, and example-specific services. Built-in entries come from each example's `services.cloud.yaml` (remote / NVCF) and `services.local.yaml` (Compose-managed sidecars). The active UI example determines which catalog is loaded.
 
 ## How catalog selection works
 
@@ -35,12 +35,6 @@ The Nemotron Voice Agent uses example-local service catalogs to manage LLM, ASR,
 | Model | Key | Description |
 |-------|-----|-------------|
 | [Magpie TTS Multilingual](https://build.nvidia.com/nvidia/magpie-tts-multilingual/modelcard) | `magpie-tts` | Default. Multilingual text-to-speech |
-
-### S2S (Speech-to-Speech)
-
-| Model | Key | Description |
-|-------|-----|-------------|
-| [Nemotron Voice Chat](https://build.nvidia.com/nvidia/nemotron-voicechat) | `nemotron-voice-chat` | Direct voice-to-voice pipeline |
 
 ## Switching services in the UI
 

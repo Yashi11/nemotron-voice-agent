@@ -30,8 +30,6 @@ pipeline_families:
     label: Cascaded Omni
   - id: cascaded-thinker-talker
     label: Thinker Talker
-  - id: speech-to-speech
-    label: Speech to Speech
 
 examples:
   cascaded-generic:
@@ -88,12 +86,3 @@ examples:
         asr: [nemotron-speech]
         tts: [magpie-tts]
       bot: cascaded.thinker_talker.pipeline:bot
-
-  speech-to-speech:
-    voicechat:
-      label: Nemotron VoiceChat
-      slots: [s2s]
-      defaults:
-        prompt: [generic]
-        s2s: [nemotron-voice-chat]
-      bot: speech_to_speech.generic.pipeline:bot

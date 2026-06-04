@@ -153,9 +153,6 @@ export interface AppState {
   currentSessionId: string;
   setCurrentSessionId: (id: string) => void;
 
-  selectedS2SServer: string;
-  setSelectedS2SServer: (s: string) => void;
-
   llms: LLMService[];
   llmsLoading: boolean;
   selectedLLMId: string;
@@ -246,9 +243,6 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, []);
 
   const [currentSessionId, setCurrentSessionId] = useState("");
-
-  // --- S2S server state ---
-  const [selectedS2SServer, setSelectedS2SServer] = useState("");
 
   // --- LLM state ---
   const serviceCatalogKey = selectedExample?.key ?? "";
@@ -398,14 +392,13 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     availableTransports,
     selectedTransport: effectiveTransport, setTransport,
     currentSessionId, setCurrentSessionId,
-    selectedS2SServer, setSelectedS2SServer,
     llms, llmsLoading, selectedLLMId: effectiveSelectedLLMId, selectLLM, addLLM, updateLLM, removeLLM, selectedLLM,
     asrServices, asrLoading, selectedASRId: effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
     ttsServices, ttsLoading, selectedTTSId: effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,
     selectedVoiceId, setSelectedVoiceId,
     prompts, promptsLoading, selectedPromptKey: effectiveSelectedPromptKey, selectPrompt, addPrompt, updatePrompt, removePrompt, selectedPrompt,
     tools, toolsLoading,
-  }), [selectedExample, selectExample, deploymentOptions, availablePipelines, deploymentSelectable, availableTransports, effectiveTransport, setTransport, currentSessionId, selectedS2SServer,
+  }), [selectedExample, selectExample, deploymentOptions, availablePipelines, deploymentSelectable, availableTransports, effectiveTransport, setTransport, currentSessionId,
        llms, llmsLoading, effectiveSelectedLLMId, selectLLM, addLLM, updateLLM, removeLLM, selectedLLM,
        asrServices, asrLoading, effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
        ttsServices, ttsLoading, effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,

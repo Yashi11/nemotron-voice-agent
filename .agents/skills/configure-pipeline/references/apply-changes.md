@@ -33,7 +33,6 @@ docker compose --profile cascaded-generic up -d
 docker compose --profile cascaded-multilingual up -d
 docker compose --profile cascaded-omni up -d
 docker compose --profile cascaded-thinker-talker up -d
-docker compose --profile speech-to-speech up -d
 
 # Workstation (local NIM ASR/TTS/LLM)
 docker compose --profile cascaded-generic/workstation up -d
@@ -77,7 +76,6 @@ docker compose --profile cascaded-generic/dgx-spark --profile tracing --profile 
 - The selected recipe profile matches the example and hardware you want active.
 - `examples_registry.yaml` `defaults` references catalog keys that actually exist for that example.
 - Multilingual prompt selection is paired with multilingual-capable ASR (`parakeet-rnnt`) and TTS (`magpie-tts`) in the active catalog.
-- For S2S, the active example's `services.cloud.yaml` `s2s` block points at the desired realtime endpoint. Authentication uses `NVIDIA_API_KEY`.
 - If `ENABLE_TRACING=true` with `phoenix:4317`, the `phoenix` service is started through the `tracing` profile.
 - Compose-managed local entries use service DNS names, not `localhost`.
 - ASR/TTS image variants keep the same endpoints (`asr-service:50052`, `tts-service:50051`).
