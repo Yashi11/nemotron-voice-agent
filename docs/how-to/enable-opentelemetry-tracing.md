@@ -1,6 +1,6 @@
 # Enable OpenTelemetry Tracing
 
-OpenTelemetry tracing provides observability for both the cascaded and S2S voice pipelines, allowing you to monitor latency, debug issues, and analyze conversation flows. The steps below show how to enable tracing with [Phoenix](https://arize.com/docs/phoenix/self-hosting).
+OpenTelemetry tracing provides observability for the cascaded voice pipelines, allowing you to monitor latency, debug issues, and analyze conversation flows. The steps below show how to enable tracing with [Phoenix](https://arize.com/docs/phoenix/self-hosting).
 
 ## Steps
 
@@ -58,17 +58,6 @@ Conversation
 │   ├── stt          (ASR — user speech to text)
 │   ├── llm          (LLM — generate response)
 │   └── tts          (TTS — synthesise audio)
-└── turn ...
-```
-
-### S2S Pipeline
-
-```
-Conversation
-├── turn
-│   ├── llm_setup    (session configuration)
-│   ├── stt          (user input transcription)
-│   └── llm_response (complete response with usage)
 └── turn ...
 ```
 

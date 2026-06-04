@@ -25,7 +25,6 @@ const WEBRTC_TIMEOUT_ERROR_NAME = "WebRTCConnectionTimeoutError";
 
 type SessionConfigOptions = {
   selectedExample: DeploymentOption;
-  selectedS2SServer: string;
   selectedLLM?: LLMService;
   selectedASR?: SimpleService;
   selectedTTS?: SimpleService;
@@ -104,7 +103,6 @@ function applyService(
 
 function buildSessionConfig({
   selectedExample,
-  selectedS2SServer,
   selectedLLM,
   selectedASR,
   selectedTTS,
@@ -114,8 +112,6 @@ function buildSessionConfig({
 }: SessionConfigOptions): Record<string, string> {
   const slots = new Set(selectedExample.slots);
   const config: Record<string, string> = { pipeline_mode: selectedExample.key };
-
-  if (slots.has("s2s") && selectedS2SServer) config.s2s_server = selectedS2SServer;
 
   if (slots.has("llm") && selectedLLM) {
     config.llm_id = selectedLLM.id;
@@ -154,7 +150,7 @@ function sessionIdFromWebRTCUrl(url: string): string {
 export function Header() {
   const client = usePipecatClient() as StartBotClient | undefined;
   const { isConnected, isConnecting } = useConnectionState();
-  const { selectedExample, selectedTransport, selectedS2SServer, selectedLLM, selectedASR, selectedTTS, selectedVoiceId, selectedPrompt, selectedPromptKey, setCurrentSessionId } = useApp();
+  const { selectedExample, selectedTransport, selectedLLM, selectedASR, selectedTTS, selectedVoiceId, selectedPrompt, selectedPromptKey, setCurrentSessionId } = useApp();
   const [connectionError, setConnectionError] = useState("");
 
   const handleClick = async () => {
@@ -174,7 +170,6 @@ export function Header() {
       } else {
         const config = buildSessionConfig({
           selectedExample,
-          selectedS2SServer,
           selectedLLM,
           selectedASR,
           selectedTTS,

@@ -23,7 +23,6 @@ Before you begin, ensure you have the following:
 | `cascaded-multilingual` | None (cloud) | Multilingual Cascaded pipeline |
 | `cascaded-omni` | None (cloud) | Nemotron Omni (single-model ASR + LLM) + Magpie TTS |
 | `cascaded-thinker-talker` | None (cloud) | Thinker/Talker airline pipeline with local booking-server sidecar |
-| `speech-to-speech` | None (cloud) | NVIDIA Voice Chat (S2S) |
 | `cascaded-generic/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + NIM LLM |
 | `cascaded-generic/dgx-spark` | 1 GPU, 128 GB unified memory | NIM ASR + TTS + vLLM LLM |
 | `cascaded-generic/jetson-thor` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
@@ -75,7 +74,6 @@ Before you begin, ensure you have the following:
     docker compose --profile cascaded-multilingual up -d    # Multilingual Cascaded
     docker compose --profile cascaded-omni up -d            # Nemotron Omni Assistant
     docker compose --profile cascaded-thinker-talker up -d  # Thinker/Talker Airline Assistant
-    docker compose --profile speech-to-speech up -d         # NVIDIA Voice Chat (S2S)
     ```
 
     Pick the profile that matches the pipeline family you want to run. `docker compose up` with no profile is intentionally a no-op so the deployment is always explicit.
@@ -194,7 +192,6 @@ For development and debugging, you can run the server directly:
     | `cascaded-generic/generic-assistant` | Lock to Generic Assistant |
     | `cascaded-multilingual/all` | Show all Multilingual Cascaded examples |
     | `cascaded-omni/all` | Show all Omni examples |
-    | `speech-to-speech/all` | Show all Speech-to-Speech examples |
     | `all` | Show every registered example across all pipeline families |
 
     After editing, run:

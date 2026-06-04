@@ -4,7 +4,7 @@ React/TypeScript web client for the Nemotron Voice Agent, built with [Vite](http
 
 ## Features
 
-- **Dual pipeline modes**: Cascaded (ASR → LLM → TTS) and Speech-to-Speech
+- **Cascaded pipeline**: ASR → LLM → TTS
 - **Dual transport**: WebRTC (recommended) and WebSocket
 - **Runtime service switching**: Add/remove LLM, ASR, TTS services without redeployment
 - **Prompt management**: Select built-in personas or create custom system prompts

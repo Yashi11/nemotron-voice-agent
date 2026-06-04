@@ -45,7 +45,6 @@ class PromptCatalogTests(unittest.TestCase):
             PROJECT_ROOT / "src/cascaded/multilingual/prompts.yaml": {
                 "multilingual_voice_assistant",
             },
-            PROJECT_ROOT / "src/speech_to_speech/generic/prompts.yaml": {"flowershop", "generic"},
         }
         for path, expected in cases.items():
             self.assertEqual(set(load_yaml_file(path).keys()), expected, path)

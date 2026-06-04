@@ -10,7 +10,7 @@ BigBench Audio evaluates **answer correctness** on the [ArtificialAnalysis/big_b
 
 ### Reference Results
 
-The following table shows accuracy (%) on Big Bench Audio for text-only (standalone LLM) vs speech-to-speech (LLM in voice agent pipeline):
+The following table shows accuracy (%) on Big Bench Audio for the LLM standalone (text-only) vs the LLM running in the voice agent pipeline:
 
 | Model / API | Reasoning Mode | Text Only Standalone LLM (%) | LLM In Voice Agent Pipeline (%) |
 | --- | --- | --- | --- |

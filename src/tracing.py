@@ -5,7 +5,7 @@
 
 Reads ENABLE_TRACING, OTEL_EXPORTER_OTLP_ENDPOINT, and OTEL_CONSOLE_EXPORT
 from the environment and initialises the Pipecat tracing SDK once at import
-time.  Both cascaded and S2S pipelines import ``IS_TRACING_ENABLED`` from
+time.  The cascaded pipelines import ``IS_TRACING_ENABLED`` from
 here and pass it to their ``PipelineTask``.
 """
 
