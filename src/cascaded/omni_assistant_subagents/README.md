@@ -11,6 +11,16 @@ per-agent modules, service catalogs, and prompts. There is no
 per-example compose file. The app container and shared sidecars are
 defined in the root and `docker/` compose files.
 
+## Overview and Use Cases
+
+| Area | Details |
+| --- | --- |
+| Example intent | A multimodal, multi-agent Omni assistant that keeps the voice conversation responsive while specialized agents analyze uploaded media and live webcam frames. |
+| Architecture pattern | Split responsibility across a transport agent, speaker agent, media analyzer, and webcam agent using `pipecat-ai-subagents`, with explicit dispatch and acknowledgement points. |
+| What to study | Agent boundaries, prompt separation, visual barge-in, deferred media dispatch, webcam scene summaries, and how UI capabilities are declared for attachments and webcam support. |
+| Best fit | Teams building assistants that need spoken interaction plus asynchronous visual or media understanding without blocking the user-facing voice loop. |
+| Extend into | Visual troubleshooting, field-service copilots, retail product assistance, inspection workflows, education and training tutors, accessibility helpers, or support agents that combine conversation with uploaded images, audio, video, or live camera context. |
+
 ## Layout
 
 | Path | Role |

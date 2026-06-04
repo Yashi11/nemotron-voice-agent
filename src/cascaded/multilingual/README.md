@@ -10,6 +10,16 @@ Everything specific to this example lives under `src/cascaded/multilingual/`: pi
 entry point, service catalogs, and prompts. Shared pipeline helpers live in
 `src/cascaded/shared/pipeline_utils.py`.
 
+## Overview and Use Cases
+
+| Area | Details |
+| --- | --- |
+| Example intent | A multilingual cascaded assistant that can listen, reason, and respond across supported languages while keeping the pipeline deterministic about which text reaches TTS and the UI. |
+| Architecture pattern | Use dedicated ASR, LLM, and TTS services with a structured LLM response contract that drives runtime language and voice switching. |
+| What to study | Prompt-enforced `Language: / Text: / MetaData:` output, `MultilingualTextAggregator`, early TTS voice updates, and filtering metadata away from spoken and displayed transcripts. |
+| Best fit | Teams building voice experiences for users who switch languages, operate in multilingual regions, or need one deployment to cover multiple customer-language journeys. |
+| Extend into | Multilingual contact-center agents, hospitality and travel assistants, global employee support, language-practice companions, translated kiosk flows, or localized field-service copilots. |
+
 ## Layout
 
 | Path | Role |
