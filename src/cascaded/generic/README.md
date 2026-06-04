@@ -12,6 +12,16 @@ generic example has no example-specific sidecars. The app container and
 shared sidecars are defined in the root `docker-compose.yml` and
 `docker/` compose files.
 
+## Overview and Use Cases
+
+| Area | Details |
+| --- | --- |
+| Example intent | A minimal, production-shaped cascaded voice assistant that keeps ASR, LLM, tools, and TTS as separate services. |
+| Architecture pattern | Use Pipecat's built-in NVIDIA service processors for speech recognition, function-calling chat completion, and speech synthesis. |
+| What to study | Service catalog selection, prompt-scoped tool enablement, OpenAI-compatible function schemas, async tool handlers, and the import pattern for a new cascaded package. |
+| Best fit | Teams that need a baseline voice-agent blueprint before adding domain logic, custom tools, or deployment-specific service choices. |
+| Extend into | FAQ assistants, internal help desks, voice-controlled workflows, order capture, concierge bots, device control, or any use case where the conversation state can stay lightweight and tool calls are request/response oriented. |
+
 ## Layout
 
 | Path | Role |

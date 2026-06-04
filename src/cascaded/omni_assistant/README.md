@@ -11,6 +11,16 @@ multimodal service, service catalogs, and prompts. There is no
 per-example compose file. The app container and shared sidecars are
 defined in the root and `docker/` compose files.
 
+## Overview and Use Cases
+
+| Area | Details |
+| --- | --- |
+| Example intent | A cascaded Omni voice assistant where Nemotron Omni consumes user audio directly and produces the assistant text that Magpie TTS speaks. |
+| Architecture pattern | Replace the separate ASR and text LLM stages with one audio-input LLM service while preserving the familiar Pipecat transport, TTS, prompt, and service-catalog flow. |
+| What to study | `NvidiaOmniMultimodalService`, audio-only turn finalization, transcript recovery from Omni responses, and the smaller service surface needed for an Omni-based assistant. |
+| Best fit | Teams evaluating whether an audio-input LLM can simplify a voice stack or improve handling of spoken context before adding heavier domain workflows. |
+| Extend into | General conversational assistants, voice-first copilots, meeting or note-taking helpers, hands-free product guides, training companions, or domain agents that benefit from direct acoustic context with conventional TTS output. |
+
 ## Layout
 
 | Path | Role |

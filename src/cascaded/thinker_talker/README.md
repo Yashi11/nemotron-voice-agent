@@ -4,10 +4,15 @@ Independent cascaded voice example for the Thinker/Talker flight-booking design.
 
 The Talker is the only user-facing LLM and exposes `call_thinker` plus
 `cancel_thinker`.
-The Thinker is session-local and owns flight search, selected-flight booking,
-PNR status, lifecycle markers, and abort state. In the running pipeline it
-talks to the booking-server sidecar in `airline/database` over HTTP as its
-backend database; unit tests use a deterministic in-memory backend.
+The Thinker is scoped to each conversation and owns flight search,
+selected-flight booking, PNR status, lifecycle markers, and abort state. In
+the running pipeline it talks to the booking-server sidecar in
+`airline/database` over HTTP as its backend database; unit tests use a
+deterministic in-memory backend.
+
+The airline Thinker is the reference backend for this example, but the
+architecture is intended to be reusable: the Talker can act as a generic
+conversational front end in front of another Thinker or agentic backend.
 
 Booking is intentionally gated: the user must search flights first and select
 one returned flight before the Thinker can continue booking.
@@ -17,6 +22,17 @@ flight-booking domain logic lives under `airline/`. The root `pipeline.py`,
 `prompts.yaml`, and service catalog files remain at the example root so the
 example registry can resolve the bot, prompts, and default services from the
 same directory.
+
+## Overview and Use Cases
+
+| Area | Details |
+| --- | --- |
+| Example intent | A stateful airline support agent that separates fast user-facing speech from slower planning and tool work for flight search, booking, PNR status, rebooking, cancellation, and standby flows. |
+| Architecture pattern | Use a Talker LLM for the live conversation and a Thinker scoped to that conversation for durable domain state, policy checks, backend calls, lifecycle markers, and abort handling. |
+| Reusability model | Treat the Talker as a generic conversational front end. The bundled airline Thinker can be replaced with another agentic architecture when that backend exposes compatible call/cancel behavior and returns speech-ready progress or results. |
+| What to study | `call_thinker` and `cancel_thinker` tool contracts, booking-server integration, selected-flight gating, per-conversation Thinker state, and how filler speech keeps the voice loop responsive during longer work. |
+| Best fit | Teams building transactional agents where correctness, state transitions, policy enforcement, and interrupt handling matter more than a single-turn answer. |
+| Extend into | Travel servicing, appointment scheduling, insurance claims, returns and exchanges, subscription management, banking-style service flows, or any workflow that needs a responsive front-channel assistant backed by a deliberative task agent. |
 
 ## Running the example
 
