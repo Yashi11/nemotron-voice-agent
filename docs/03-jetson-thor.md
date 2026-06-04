@@ -42,15 +42,25 @@ This guide covers deploying the Nemotron Voice Agent on Jetson Thor using Docker
     ngc config set
     ```
 
-    c. Download the Riva Quick Start bundle **next to the repo** (not inside it), so the ~30–50 GB model repo survives re-clones and worktrees:
+    c. Download the Riva Speech Skills v2.26.0 (RC2) Quick Start bundle for L4T (JetPack 7.0) **next to the repo** (not inside it), so the ~30–50 GB model repo survives re-clones and worktrees:
 
     ```bash
     cd ..
-    ngc registry resource download-version nvidia/riva/riva_quickstart_arm64:2.24.0
-    cd riva_quickstart_arm64_v2.24.0
+    curl -o riva_quickstart_l4t_aarch64.53617348.tgz \
+      -H "PRIVATE-TOKEN:<YOUR_GITLAB_TOKEN>" \
+      https://gitlab-master.nvidia.com/api/v4/projects/45235/packages/generic/riva_quickstart/2.26.0/riva_quickstart_l4t_aarch64.53617348.tgz
+    tar -xzf riva_quickstart_l4t_aarch64.53617348.tgz
+    cd quickstart
     ```
 
-    d. Run only `riva_init.sh` — it downloads the ASR/TTS models and AOT-compiles the TRT engines into `model_repository/`. **Do not run `riva_start.sh`** — the `nemotron-speech` compose service in step 4 will serve the models itself.
+    d. This RC2 bundle already ships with `riva_ngc_org="nvstaging"` and `riva_ngc_model_version="2.26.0"` in `config.sh`, so it pulls the 2.26.0 staging models by default. Confirm (or re-assert) the staging org before initializing:
+
+    ```bash
+    sed -i 's/^riva_ngc_org=.*/riva_ngc_org="nvstaging"/' config.sh
+    grep -E '^riva_ngc_org|^riva_ngc_model_version' config.sh
+    ```
+
+    e. Run only `riva_init.sh` — it downloads the ASR/TTS models and AOT-compiles the TRT engines into `model_repository/`. **Do not run `riva_start.sh`** — the `nemotron-speech` compose service in step 4 will serve the models itself.
 
     ```bash
     bash riva_init.sh

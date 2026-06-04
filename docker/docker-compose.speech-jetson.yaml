@@ -3,7 +3,7 @@ services:
     profiles:
       - cascaded-generic/jetson-thor
     container_name: nemotron-speech
-    image: nvcr.io/nvidia/riva/riva-speech:2.24.0-l4t-aarch64
+    image: gitlab-master.nvidia.com:5005/dl/riva/riva-speech/riva:dev..ydharavath..magpie-v1-zeroshot-PR.53617348-l4t-aarch64
     runtime: nvidia
     ipc: host
     cpuset: ${RIVA_CPUSET:-}
