@@ -12,26 +12,27 @@ You can add custom prompts directly from the UI's **Prompts** tab without editin
 
 ## Available Prompt Presets
 
-Prompt presets are defined per example. The generic cascaded example currently provides the presets below.
+Prompt presets are defined per example. The Generic Cascaded example currently provides the presets below (the active default is set by `defaults.prompt` in `examples_registry.yaml`).
 
-### Flowershop Assistant (default)
+### Generic Assistant (default)
+
+**Characteristics:**
+- General-purpose Nemotron voice assistant
+- Tool calling is enabled automatically for this preset (Flowershop runs without function calls)
+- Single-sentence responses (≤ 75 characters; tool results passed through verbatim)
+
+### Flowershop Assistant
 
 **Characteristics:**
 - Persona: Flora from GreenForce Garden
 - Handles order management, consultations, delivery coordination
 - Concise responses (1-2 sentences, max 200 characters)
 
-### Generic Assistant
-
-Tool calling is enabled automatically for this preset. The other built-in prompts run without function calls.
-
-### Multilingual Voice Assistant
-
-Uses structured `Language: Text: MetaData:` output format for automatic language detection and multilingual responses.
+> The **Multilingual Voice Assistant** preset (structured `Language: / Text: / MetaData:` output) ships with the separate Multilingual example — see [Enable Multilingual Voice Agent](./enable-multilingual.md).
 
 ## Changing the Default Prompt
 
-Mark the desired entry with `default: true` in the active example's `prompts.yaml`. If no entry is marked, the first entry is used.
+Set the per-example default with `defaults.prompt` in `examples_registry.yaml`. As a fallback (when that key isn't one of the active example's prompt keys in `prompts.yaml`), the entry marked `default: true` is used, otherwise the first entry.
 
 ```yaml
 my_prompt:

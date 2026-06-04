@@ -17,13 +17,15 @@ The catalog stores Compose DNS endpoints. The backend rewrites them to `localhos
 | `http://nvidia-llm-vllm:8000/v1` | `http://localhost:18000/v1` |
 | `tts-service:50051` | `localhost:50151` |
 | `asr-service:50052` | `localhost:50152` |
+| `parakeet-ctc-asr:50052` | `localhost:50152` |
+| `parakeet-rnnt-asr:50052` | `localhost:50152` |
 | `nemotron-speech:50051` | `localhost:50051` |
 
 Cloud catalog entries use NVCF endpoints (`grpc.nvcf.nvidia.com:443`, `https://integrate.api.nvidia.com/v1`, `wss://grpc.nvcf.nvidia.com/v1/realtime`) and are not rewritten.
 
 ## Apply Commands
 
-Pick a single recipe profile (`<family>/<example>` for cloud or `<family>/<example>/<hardware>` for on-prem). Each recipe is a complete deployment — never combine two recipes.
+Pick a single recipe profile (`<family>` for cloud or `<family>/<hardware>` for on-prem). Each recipe is a complete deployment — never combine two recipes.
 
 ```bash
 # Cloud-only (NVCF)

@@ -86,7 +86,7 @@ from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 
 tts = NvidiaTTSService(
     ...
-    text_filter=NemotronSpeechTextFilter(),  # default
+    text_filters=[NemotronSpeechTextFilter()],  # default
 )
 ```
 
@@ -100,7 +100,7 @@ from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechMarkdownTe
 
 tts = NvidiaTTSService(
     ...
-    text_filter=NemotronSpeechMarkdownTextFilter(),
+    text_filters=[NemotronSpeechMarkdownTextFilter()],
 )
 ```
 

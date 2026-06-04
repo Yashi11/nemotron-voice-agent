@@ -32,12 +32,12 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 2. Edit the smallest configuration surface that satisfies the request:
    - `.env`: feature flags, tracing, S2S settings, chat history, audio debugging, and buffering.
    - `examples_registry.yaml`: visible examples (`selection`), allowed transports (`transports`), and per-example slot defaults (`defaults`).
-   - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`, matching the example's supported `<example>/<hardware>` recipes): built-in LLM, ASR, TTS, S2S, and example-specific role catalogs.
+   - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`, matching the example's supported `<family>/<hardware>` recipes): built-in LLM, ASR, TTS, S2S, and example-specific role catalogs.
    - `<example-package>/prompts.yaml`: built-in prompt presets and prompt content for the active example.
 
 3. Validate:
    - Multilingual prompts must use multilingual-capable ASR and TTS from the active catalog (e.g. `magpie-tts`, `parakeet-rnnt`). Verify the keys exist before referencing them.
-   - Local catalog endpoints must use Compose service names (`asr-service:50052`, `tts-service:50051`, `nvidia-llm:8000`, `nvidia-llm-vllm:8000`, `nvidia-llm-vllm-omni:8002`, `nemotron-speech:50051`, `booking-server:8001`). Host-run backends auto-rewrite to the matching `localhost` ports.
+   - Local catalog endpoints must use Compose service names (`asr-service:50052` or the recipe's Parakeet ASR, `tts-service:50051`, `nvidia-llm:8000`, `nvidia-llm-vllm:8000`, `nvidia-llm-vllm-omni:8002`, `nemotron-speech:50051`, `booking-server:8001`). Host-run backends auto-rewrite to the matching `localhost` ports.
    - ASR/TTS variants are selected via Compose profile (e.g. `parakeet-ctc-asr`, `parakeet-rnnt-asr`).
    - Workstation local Compose runs ASR/TTS and NIM LLM on GPU `0` by default. Single-GPU deployments are supported only when at least 80 GB of VRAM is available.
 

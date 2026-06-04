@@ -1,10 +1,6 @@
-# On-prem catalog — used when `DEPLOYMENT_PLATFORM` is set explicitly to
-# `workstation`, `dgxspark`, or `jetson`.
-#
-# Keep platform-specific built-ins grouped under the platform name so the UI
-# only shows services for the active deployment.
-# Store Compose/container-reachable built-ins here. When the backend runs
-# directly on the host, it rewrites these endpoints to `localhost`.
+# On-prem catalog. Entries are grouped by platform name for readability; the
+# backend merges all sections and exposes only the reachable ones. Compose
+# endpoints are rewritten to localhost for host-native runs.
 
 workstation:
   llm:

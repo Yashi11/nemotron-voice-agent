@@ -1,10 +1,9 @@
-# Cloud (NVCF) service catalog — used for plain `docker compose up -d`
-# and when `DEPLOYMENT_PLATFORM` is unset.
-#
-# On-prem (`DEPLOYMENT_PLATFORM=jetson|dgxspark|workstation`):
-# see `services.local.yaml`.
+# Cloud (NVCF) service catalog. On-prem entries live in services.local.yaml and
+# shadow these when their endpoint is reachable.
 
 # ── LLM Services (Cascaded pipeline) ──
+# "(Reasoning)" entries enable chain-of-thought via enable_thinking; the others
+# run reasoning-off for lowest latency.
 llm:
   nemotron-nano:
     name: "Nemotron 3 Nano 30B A3B"
@@ -13,12 +12,26 @@ llm:
     system_prompt: ""
     extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
 
+  nemotron-nano-reasoning:
+    name: "Nemotron 3 Nano 30B A3B (Reasoning)"
+    model_id: "nvidia/nemotron-3-nano-30b-a3b"
+    base_url: "https://integrate.api.nvidia.com/v1"
+    system_prompt: ""
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true}}}'
+
   nemotron-super:
     name: "Nemotron 3 Super 120B A12B"
     model_id: "nvidia/nemotron-3-super-120b-a12b"
     base_url: "https://integrate.api.nvidia.com/v1"
     system_prompt: ""
     extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+
+  nemotron-super-reasoning:
+    name: "Nemotron 3 Super 120B A12B (Reasoning)"
+    model_id: "nvidia/nemotron-3-super-120b-a12b"
+    base_url: "https://integrate.api.nvidia.com/v1"
+    system_prompt: ""
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true}}}'
 
 # ── TTS Services (Cascaded pipeline) ──
 tts:

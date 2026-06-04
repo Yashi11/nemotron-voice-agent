@@ -1,6 +1,6 @@
 # Enable Zero-Shot TTS
 
-> **Planned Feature** — Zero-shot TTS pipeline integration is not yet available in v2. The steps below outline the intended workflow once support is added. See [TODO.md](../../TODO.md) for tracking.
+> **Planned Feature** — Zero-shot TTS pipeline integration is not yet available in v2. The steps below outline the intended workflow once support is added.
 
 Zero-shot TTS allows you to clone any voice using a short audio sample (5+ seconds). This feature uses the Magpie Zero-shot model. Apply for access at the [NVIDIA RIVA TTS Zero-shot models page](https://developer.nvidia.com/riva-tts-zeroshot-models).
 
@@ -36,8 +36,8 @@ Zero-shot TTS allows you to clone any voice using a short audio sample (5+ secon
 
 5. Select the zero-shot TTS service from the Services tab in the UI, or move its entry to the top of the catalog's `tts:` block to make it the runtime default.
 
-6. Deploy the services:
+6. Deploy the services with the recipe profile that matches your example and hardware, for example:
 
     ```bash
-    docker compose up -d
+    docker compose --profile cascaded-generic/workstation up -d
     ```

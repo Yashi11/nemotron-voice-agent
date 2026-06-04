@@ -10,7 +10,9 @@ This section covers pipeline configurations for optimizing the performance and u
 
 ## Smart Turn Detection
 
-The cascaded pipeline uses smart turn detection (`LocalSmartTurnAnalyzerV3`) to determine when the user has finished speaking, reducing unnecessary silence waiting before generating a response.
+By default the cascaded pipeline uses Pipecat's built-in **smart turn** detection (powered by Silero VAD with `stop_secs=0.2`) to determine when the user has finished speaking, reducing unnecessary silence before generating a response.
+
+> The `0.2 s` above is the fixed silence floor for the default smart-turn path. The separate `SILERO_VAD_STOP_SECS` (default `0.5 s`) is read **only** in pure-VAD mode (`USE_SILERO_VAD_TURN_DETECTION=true`) — the two thresholds are independent and never both apply.
 
 ### How It Works
 
@@ -19,13 +21,20 @@ The cascaded pipeline uses smart turn detection (`LocalSmartTurnAnalyzerV3`) to 
 3. Once a turn boundary is detected, the pipeline sends the transcript to the LLM for response generation.
 4. TTS synthesizes and streams back the response.
 
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `USE_SILERO_VAD_TURN_DETECTION` | `false` | Keep `false` for Pipecat smart turn. Set `true` to disable smart turn and use pure Silero VAD end-of-utterance detection instead. |
+| `SILERO_VAD_STOP_SECS` | `0.5` | Silence (seconds) before end-of-utterance, used only when `USE_SILERO_VAD_TURN_DETECTION=true`. |
+
 ### Key Components
 
 | Component | Purpose |
 |-----------|---------|
 | `SileroVADAnalyzer` | Voice activity detection with configurable silence threshold |
-| `LocalSmartTurnAnalyzerV3` | ML-based end-of-utterance detection for natural turn-taking |
-| `InterimAwareTurnStopStrategy` | Coordinates turn detection with interim ASR transcripts |
+| Pipecat smart turn (default) | ML-based end-of-utterance detection for natural turn-taking |
+| `MuteUntilFirstBotCompleteUserMuteStrategy` | Mutes user input until the first bot response completes |
 
 ## Audio Debugging
 
@@ -76,33 +85,41 @@ The `<stream_id>` is a unique 8-character hex ID per session, so files from conc
 
 ## Chat History Limit
 
-Controls the cascaded pipeline conversation window size. Older messages are dropped using a
-sliding window while preserving the initial prompt messages.
+Controls the cascaded pipeline conversation window size while always preserving the initial prompt
+messages loaded at session start. The handling of older turns differs by example:
+
+- **Generic** and **Multilingual** assistants **summarize** older history: once the conversation
+  grows past the recent window, the older turns are condensed into a single pinned summary message
+  (an additional LLM call after the turn), and the most recent `CHAT_HISTORY_RECENT_TURNS` turns are
+  kept verbatim.
+- **Thinker/Talker** uses a plain **sliding window**: older non-prompt messages are dropped, keeping
+  only the most recent `CHAT_HISTORY_RECENT_TURNS` messages.
 
 ### Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CHAT_HISTORY_RECENT_TURNS` | `20` | Number of most recent non-prompt messages to keep |
+| `CHAT_HISTORY_RECENT_TURNS` | `10` (Generic / Multilingual), `20` (Thinker/Talker) | Most recent non-prompt turns kept before older history is summarized (Generic/Multilingual) or dropped (Thinker/Talker) |
 
 ```bash
-CHAT_HISTORY_RECENT_TURNS=20
+# Override the per-example default (applies to whichever example is running)
+CHAT_HISTORY_RECENT_TURNS=10
 ```
 
 ### How It Works
 
-When the message count exceeds `CHAT_HISTORY_RECENT_TURNS`, the cascaded pipeline trims context with a
-sliding window:
+When the message count exceeds `CHAT_HISTORY_RECENT_TURNS`:
 
 1. Initial prompt messages loaded at session start are always preserved.
-2. From all later messages, only the latest `CHAT_HISTORY_RECENT_TURNS` messages are kept.
-3. Older non-prompt messages are removed.
+2. The most recent `CHAT_HISTORY_RECENT_TURNS` turns are kept verbatim.
+3. Older non-prompt turns are **summarized into one pinned summary message** (Generic / Multilingual)
+   or **removed** (Thinker/Talker).
 
 ### Recommendations
 
 | Use Case | Value |
 |----------|-------|
-| Standard conversations | `20` (default) |
+| Standard conversations | `10`–`20` |
 | Multilingual mode | `3-5` |
 | Long-form sessions | `30-50` |
 

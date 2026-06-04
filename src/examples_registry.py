@@ -153,6 +153,8 @@ def _rewrite_entry_for_host_runtime(entry: dict) -> dict:
             out[field] = (
                 value.replace("tts-service:50051", "localhost:50151")
                 .replace("asr-service:50052", "localhost:50152")
+                .replace("parakeet-ctc-asr:50052", "localhost:50152")
+                .replace("parakeet-rnnt-asr:50052", "localhost:50152")
                 .replace("nemotron-speech:50051", "localhost:50051")
                 .replace("booking-server:8001", "localhost:8001")
                 .replace("host.docker.internal", "localhost")

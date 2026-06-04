@@ -196,6 +196,8 @@ _HOST_RUNTIME_PORT_OVERRIDES: dict[tuple[str, int], int] = {
     ("nvidia-llm-vllm", 8000): 18000,
     ("tts-service", 50051): 50151,
     ("asr-service", 50052): 50152,
+    ("parakeet-ctc-asr", 50052): 50152,
+    ("parakeet-rnnt-asr", 50052): 50152,
 }
 _LOCAL_SERVICE_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 

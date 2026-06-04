@@ -19,7 +19,7 @@ Use [`benchmarking_tools/scaling-perf/`](../../benchmarking_tools/scaling-perf/)
     PIPELINE_TLS=false uv run python src/server.py
     ```
 
-    To run perf tests against the Generic Cascaded example with the benchmark prompt catalog, set `selection: cascaded-generic` in [`examples_registry.yaml`](../../examples_registry.yaml) and then start the server with the perf prompt catalog:
+    To run perf tests against the Generic Cascaded example with the benchmark prompt catalog, set `selection: cascaded-generic/all` in [`examples_registry.yaml`](../../examples_registry.yaml) and then start the server with the perf prompt catalog:
 
     ```bash
     PIPELINE_TLS=false uv run python src/server.py \

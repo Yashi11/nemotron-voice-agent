@@ -16,8 +16,8 @@ metadata:
 - Preserve existing `.env`. Create it only if missing.
 - Use `configure-pipeline` for `.env`, catalog, or prompt changes.
 - Every deployment specifies **exactly one recipe profile** (plus optional observability profiles). `docker compose up` with no profile is a no-op.
-- Recipe profile names match `<family>/<example>` for cloud-only deployments and `<family>/<example>/<hardware>` for on-prem deployments. The profile is a complete, self-contained recipe — never combine two recipes.
-- Selector modes (`cascaded/all`, `all` etc.) remain host-native only (`uv run`) and have no compose profile.
+- Recipe profile names are `<family>` for cloud-only deployments and `<family>/<hardware>` for on-prem deployments (for example `cascaded-generic` and `cascaded-generic/workstation`). The profile is a complete, self-contained recipe — never combine two recipes.
+- Selector modes (`<family>/all`, `all`, e.g. `cascaded-generic/all`) remain host-native only (`uv run`) and have no compose profile.
 - Observability profiles (`tracing`, `turn`) compose orthogonally with any recipe.
 
 ## Deploy
@@ -50,6 +50,7 @@ Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that 
 | Goal | Recipe profile |
 | --- | --- |
 | Cloud-only Generic Cascaded | `cascaded-generic` |
+| Cloud-only Multilingual Cascaded | `cascaded-multilingual` |
 | Cloud-only Omni Assistant | `cascaded-omni` |
 | Cloud-only Omni Assistant Subagents | `cascaded-omni` |
 | Cloud-only Thinker/Talker Airline Assistant | `cascaded-thinker-talker` |
@@ -57,6 +58,8 @@ Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that 
 | Generic Cascaded on a workstation | `cascaded-generic/workstation` |
 | Generic Cascaded on DGX Spark | `cascaded-generic/dgx-spark` |
 | Generic Cascaded on Jetson Thor | `cascaded-generic/jetson-thor` |
+| Multilingual Cascaded on a workstation | `cascaded-multilingual/workstation` |
+| Multilingual Cascaded on DGX Spark | `cascaded-multilingual/dgx-spark` |
 | Omni Assistant on a workstation | `cascaded-omni/workstation` |
 | Omni Assistant on DGX Spark | `cascaded-omni/dgx-spark` |
 | Omni Assistant Subagents on DGX Spark | `cascaded-omni/dgx-spark` |

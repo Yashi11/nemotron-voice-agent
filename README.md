@@ -139,6 +139,10 @@ npx skills add .
 |------|-------|-------------|
 | Tutorial | [Getting Started](docs/01-getting-started.md) | Full deployment guide with prerequisites, GPU setup, and step-by-step instructions |
 | How-to | [Configuration Guide](docs/02-configuration-guide.md) | Configuration guide for `.env`, service YAML catalogs, and prompt catalogs |
+| How-to | [Configure Services](docs/how-to/configure-services.md) | Swap LLM/ASR/TTS/S2S models, toggle LLM reasoning, and manage cloud vs local catalogs |
+| How-to | [Configure Prompts](docs/how-to/configure-prompts.md) | Author and select per-example system-prompt presets |
+| How-to | [Configure TTS Settings](docs/how-to/configure-tts-settings.md) | Voices, languages, pronunciation (IPA), and TTS text filters |
+| How-to | [Enable Zero-Shot TTS](docs/how-to/enable-zero-shot-tts.md) | Clone a voice from a short reference sample (planned feature) |
 | How-to | [Enable Multilingual Voice Agent](docs/how-to/enable-multilingual.md) | Configure prompt-driven multilingual responses with automatic TTS language switching |
 | How-to | [Jetson Thor Deployment](docs/03-jetson-thor.md) | Edge deployment guide for NVIDIA Jetson Thor platform |
 | How-to | [Tune Pipeline Performance](docs/how-to/tune-pipeline-performance.md) | Smart turn detection, chat history, and transport options |
