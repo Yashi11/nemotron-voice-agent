@@ -37,7 +37,6 @@ services:
     <<: *asr-common
     profiles:
       - cascaded-generic/workstation
-      - cascaded-generic/dgx-spark
       - cascaded-thinker-talker/workstation
     image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
@@ -48,11 +47,37 @@ services:
     <<: *asr-common
     profiles:
       - cascaded-multilingual/workstation
-      - cascaded-multilingual/dgx-spark
     image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
       NIM_TAGS_SELECTOR: ${ASR_MULTILINGUAL_NIM_TAGS:-type=multi,mode=str,vad=silero}
+
+  nemotron-asr-streaming-multilingual-dgx-spark:
+    <<: *asr-common
+    profiles:
+      - cascaded-multilingual/dgx-spark
+    image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
+    environment:
+      <<: *nemotron-asr-env
+      NIM_TAGS_SELECTOR: ${ASR_MULTILINGUAL_DGX_SPARK_NIM_TAGS:-type=multi,mode=str,vad=silero,gpu=dgx_spark,batch_size=32}
+    networks:
+      default:
+        aliases:
+          - nemotron-asr-streaming-multilingual
+
+  asr-service-dgx-spark:
+    <<: *asr-common
+    profiles:
+      - cascaded-generic/dgx-spark
+    image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
+    environment:
+      <<: *nemotron-asr-env
+      NIM_TAGS_SELECTOR: ${ASR_NIM_TAGS:-mode=str,vad=silero,gpu=dgx_spark}
+    networks:
+      default:
+        aliases:
+          - asr-service
+          - nemotron-asr-streaming-english
 
 volumes:
   asr_cache:
