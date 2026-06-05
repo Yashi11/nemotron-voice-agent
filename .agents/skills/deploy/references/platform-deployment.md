@@ -19,10 +19,10 @@ Required `.env` keys:
 Recipes: `cascaded-generic/workstation`, `cascaded-multilingual/workstation`, `cascaded-omni/workstation`, `cascaded-thinker-talker/workstation`.
 
 Services depend on the recipe:
-- `cascaded-generic/workstation`: `cascaded-generic`, `nvidia-llm`, `asr-service`, `tts-service`
-- `cascaded-multilingual/workstation`: `cascaded-multilingual`, `nvidia-llm`, `parakeet-rnnt-asr`, `tts-service`
+- `cascaded-generic/workstation`: `cascaded-generic`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
+- `cascaded-multilingual/workstation`: `cascaded-multilingual`, `nvidia-llm`, `nemotron-asr-streaming-multilingual`, `tts-service`
 - `cascaded-omni/workstation`: `cascaded-omni`, `nvidia-llm-vllm-omni`, `tts-service`
-- `cascaded-thinker-talker/workstation`: `cascaded-thinker-talker`, `booking-server`, `nvidia-llm`, `asr-service`, `tts-service`
+- `cascaded-thinker-talker/workstation`: `cascaded-thinker-talker`, `booking-server`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
 
 Requires enough GPU VRAM for the selected local NIM services. Single-GPU hosts are valid when capacity is sufficient. Multi-GPU hosts may split ASR/TTS and LLM across devices.
 
@@ -39,8 +39,8 @@ docker compose --profile cascaded-generic/workstation up -d
 Recipes: `cascaded-generic/dgx-spark`, `cascaded-multilingual/dgx-spark`, `cascaded-omni/dgx-spark`.
 
 Services depend on the recipe:
-- `cascaded-generic/dgx-spark`: `cascaded-generic`, `nvidia-llm-vllm`, `asr-service`, `tts-service`
-- `cascaded-multilingual/dgx-spark`: `cascaded-multilingual`, `nvidia-llm-vllm`, `parakeet-rnnt-asr`, `tts-service`
+- `cascaded-generic/dgx-spark`: `cascaded-generic`, `nvidia-llm-vllm`, `nemotron-asr-streaming-english`, `tts-service`
+- `cascaded-multilingual/dgx-spark`: `cascaded-multilingual`, `nvidia-llm-vllm`, `nemotron-asr-streaming-multilingual`, `tts-service`
 - `cascaded-omni/dgx-spark`: `cascaded-omni`, `nvidia-llm-vllm-omni`, `tts-service`
 
 ```bash

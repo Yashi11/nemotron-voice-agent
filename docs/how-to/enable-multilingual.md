@@ -25,10 +25,10 @@ Use the `cascaded-multilingual` pipeline family:
 # Cloud-only (Parakeet RNNT ASR + Magpie TTS via NVCF)
 docker compose --profile cascaded-multilingual up -d
 
-# Workstation — local Parakeet RNNT ASR + Magpie TTS + NIM LLM
+# Workstation — local Nemotron ASR Streaming Multilingual + Magpie TTS + NIM LLM
 docker compose --profile cascaded-multilingual/workstation up -d
 
-# DGX Spark — local Parakeet RNNT ASR + Magpie TTS + vLLM LLM
+# DGX Spark — local Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM
 docker compose --profile cascaded-multilingual/dgx-spark up -d
 ```
 
@@ -37,8 +37,12 @@ For host-native runs, set `selection: cascaded-multilingual/all` in
 
 ## Requirements
 
-- **ASR**: Parakeet RNNT Multilingual (`parakeet-1.1b-rnnt-multilingual-asr`) — the
-  default ASR in `services.cloud.yaml` and local profiles for this example.
+- **ASR**: Cloud uses Parakeet RNNT Multilingual
+  (`parakeet-1.1b-rnnt-multilingual-asr`). Local profiles default to
+  `nemotron-asr-streaming-multilingual`, backed by the
+  `cache-aware-parakeet-rnnt-multi-asr-streaming-sortformer` model with
+  `language_code: auto`. Parakeet RNNT remains available as a selectable local
+  catalog option.
 - **TTS**: Magpie TTS Multilingual — provides per-language voice switching.
 - **LLM**: Any Nemotron model that follows the `Language: / Text: / MetaData:` format
   reliably (Nemotron Super recommended).

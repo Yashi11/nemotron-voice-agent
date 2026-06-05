@@ -14,7 +14,7 @@ docker compose --profile cascaded-thinker-talker/workstation up -d
 | Recipe profile | App service | Sidecars |
 | --- | --- | --- |
 | `cascaded-thinker-talker` | `cascaded-thinker-talker` | `booking-server` |
-| `cascaded-thinker-talker/workstation` | `cascaded-thinker-talker` | `booking-server`, `nvidia-llm`, `asr-service`, `tts-service` |
+| `cascaded-thinker-talker/workstation` | `cascaded-thinker-talker` | `booking-server`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service` |
 
 Tear down with the same recipe used at `up` time.
 
@@ -26,7 +26,7 @@ docker compose --profile <recipe> down
 
 - App logs: `docker compose logs --tail 200 cascaded-thinker-talker`.
 - Booking server logs: `docker compose logs --tail 200 booking-server`.
-- Workstation local service logs: `docker compose logs --tail 200 nvidia-llm asr-service tts-service`.
+- Workstation local service logs: `docker compose logs --tail 200 nvidia-llm nemotron-asr-streaming-english tts-service`.
 
 ## Limits
 

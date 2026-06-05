@@ -41,7 +41,7 @@ _SLOT_CONFIG_KEYS: dict[str, frozenset[str]] = {
     "thinker-llm": frozenset(
         {"thinker_llm_id", "thinker_model_id", "thinker_base_url", "thinker_max_tokens", "thinker_extra_params"}
     ),
-    "asr": frozenset({"asr_id", "asr_server", "asr_model", "asr_function_id"}),
+    "asr": frozenset({"asr_id", "asr_server", "asr_model", "asr_function_id", "asr_language_code"}),
     "tts": frozenset({"tts_id", "tts_server", "tts_voice_id", "tts_function_id"}),
 }
 _SLOT_AGNOSTIC_KEYS: frozenset[str] = frozenset({"pipeline_mode", "prompt_key", "prompt_content"})
@@ -194,7 +194,8 @@ _HOST_RUNTIME_PORT_OVERRIDES: dict[tuple[str, int], int] = {
     ("nvidia-llm", 8000): 18000,
     ("nvidia-llm-vllm", 8000): 18000,
     ("tts-service", 50051): 50151,
-    ("asr-service", 50052): 50152,
+    ("nemotron-asr-streaming-english", 50052): 50152,
+    ("nemotron-asr-streaming-multilingual", 50052): 50152,
     ("parakeet-ctc-asr", 50052): 50152,
     ("parakeet-rnnt-asr", 50052): 50152,
 }
@@ -394,28 +395,26 @@ def _load_local_services_catalog() -> dict:
     return _rewrite_local_runtime_endpoints(_normalize_services_catalog(merged))
 
 
-def _merge_services_catalogs(*catalogs: dict) -> dict:
-    """Merge service catalogs by category and key (later catalogs win on conflicts)."""
-    merged: dict = {}
-    for catalog in catalogs:
-        for category, section in catalog.items():
-            if not isinstance(section, dict):
-                continue
-            target = merged.setdefault(category, {})
-            target.update(section)
-    return merged
-
-
 def _load_effective_services_catalog() -> dict:
     """Return the merged catalog combining cloud and reachable local entries.
 
-    Local entries win on shared keys when their endpoint is reachable, so the
-    pipeline picks the deployed local service. When the local endpoint is not
-    reachable it is dropped, and the cloud entry takes effect.
+    Reachable local entries are ordered first and win on shared keys, so the
+    pipeline picks the deployed local service. When no local endpoint is
+    reachable, the cloud catalog takes effect.
     """
     cloud = _load_cloud_services_catalog()
     local = _filter_reachable_entries(_load_local_services_catalog())
-    return _merge_services_catalogs(cloud, local)
+    merged: dict = {}
+    for category in tuple(local) + tuple(key for key in cloud if key not in local):
+        local_section = local.get(category, {})
+        cloud_section = cloud.get(category, {})
+        target = merged.setdefault(category, {})
+        if isinstance(local_section, dict):
+            target.update(local_section)
+        if isinstance(cloud_section, dict):
+            for key, entry in cloud_section.items():
+                target.setdefault(key, entry)
+    return merged
 
 
 # Whitelist of keys accepted on session-config / offer bodies. Anything else
@@ -441,6 +440,7 @@ SESSION_CONFIG_KEYS: frozenset[str] = frozenset(
         "asr_server",
         "asr_model",
         "asr_function_id",
+        "asr_language_code",
         "tts_server",
         "tts_voice_id",
         "tts_function_id",
@@ -479,6 +479,7 @@ _CATALOG_HYDRATION: tuple[tuple[str, str, dict[str, str]], ...] = (
             "server": "asr_server",
             "model": "asr_model",
             "function_id": "asr_function_id",
+            "language_code": "asr_language_code",
         },
     ),
     (
@@ -614,7 +615,14 @@ def build_services_api_response() -> dict:
             continue
         cloud_entries = _build_services_api_entries(cloud_data.get(category, {}), category, "cloud-nim")
         local_entries = _build_services_api_entries(local_data.get(category, {}), category, "self-hosted")
-        result[category] = local_entries + cloud_entries
+        entries = local_entries + cloud_entries
+        selected_seen = False
+        for entry in entries:
+            if entry.get("selected") and not selected_seen:
+                selected_seen = True
+            else:
+                entry["selected"] = False
+        result[category] = entries
     return result
 
 

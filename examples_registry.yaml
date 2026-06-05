@@ -39,7 +39,7 @@ examples:
       defaults:
         prompt: [generic_assistant]
         llm: [nemotron-super]
-        asr: [parakeet-ctc]
+        asr: [nemotron-asr-streaming-english]
         tts: [magpie-tts]
       bot: cascaded.generic.pipeline:bot
 
@@ -50,7 +50,7 @@ examples:
       defaults:
         prompt: [multilingual_voice_assistant]
         llm: [nemotron-super]
-        asr: [parakeet-rnnt]
+        asr: [nemotron-asr-streaming-multilingual]
         tts: [magpie-tts]
       bot: cascaded.multilingual.pipeline:bot
 
@@ -83,6 +83,6 @@ examples:
         llm: [nemotron-nano]
         thinker-llm: [nemotron-nano]
         booking-server: [default]
-        asr: [nemotron-speech]
+        asr: [nemotron-asr-streaming-english]
         tts: [magpie-tts]
       bot: cascaded.thinker_talker.pipeline:bot

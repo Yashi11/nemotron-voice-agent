@@ -31,7 +31,7 @@ shared sidecars are defined in the root `docker-compose.yml` and
 | `tools.yaml` | OpenAI function-calling schemas, keyed by tool name |
 | `tool_handlers.py` | async handlers for each schema in `tools.yaml`, exposed via the `TOOL_HANDLERS` registry |
 | `tools.py` | builds a filtered `ToolsSchema` from `tools.yaml` for the tool names a prompt requests, skipping entries without a matching handler |
-| `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for cloud and on-prem deployments |
+| `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs; local ASR defaults to `nemotron-asr-streaming-english` |
 
 ## Running the example
 
@@ -52,10 +52,10 @@ docker compose --profile cascaded-generic up -d
 On-prem recipes layer the right LLM / ASR / TTS sidecars on top:
 
 ```bash
-# Workstation (local NIM ASR / TTS / LLM)
+# Workstation (`nemotron-asr-streaming-english` + Magpie TTS + NIM LLM)
 docker compose --profile cascaded-generic/workstation up -d
 
-# DGX Spark (vLLM LLM + NIM ASR / TTS)
+# DGX Spark (`nemotron-asr-streaming-english` + Magpie TTS + vLLM LLM)
 docker compose --profile cascaded-generic/dgx-spark up -d
 
 # Jetson Thor (vLLM LLM + Riva ASR + TTS via nemotron-speech)
@@ -71,8 +71,8 @@ docker compose --profile cascaded-generic/workstation down
 | Recipe profile | App service | Sidecars |
 | --- | --- | --- |
 | `cascaded-generic` | `cascaded-generic` | none (cloud NVCF) |
-| `cascaded-generic/workstation` | `cascaded-generic` | `nvidia-llm`, `asr-service`, `tts-service` |
-| `cascaded-generic/dgx-spark` | `cascaded-generic` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
+| `cascaded-generic/workstation` | `cascaded-generic` | `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service` |
+| `cascaded-generic/dgx-spark` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-asr-streaming-english`, `tts-service` |
 | `cascaded-generic/jetson-thor` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
 
 The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`

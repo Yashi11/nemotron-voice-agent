@@ -30,10 +30,10 @@ tts:
     function_id: ""
 
 asr:
-  nemotron-speech:
-    name: "Nemotron Speech Streaming En 0.6B"
+  nemotron-asr-streaming-english:
+    name: "Nemotron ASR Streaming English"
     server: "grpc.nvcf.nvidia.com:443"
-    model: "nemotron-speech-streaming-en-0.6b-asr"
+    model: "nemotron-asr-streaming"
     function_id: "bb0837de-8c7b-481f-9ec8-ef5663e9c1fa"
 
   parakeet-ctc:

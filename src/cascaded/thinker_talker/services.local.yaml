@@ -27,14 +27,14 @@ workstation:
       voice_id: "Magpie-Multilingual.EN-US.Aria"
       function_id: ""
   asr:
-    nemotron-speech:
-      name: "Nemotron Speech Streaming En 0.6B"
-      server: "asr-service:50052"
-      model: "nemotron-speech-streaming-en-0.6b-asr"
+    nemotron-asr-streaming-english:
+      name: "Nemotron ASR Streaming English"
+      server: "nemotron-asr-streaming-english:50052"
+      model: "cache-aware-parakeet-rnnt-multi-asr-streaming-sortformer"
       function_id: ""
     parakeet-ctc:
       name: "Parakeet CTC 1.1B"
-      server: "asr-service:50052"
+      server: "parakeet-ctc-asr:50052"
       model: "parakeet-ctc-1.1b-asr"
       function_id: ""
 
@@ -65,14 +65,14 @@ dgxspark:
       voice_id: "Magpie-Multilingual.EN-US.Aria"
       function_id: ""
   asr:
-    nemotron-speech:
-      name: "Nemotron Speech Streaming En 0.6B"
-      server: "asr-service:50052"
-      model: "nemotron-speech-streaming-en-0.6b-asr"
+    nemotron-asr-streaming-english:
+      name: "Nemotron ASR Streaming English"
+      server: "nemotron-asr-streaming-english:50052"
+      model: "cache-aware-parakeet-rnnt-multi-asr-streaming-sortformer"
       function_id: ""
     parakeet-ctc:
       name: "Parakeet CTC 1.1B"
-      server: "asr-service:50052"
+      server: "parakeet-ctc-asr:50052"
       model: "parakeet-ctc-1.1b-asr"
       function_id: ""
 

@@ -1,12 +1,15 @@
 # Parakeet ASR CTC and RNNT multilingual services
 
+x-parakeet-asr-env: &parakeet-asr-env
+  NGC_API_KEY: ${NVIDIA_API_KEY}
+  NIM_HTTP_API_PORT: "9001"
+  NIM_GRPC_API_PORT: "50052"
+  NIM_TAGS_SELECTOR: ${ASR_NIM_TAGS:-mode=str,vad=silero}
+
 x-parakeet-asr: &parakeet-asr-base
   user: "0:0"
   environment:
-    - NGC_API_KEY=${NVIDIA_API_KEY}
-    - NIM_HTTP_API_PORT=9001
-    - NIM_GRPC_API_PORT=50052
-    - NIM_TAGS_SELECTOR=${ASR_NIM_TAGS:-mode=str,vad=silero}
+    <<: *parakeet-asr-env
   ports:
     - "50152:50052"
     - "9001:9001"
@@ -45,8 +48,6 @@ services:
     <<: *parakeet-asr-base
     profiles:
       - parakeet-rnnt-asr
-      - cascaded-multilingual/workstation
-      - cascaded-multilingual/dgx-spark
     image: nvcr.io/nim/nvidia/parakeet-1-1b-rnnt-multilingual:1.5.0
 
 volumes:
