@@ -679,6 +679,20 @@ class PerfClient:
             ssl_ctx.verify_mode = ssl.CERT_NONE
             async with websockets.connect(self.uri, open_timeout=WS_CONNECT_TIMEOUT, ssl=ssl_ctx) as websocket:
                 await self.logger.log(f"{self.stream_id} websocket connected")
+                ready_payload = {
+                    "label": "rtvi-ai",
+                    "type": "client-ready",
+                    "id": f"{self.stream_id}-client-ready",
+                    "data": {
+                        "version": "0.1.0",
+                        "about": {
+                            "name": "scaling-perf-benchmark",
+                        },
+                    },
+                }
+                ready_message = frames_pb2.MessageFrame(data=json.dumps(ready_payload))
+                await websocket.send(frames_pb2.Frame(message=ready_message).SerializeToString())
+                await self.logger.log(f"{self.stream_id} sent RTVI client-ready")
 
                 async def _run_session():
                     wf = await self._receive_initial_bot_intro(websocket, wf=None)
