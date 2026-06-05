@@ -45,10 +45,8 @@ services:
       - cascaded-multilingual/dgx-spark
       - cascaded-generic/jetson-thor
     container_name: nvidia-llm-vllm
-    runtime: nvidia
     image: nvcr.io/nvidia/vllm:25.12.post1-py3
     pull_policy: if_not_present
-    ipc: host
     shm_size: 16GB
     cpuset: ${VLLM_CPUSET:-}
     env_file:
