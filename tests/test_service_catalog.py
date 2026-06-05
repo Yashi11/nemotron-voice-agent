@@ -9,7 +9,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from utils import hydrate_config_from_catalog
+import examples_registry
+import utils
+from utils import build_services_api_response, hydrate_config_from_catalog, load_service_entry
 
 
 class ServiceCatalogHydrationTests(unittest.TestCase):
@@ -31,6 +33,7 @@ asr:
     server: catalog-asr:443
     model: catalog-asr-model
     function_id: catalog-asr-function
+    language_code: auto
 tts:
   magpie:
     name: Magpie
@@ -50,6 +53,7 @@ tts:
                 "asr_server": "client-asr:443",
                 "asr_model": "client-asr-model",
                 "asr_function_id": "client-asr-function",
+                "asr_language_code": "client-asr-language",
                 "tts_id": "cloud-nim:magpie",
                 "tts_server": "client-tts:443",
                 "tts_function_id": "client-tts-function",
@@ -74,6 +78,7 @@ tts:
             self.assertEqual(config["asr_server"], "catalog-asr:443")
             self.assertEqual(config["asr_model"], "catalog-asr-model")
             self.assertEqual(config["asr_function_id"], "catalog-asr-function")
+            self.assertEqual(config["asr_language_code"], "auto")
             self.assertEqual(config["tts_server"], "catalog-tts:443")
             self.assertEqual(config["tts_function_id"], "catalog-tts-function")
 
@@ -106,6 +111,71 @@ llm:
             self.assertEqual(config["model_id"], "catalog-model")
             self.assertEqual(config["base_url"], "https://catalog.example/v1")
             self.assertEqual(config["extra_params"], '{"extra_body":{"top_k":1}}')
+
+    def test_registry_defaults_fall_back_to_cloud_when_local_endpoint_is_unreachable(self) -> None:
+        example = examples_registry._lookup_by_key("cascaded-generic/generic-assistant")
+
+        with patch("examples_registry.is_endpoint_reachable", return_value=False):
+            defaults = examples_registry.metadata(example)["defaults"]
+
+        self.assertEqual(defaults["asr"][0]["id"], "cloud-nim:nemotron-asr-streaming-english")
+
+    def test_registry_defaults_use_cloud_multilingual_when_local_only_default_is_unreachable(self) -> None:
+        example = examples_registry._lookup_by_key("cascaded-multilingual/multilingual-assistant")
+
+        with patch("examples_registry.is_endpoint_reachable", return_value=False):
+            defaults = examples_registry.metadata(example)["defaults"]
+
+        self.assertEqual(defaults["asr"][0]["id"], "cloud-nim:parakeet-rnnt")
+
+    def test_cloud_nemotron_asr_uses_current_english_model_name(self) -> None:
+        generic_catalog = utils.load_yaml_file(Path("src/cascaded/generic/services.cloud.yaml"))
+        thinker_catalog = utils.load_yaml_file(Path("src/cascaded/thinker_talker/services.cloud.yaml"))
+        multilingual_catalog = utils.load_yaml_file(Path("src/cascaded/multilingual/services.cloud.yaml"))
+
+        self.assertEqual(generic_catalog["asr"]["nemotron-asr-streaming-english"]["model"], "nemotron-asr-streaming")
+        self.assertEqual(thinker_catalog["asr"]["nemotron-asr-streaming-english"]["model"], "nemotron-asr-streaming")
+        self.assertNotIn("nemotron-asr-streaming-multilingual", multilingual_catalog["asr"])
+
+    def test_registry_defaults_promote_reachable_local_multilingual_asr(self) -> None:
+        example = examples_registry._lookup_by_key("cascaded-multilingual/multilingual-assistant")
+
+        with patch("examples_registry.is_endpoint_reachable", return_value=True):
+            defaults = examples_registry.metadata(example)["defaults"]
+
+        self.assertEqual(defaults["asr"][0]["id"], "self-hosted:nemotron-asr-streaming-multilingual")
+        self.assertEqual(defaults["asr"][0]["language_code"], "auto")
+
+    def test_jetson_default_uses_reachable_nemotron_speech_asr(self) -> None:
+        example = examples_registry._lookup_by_key("cascaded-generic/generic-assistant")
+
+        def reachable(endpoint: str) -> bool:
+            return endpoint in {"nemotron-speech:50051", "localhost:50051"}
+
+        with patch("examples_registry.is_endpoint_reachable", side_effect=reachable):
+            defaults = examples_registry.metadata(example)["defaults"]
+
+        self.assertEqual(defaults["asr"][0]["id"], "self-hosted:parakeet-ctc")
+        self.assertIn(defaults["asr"][0]["server"], {"nemotron-speech:50051", "localhost:50051"})
+
+    def test_runtime_default_uses_reachable_nemotron_speech_asr(self) -> None:
+        token = utils._service_context.set((Path("src/cascaded/generic"), ("llm", "asr", "tts")))
+        try:
+
+            def reachable(endpoint: str) -> bool:
+                return endpoint in {"nemotron-speech:50051", "localhost:50051"}
+
+            with patch("utils.is_endpoint_reachable", side_effect=reachable):
+                default_asr = load_service_entry("asr", "")
+                services = build_services_api_response()["asr"]
+        finally:
+            utils._service_context.reset(token)
+
+        self.assertIn(default_asr["server"], {"nemotron-speech:50051", "localhost:50051"})
+        self.assertEqual(default_asr["model"], "parakeet-ctc-1.1b-asr")
+        selected = [entry for entry in services if entry.get("selected")]
+        self.assertEqual(len(selected), 1)
+        self.assertEqual(selected[0]["id"], "self-hosted:parakeet-ctc")
 
 
 if __name__ == "__main__":

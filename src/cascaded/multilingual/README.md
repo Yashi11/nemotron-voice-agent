@@ -20,13 +20,18 @@ entry point, service catalogs, and prompts. Shared pipeline helpers live in
 | Best fit | Teams building voice experiences for users who switch languages, operate in multilingual regions, or need one deployment to cover multiple customer-language journeys. |
 | Extend into | Multilingual contact-center agents, hospitality and travel assistants, global employee support, language-practice companions, translated kiosk flows, or localized field-service copilots. |
 
+Cloud deployments use the existing Parakeet RNNT multilingual ASR endpoint. Local
+workstation and DGX Spark deployments default to `nemotron-asr-streaming-multilingual`,
+which runs the cache-aware RC1 streaming ASR NIM in multilingual mode with automatic
+language detection.
+
 ## Layout
 
 | Path | Role |
 | --- | --- |
 | `pipeline.py` | pipecat entry point — multilingual mode always on |
 | `prompts.yaml` | multilingual prompt catalog |
-| `services.cloud.yaml`, `services.local.yaml` | service catalogs; defaults to `parakeet-rnnt` for ASR |
+| `services.cloud.yaml`, `services.local.yaml` | service catalogs; local ASR defaults to `nemotron-asr-streaming-multilingual` |
 
 ## How it works
 
@@ -59,10 +64,10 @@ docker compose --profile cascaded-multilingual up -d
 On-prem recipes with local ASR / TTS / LLM sidecars:
 
 ```bash
-# Workstation (Parakeet RNNT ASR + Magpie TTS + NIM LLM)
+# Workstation (`nemotron-asr-streaming-multilingual` + Magpie TTS + NIM LLM)
 docker compose --profile cascaded-multilingual/workstation up -d
 
-# DGX Spark (Parakeet RNNT ASR + Magpie TTS + vLLM LLM)
+# DGX Spark (`nemotron-asr-streaming-multilingual` + Magpie TTS + vLLM LLM)
 docker compose --profile cascaded-multilingual/dgx-spark up -d
 ```
 
@@ -75,8 +80,8 @@ docker compose --profile cascaded-multilingual/workstation down
 | Recipe profile | App service | Sidecars |
 | --- | --- | --- |
 | `cascaded-multilingual` | `cascaded-multilingual` | none (cloud NVCF) |
-| `cascaded-multilingual/workstation` | `cascaded-multilingual` | `nvidia-llm`, `parakeet-rnnt-asr`, `tts-service` |
-| `cascaded-multilingual/dgx-spark` | `cascaded-multilingual` | `nvidia-llm-vllm`, `parakeet-rnnt-asr`, `tts-service` |
+| `cascaded-multilingual/workstation` | `cascaded-multilingual` | `nvidia-llm`, `nemotron-asr-streaming-multilingual`, `tts-service` |
+| `cascaded-multilingual/dgx-spark` | `cascaded-multilingual` | `nvidia-llm-vllm`, `nemotron-asr-streaming-multilingual`, `tts-service` |
 
 The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
 when `PIPELINE_TLS=false`.

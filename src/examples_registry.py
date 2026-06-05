@@ -152,7 +152,8 @@ def _rewrite_entry_for_host_runtime(entry: dict) -> dict:
         else:
             out[field] = (
                 value.replace("tts-service:50051", "localhost:50151")
-                .replace("asr-service:50052", "localhost:50152")
+                .replace("nemotron-asr-streaming-english:50052", "localhost:50152")
+                .replace("nemotron-asr-streaming-multilingual:50052", "localhost:50152")
                 .replace("parakeet-ctc-asr:50052", "localhost:50152")
                 .replace("parakeet-rnnt-asr:50052", "localhost:50152")
                 .replace("nemotron-speech:50051", "localhost:50051")
@@ -243,19 +244,46 @@ def _service_entry_payload(source: str, key: str, entry: dict) -> ServiceDefault
     }
 
 
+def _first_reachable_service_entry(section: dict) -> tuple[str, dict] | None:
+    """Return the first reachable entry in a normalized service section."""
+    for key, entry in section.items():
+        if isinstance(entry, dict) and is_endpoint_reachable(_entry_endpoint(entry)):
+            return str(key), entry
+    return None
+
+
 def _resolve_service_default(example: EnrichedExample, category: str, service_id: str) -> ServiceDefault:
     """Resolve one default service id to its full service-catalog payload.
 
-    Prefers the self-hosted variant when it exists, matching the runtime
-    ``/api/services`` precedence where reachable local entries shadow their
-    cloud namesake. Falls back to the cloud entry when no local definition is
-    present (the common cloud-only deployment).
+    Prefers the self-hosted variant when it exists and is reachable, matching
+    the runtime ``/api/services`` precedence where reachable local entries are
+    used for on-prem recipes. Falls back to cloud when no local endpoint is
+    available, which keeps cloud-only recipe defaults usable.
     """
     cloud, local = _load_service_catalogs(str(_example_dir(example)))
-    for source, catalog in (("self-hosted", local), ("cloud-nim", cloud)):
-        section = catalog.get(category, {})
-        if service_id in section and isinstance(section[service_id], dict):
-            return _service_entry_payload(source, service_id, section[service_id])
+    local_section = local.get(category, {})
+    local_entry = local_section.get(service_id) if isinstance(local_section, dict) else None
+    if isinstance(local_entry, dict) and is_endpoint_reachable(_entry_endpoint(local_entry)):
+        return _service_entry_payload("self-hosted", service_id, local_entry)
+    if isinstance(local_entry, dict) and isinstance(local_section, dict):
+        reachable_local = _first_reachable_service_entry(local_section)
+        if reachable_local is not None:
+            local_key, entry = reachable_local
+            return _service_entry_payload("self-hosted", local_key, entry)
+
+    cloud_section = cloud.get(category, {})
+    if isinstance(cloud_section, dict):
+        cloud_entry = cloud_section.get(service_id)
+        if isinstance(cloud_entry, dict):
+            return _service_entry_payload("cloud-nim", service_id, cloud_entry)
+        if isinstance(local_entry, dict):
+            for fallback_key, fallback_entry in cloud_section.items():
+                if isinstance(fallback_entry, dict):
+                    return _service_entry_payload("cloud-nim", fallback_key, fallback_entry)
+
+    if isinstance(local_entry, dict):
+        return _service_entry_payload("self-hosted", service_id, local_entry)
+
     raise RuntimeError(
         f"Default service {service_id!r} for {example['key']} / {category!r} "
         "was not found in services.cloud.yaml or services.local.yaml"

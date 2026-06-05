@@ -26,7 +26,7 @@ The Nemotron Voice Agent uses example-local service catalogs to manage LLM, ASR,
 
 | Model | Key | Description |
 |-------|-----|-------------|
-| Nemotron Speech Streaming En 0.6B | `nemotron-speech` | Default. Low-latency English ASR |
+| [Nemotron ASR Streaming](https://build.nvidia.com/nvidia/nemotron-asr-streaming/modelcard) | `nemotron-asr-streaming-english` | Default. Low-latency English ASR |
 | [Parakeet CTC 1.1B](https://build.nvidia.com/nvidia/parakeet-ctc-1_1b-asr/modelcard) | `parakeet-ctc` | English ASR |
 | [Parakeet 1.1B RNNT Multilingual](https://build.nvidia.com/nvidia/parakeet-1_1b-rnnt-multilingual-asr/modelcard) | `parakeet-rnnt` | Multilingual ASR |
 
@@ -81,7 +81,8 @@ When the same default key exists in both `services.cloud.yaml` and `services.loc
 | `http://nvidia-llm-vllm:8000/v1` | `http://localhost:18000/v1` |
 | `http://nvidia-llm-vllm-omni:8002/v1` | `http://localhost:8002/v1` |
 | `tts-service:50051` | `localhost:50151` |
-| `asr-service:50052` | `localhost:50152` |
+| `nemotron-asr-streaming-english:50052` | `localhost:50152` |
+| `nemotron-asr-streaming-multilingual:50052` | `localhost:50152` |
 | `parakeet-ctc-asr:50052` | `localhost:50152` |
 | `parakeet-rnnt-asr:50052` | `localhost:50152` |
 | `nemotron-speech:50051` | `localhost:50051` |
@@ -126,6 +127,8 @@ Pick the recipe profile that matches the example and hardware target. The catalo
 docker compose --profile cascaded-generic/workstation up -d
 docker compose --profile cascaded-generic/dgx-spark up -d
 docker compose --profile cascaded-generic/jetson-thor up -d
+docker compose --profile cascaded-multilingual/workstation up -d
+docker compose --profile cascaded-multilingual/dgx-spark up -d
 docker compose --profile cascaded-omni/workstation up -d
 docker compose --profile cascaded-omni/dgx-spark up -d
 docker compose --profile cascaded-thinker-talker/workstation up -d

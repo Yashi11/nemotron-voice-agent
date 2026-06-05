@@ -91,7 +91,17 @@ _CONNECT_HEALTH_TIMEOUT_SECS = 5
 _NIM_READY_PATH = "/v1/health/ready"
 _LOCAL_SERVICE_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "host.docker.internal"})
 _SPEECH_READY_ENDPOINTS = {
-    "asr": (("asr-service", "parakeet-ctc-asr", "parakeet-rnnt-asr"), 50052, 50152, 9001),
+    "asr": (
+        (
+            "nemotron-asr-streaming-english",
+            "nemotron-asr-streaming-multilingual",
+            "parakeet-ctc-asr",
+            "parakeet-rnnt-asr",
+        ),
+        50052,
+        50152,
+        9001,
+    ),
     "tts": (("tts-service",), 50051, 50151, 9000),
 }
 _TURN_LISTEN_PORT = 3478

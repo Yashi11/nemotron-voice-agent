@@ -23,11 +23,11 @@ Before you begin, ensure you have the following:
 | `cascaded-multilingual` | None (cloud) | Multilingual Cascaded pipeline |
 | `cascaded-omni` | None (cloud) | Nemotron Omni (single-model ASR + LLM) + Magpie TTS |
 | `cascaded-thinker-talker` | None (cloud) | Thinker/Talker airline pipeline with local booking-server sidecar |
-| `cascaded-generic/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + NIM LLM |
-| `cascaded-generic/dgx-spark` | 1 GPU, 128 GB unified memory | NIM ASR + TTS + vLLM LLM |
+| `cascaded-generic/workstation` | 1 GPU (>=80 GB VRAM) | Nemotron ASR Streaming English + Magpie TTS + NIM LLM |
+| `cascaded-generic/dgx-spark` | 1 GPU, 128 GB unified memory | Nemotron ASR Streaming English + Magpie TTS + vLLM LLM |
 | `cascaded-generic/jetson-thor` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
-| `cascaded-multilingual/workstation` | 1 GPU (>=80 GB VRAM) | Parakeet RNNT ASR + Magpie TTS + NIM LLM |
-| `cascaded-multilingual/dgx-spark` | 1 GPU, 128 GB unified memory | Parakeet RNNT ASR + Magpie TTS + vLLM LLM |
+| `cascaded-multilingual/workstation` | 1 GPU (>=80 GB VRAM) | Nemotron ASR Streaming Multilingual + Magpie TTS + NIM LLM |
+| `cascaded-multilingual/dgx-spark` | 1 GPU, 128 GB unified memory | Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM |
 | `cascaded-omni/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
 | `cascaded-omni/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
 | `cascaded-thinker-talker/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + Talker/Thinker NIM LLM, plus local booking-server sidecar |
@@ -111,7 +111,7 @@ docker compose --profile cascaded-generic/dgx-spark up -d
 # Generic Cascaded — Jetson Thor edge (set HF_TOKEN in .env)
 docker compose --profile cascaded-generic/jetson-thor up -d
 
-# Multilingual Cascaded — workstation (Parakeet RNNT ASR + Magpie TTS + NIM LLM)
+# Multilingual Cascaded — workstation (Nemotron ASR Streaming Multilingual + Magpie TTS + NIM LLM)
 docker compose --profile cascaded-multilingual/workstation up -d
 
 # Multilingual Cascaded — DGX Spark

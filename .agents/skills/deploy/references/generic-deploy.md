@@ -19,8 +19,8 @@ docker compose --profile <recipe> up -d
 | Recipe profile | App service | Sidecars from `docker/` |
 | --- | --- | --- |
 | `cascaded-generic` | `cascaded-generic` | none (cloud NVCF) |
-| `cascaded-generic/workstation` | `cascaded-generic` | `nvidia-llm`, `asr-service`, `tts-service` |
-| `cascaded-generic/dgx-spark` | `cascaded-generic` | `nvidia-llm-vllm`, `asr-service`, `tts-service` |
+| `cascaded-generic/workstation` | `cascaded-generic` | `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service` |
+| `cascaded-generic/dgx-spark` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-asr-streaming-english`, `tts-service` |
 | `cascaded-generic/jetson-thor` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
 
 Tear down with the same recipe used at `up` time:

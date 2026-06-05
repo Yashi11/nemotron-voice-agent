@@ -82,7 +82,7 @@ docker compose ps
 docker compose logs --tail 200 <service-name>
 ```
 
-App service names follow the active recipe family: `cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, or `cascaded-thinker-talker`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `asr-service`, `tts-service`, `nemotron-speech`, `booking-server`).
+App service names follow the active recipe family: `cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, or `cascaded-thinker-talker`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `nemotron-asr-streaming-english`, `nemotron-asr-streaming-multilingual`, `parakeet-ctc-asr`, `parakeet-rnnt-asr`, `tts-service`, `nemotron-speech`, `booking-server`).
 
 ## References
 

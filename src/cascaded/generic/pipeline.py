@@ -26,7 +26,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
 from pipecat.processors.frameworks.rtvi.frames import RTVIServerMessageFrame
 from pipecat.runner.types import RunnerArguments
 from pipecat.services.nvidia.llm import NvidiaLLMService, NvidiaLLMSettings
-from pipecat.services.nvidia.stt import NvidiaSTTService
+from pipecat.services.nvidia.stt import NvidiaSTTService, NvidiaSTTSettings
 from pipecat.services.nvidia.tts import NvidiaTTSService, NvidiaTTSSettings
 
 from cascaded.generic.tools import TOOL_HANDLERS, build_tools_schema
@@ -78,13 +78,19 @@ async def bot(runner_args: RunnerArguments) -> None:
     }
     asr_function_id = body.get("asr_function_id", "") or default_asr.get("function_id", "")
     asr_model = body.get("asr_model", "") or default_asr.get("model", "")
+    asr_language_code = body.get("asr_language_code", "") or default_asr.get("language_code", "")
     if asr_function_id or asr_model:
         asr_kwargs["model_function_map"] = {
             "function_id": asr_function_id,
             "model_name": asr_model or "custom-asr",
         }
+    if asr_language_code:
+        asr_kwargs["settings"] = NvidiaSTTSettings(language=asr_language_code)
     stt = NvidiaSTTService(**asr_kwargs, stop_history=400)
-    logger.info(f"ASR: server={asr_server}, ssl={asr_ssl}, function_id={asr_function_id or '(default)'}")
+    logger.info(
+        f"ASR: server={asr_server}, ssl={asr_ssl}, function_id={asr_function_id or '(default)'}, "
+        f"language={asr_language_code or '(default)'}"
+    )
 
     # --- LLM ---
     model_id = body.get("model_id", "") or default_llm.get("model_id", "nvidia/nemotron-3-nano-30b-a3b")

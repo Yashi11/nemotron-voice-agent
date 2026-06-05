@@ -1,7 +1,6 @@
 # On-prem catalog. Entries are grouped by platform name for readability; the
 # backend merges all sections and exposes only the reachable ones. Compose
 # endpoints are rewritten to localhost for host-native runs.
-# ASR uses the parakeet-rnnt-asr sidecar this recipe starts (not asr-service).
 
 workstation:
   llm:
@@ -18,6 +17,12 @@ workstation:
       voice_id: "Magpie-Multilingual.EN-US.Aria"
       function_id: ""
   asr:
+    nemotron-asr-streaming-multilingual:
+      name: "Nemotron ASR Streaming Multilingual"
+      server: "nemotron-asr-streaming-multilingual:50052"
+      model: "cache-aware-parakeet-rnnt-multi-asr-streaming-sortformer"
+      language_code: "auto"
+      function_id: ""
     parakeet-rnnt:
       name: "Parakeet 1.1B RNNT Multilingual ASR"
       server: "parakeet-rnnt-asr:50052"
@@ -39,6 +44,12 @@ dgxspark:
       voice_id: "Magpie-Multilingual.EN-US.Aria"
       function_id: ""
   asr:
+    nemotron-asr-streaming-multilingual:
+      name: "Nemotron ASR Streaming Multilingual"
+      server: "nemotron-asr-streaming-multilingual:50052"
+      model: "cache-aware-parakeet-rnnt-multi-asr-streaming-sortformer"
+      language_code: "auto"
+      function_id: ""
     parakeet-rnnt:
       name: "Parakeet 1.1B RNNT Multilingual ASR"
       server: "parakeet-rnnt-asr:50052"

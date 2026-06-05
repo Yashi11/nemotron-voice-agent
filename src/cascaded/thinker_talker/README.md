@@ -69,7 +69,7 @@ Tear down with the same profile used at `up` time.
 | Recipe profile | App service | Sidecars |
 | --- | --- | --- |
 | `cascaded-thinker-talker` | `cascaded-thinker-talker` | `booking-server` |
-| `cascaded-thinker-talker/workstation` | `cascaded-thinker-talker` | `booking-server`, `nvidia-llm`, `asr-service`, `tts-service` |
+| `cascaded-thinker-talker/workstation` | `cascaded-thinker-talker` | `booking-server`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service` |
 
 The UI is served at `https://localhost:7860/` by default, or
 `http://localhost:7860/` when `PIPELINE_TLS=false`.

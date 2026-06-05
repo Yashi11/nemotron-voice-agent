@@ -15,7 +15,7 @@ The following are the key components in this blueprint:
 
 - **NVIDIA Nemotron Speech ASR & TTS**: High-performance streaming speech recognition and multilingual text-to-speech synthesis.
   - [Parakeet CTC 1.1B ASR](https://build.nvidia.com/nvidia/parakeet-ctc-1_1b-asr/modelcard)
-  - [Nemotron Speech Streaming En 0.6B ASR](https://build.nvidia.com/nvidia/nemotron-speech-streaming-en-0-6b-asr/modelcard)
+  - [Nemotron ASR Streaming](https://build.nvidia.com/nvidia/nemotron-asr-streaming/modelcard)
   - [Parakeet 1.1B RNNT Multilingual ASR](https://build.nvidia.com/nvidia/parakeet-1_1b-rnnt-multilingual-asr/modelcard)
   - [Magpie TTS Multilingual](https://build.nvidia.com/nvidia/magpie-tts-multilingual/modelcard)
 - **NVIDIA Nemotron LLMs**: State-of-the-art LLM models engineered for real-time conversational use cases.
@@ -39,14 +39,14 @@ Pick one **recipe** profile. Cloud recipes use `<family>`. On-prem recipes use `
 | `cascaded-multilingual` | None | NVIDIA cloud multilingual ASR + LLM + TTS |
 | `cascaded-omni` | None | NVIDIA cloud Nemotron Omni (ASR + LLM in one model) + Magpie TTS |
 | `cascaded-thinker-talker` | None | NVIDIA cloud ASR + Talker LLM + Thinker LLM + TTS, plus local booking-server sidecar |
-| `cascaded-generic/workstation` | 1 GPU (~80 GB VRAM) | Local NIM ASR + TTS + LLM |
-| `cascaded-generic/dgx-spark` | 1 GPU, 128 GB unified memory | Local NIM ASR + TTS + vLLM LLM |
+| `cascaded-generic/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming English + Magpie TTS + LLM |
+| `cascaded-generic/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron ASR Streaming English + Magpie TTS + vLLM LLM |
 | `cascaded-generic/jetson-thor` | 1 GPU, 128 GB unified memory | Local Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
-| `cascaded-multilingual/workstation` | 1 GPU (~80 GB VRAM) | Local Parakeet RNNT ASR + Magpie TTS + LLM |
-| `cascaded-multilingual/dgx-spark` | 1 GPU, 128 GB unified memory | Local Parakeet RNNT ASR + Magpie TTS + vLLM LLM |
+| `cascaded-multilingual/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming Multilingual + Magpie TTS + LLM |
+| `cascaded-multilingual/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM |
 | `cascaded-omni/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
 | `cascaded-omni/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
-| `cascaded-thinker-talker/workstation` | 1 GPU (~80 GB VRAM) | Local NIM ASR + TTS + Talker/Thinker LLM, plus local booking-server sidecar |
+| `cascaded-thinker-talker/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming English + TTS + Talker/Thinker LLM, plus local booking-server sidecar |
 
 > Observability profiles (`tracing`, `turn`) can be added alongside any recipe.
 
