@@ -41,7 +41,7 @@ services:
     image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
-      NIM_TAGS_SELECTOR: ${ASR_ENGLISH_NIM_TAGS:-type=en-US,mode=str,vad=silero}
+      NIM_TAGS_SELECTOR: ${ASR_ENGLISH_NIM_TAGS:-type=en-US,mode=str}
 
   nemotron-asr-streaming-multilingual:
     <<: *asr-common
@@ -50,7 +50,7 @@ services:
     image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
-      NIM_TAGS_SELECTOR: ${ASR_MULTILINGUAL_NIM_TAGS:-type=multi,mode=str,vad=silero}
+      NIM_TAGS_SELECTOR: ${ASR_MULTILINGUAL_NIM_TAGS:-type=multi,mode=str}
 
   nemotron-asr-streaming-multilingual-dgx-spark:
     <<: *asr-common
@@ -59,7 +59,7 @@ services:
     image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
-      NIM_TAGS_SELECTOR: ${ASR_MULTILINGUAL_DGX_SPARK_NIM_TAGS:-type=multi,mode=str,vad=silero,gpu=dgx_spark,batch_size=32}
+      NIM_TAGS_SELECTOR: ${ASR_MULTILINGUAL_DGX_SPARK_NIM_TAGS:-type=multi,mode=str,gpu=dgx_spark,batch_size=32}
     networks:
       default:
         aliases:
@@ -72,7 +72,7 @@ services:
     image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
-      NIM_TAGS_SELECTOR: ${ASR_NIM_TAGS:-mode=str,vad=silero,gpu=dgx_spark}
+      NIM_TAGS_SELECTOR: ${ASR_NIM_TAGS:-mode=str,gpu=dgx_spark}
     networks:
       default:
         aliases:
