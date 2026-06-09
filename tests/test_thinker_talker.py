@@ -13,20 +13,20 @@ from typing import Any
 from pipecat.frames.frames import LLMFullResponseEndFrame, LLMFullResponseStartFrame, LLMTextFrame
 from pipecat.services.llm_service import FunctionCallParams
 
-from cascaded.thinker_talker.airline.airports import spoken_time
-from cascaded.thinker_talker.airline.database.api import BookingAPI
-from cascaded.thinker_talker.airline.database.db import apply_schema
-from cascaded.thinker_talker.airline.state import MAX_LIFECYCLE_EVENTS, ThinkerSessionState
-from cascaded.thinker_talker.airline.thinker import ThinkerBackend
-from cascaded.thinker_talker.airline.tools import CALL_THINKER_TOOL, CANCEL_THINKER_TOOL
-from cascaded.thinker_talker.airline.transform import _server_booking_to_record, _server_flight_to_option
-from cascaded.thinker_talker.src.protocol import ThinkerLifecycleEvent, is_speakable_payload
-from cascaded.thinker_talker.src.tool_handlers import (
+from examples.thinker_talker.airline.airports import spoken_time
+from examples.thinker_talker.airline.database.api import BookingAPI
+from examples.thinker_talker.airline.database.db import apply_schema
+from examples.thinker_talker.airline.state import MAX_LIFECYCLE_EVENTS, ThinkerSessionState
+from examples.thinker_talker.airline.thinker import ThinkerBackend
+from examples.thinker_talker.airline.tools import CALL_THINKER_TOOL, CANCEL_THINKER_TOOL
+from examples.thinker_talker.airline.transform import _server_booking_to_record, _server_flight_to_option
+from examples.thinker_talker.src.protocol import ThinkerLifecycleEvent, is_speakable_payload
+from examples.thinker_talker.src.tool_handlers import (
     _emit_talker_response,
     _normalize_arguments,
     build_handlers,
 )
-from cascaded.thinker_talker.src.tts_filter import (
+from examples.thinker_talker.src.tts_filter import (
     ThinkerTalkerPronunciationTextFilter,
     ThinkerTalkerSpeechTextFilter,
 )

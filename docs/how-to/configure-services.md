@@ -124,14 +124,16 @@ tts:
 Pick the recipe profile that matches the example and hardware target. The catalog picks up the matching sidecars automatically once they are reachable.
 
 ```bash
-docker compose --profile cascaded-generic/workstation up -d
-docker compose --profile cascaded-generic/dgx-spark up -d
-docker compose --profile cascaded-generic/jetson-thor up -d
-docker compose --profile cascaded-multilingual/workstation up -d
-docker compose --profile cascaded-multilingual/dgx-spark up -d
-docker compose --profile cascaded-omni/workstation up -d
-docker compose --profile cascaded-omni/dgx-spark up -d
-docker compose --profile cascaded-thinker-talker/workstation up -d
+docker compose --profile generic-assistant/workstation up -d
+docker compose --profile generic-assistant/dgx-spark up -d
+docker compose --profile generic-assistant/jetson-thor up -d
+docker compose --profile multilingual-assistant/workstation up -d
+docker compose --profile multilingual-assistant/dgx-spark up -d
+docker compose --profile omni-assistant/workstation up -d
+docker compose --profile omni-assistant/dgx-spark up -d
+docker compose --profile omni-assistant-subagents/workstation up -d
+docker compose --profile omni-assistant-subagents/dgx-spark up -d
+docker compose --profile thinker-talker/workstation up -d
 ```
 
-Running a cloud-only profile (e.g. `--profile cascaded-generic`) stays cloud-only and uses just `services.cloud.yaml`.
+Running a cloud-only profile (e.g. `--profile generic-assistant`) stays cloud-only and uses just `services.cloud.yaml`.

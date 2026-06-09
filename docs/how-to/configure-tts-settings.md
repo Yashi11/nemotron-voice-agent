@@ -72,7 +72,7 @@ The Magpie preprocessor reserves two character sequences:
 
 Both reserved sequences appear naturally in LLM output, particularly when the model responds with code examples, JSON, Markdown, or HTML snippets.
 
-All filter classes live in `src/cascaded/shared/nemotron_speech_text_filter.py`.
+All filter classes live in `src/examples/shared/nemotron_speech_text_filter.py`.
 
 ### `NemotronSpeechTextFilter` *(default)*
 
@@ -81,8 +81,8 @@ Applies a single regex pass that strips `{`, `}`, and tag-opening `<` from the i
 Use this filter when the LLM produces plain prose or lightly formatted text with no Markdown.
 
 ```python
-# src/cascaded/generic/pipeline.py
-from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
+# src/examples/generic/pipeline.py
+from examples.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 
 tts = NvidiaTTSService(
     ...
@@ -95,8 +95,8 @@ tts = NvidiaTTSService(
 Extends Pipecat's `MarkdownTextFilter` with a second pass that applies the same reserved-character strip from `NemotronSpeechTextFilter`. Use this filter when the LLM streams Markdown-formatted responses.
 
 ```python
-# src/cascaded/generic/pipeline.py
-from cascaded.shared.nemotron_speech_text_filter import NemotronSpeechMarkdownTextFilter
+# src/examples/generic/pipeline.py
+from examples.shared.nemotron_speech_text_filter import NemotronSpeechMarkdownTextFilter
 
 tts = NvidiaTTSService(
     ...

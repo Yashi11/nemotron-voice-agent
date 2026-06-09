@@ -8,7 +8,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { useDeployment, useDefaultLLMs, useDefaultPrompts, useDefaultASR, useDefaultTTS, useDefaultTools, type DeploymentOption, type LLMService, type PipelineOption, type Prompt, type SimpleService, type Tool, type TransportOption, type TransportType } from "../api";
+import { useDeployment, useDefaultLLMs, useDefaultPrompts, useDefaultASR, useDefaultTTS, useDefaultTools, type DeploymentOption, type LLMService, type Prompt, type SimpleService, type Tool, type TransportOption, type TransportType } from "../api";
 import { isSelectablePrompt, readLSArray, readLSString, writeLSString, writeLSJson, removeLSKey } from "../utils";
 import { AppContext } from "./app-context";
 
@@ -137,12 +137,10 @@ function useManagedServiceCatalog<T extends ManagedService>({
 export interface AppState {
   /** Currently selected example (server-provided). Undefined until /api/deployment resolves. */
   selectedExample: DeploymentOption | undefined;
-  /** Switch to an option by its registry ``key`` (id when globally unique, else family). */
+  /** Switch to an option by its registry ``key`` (the example id). */
   selectExample: (key: string) => void;
   /** Full list of examples available on this deployment. */
   deploymentOptions: DeploymentOption[];
-  /** Pipeline families available on this deployment. */
-  availablePipelines: PipelineOption[];
 
   /** When false, the server pinned a single bot — clients must not let the user switch examples. */
   deploymentSelectable: boolean;
@@ -200,7 +198,6 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   const { data: deployment } = useDeployment();
   const deploymentSelectable = deployment ? deployment.selectable : true;
   const deploymentOptions = useMemo(() => deployment?.options ?? [], [deployment]);
-  const availablePipelines = useMemo<PipelineOption[]>(() => deployment?.pipelines ?? [], [deployment]);
 
   // --- Selected example state (one source of truth, driven by /api/deployment) ---
   const [selectedKey, setSelectedKey] = useState<string>(() => readLSString(SELECTED_EXAMPLE_STORAGE));
@@ -387,7 +384,6 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const value = useMemo<AppState>(() => ({
     selectedExample, selectExample, deploymentOptions,
-    availablePipelines,
     deploymentSelectable,
     availableTransports,
     selectedTransport: effectiveTransport, setTransport,
@@ -398,7 +394,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     selectedVoiceId, setSelectedVoiceId,
     prompts, promptsLoading, selectedPromptKey: effectiveSelectedPromptKey, selectPrompt, addPrompt, updatePrompt, removePrompt, selectedPrompt,
     tools, toolsLoading,
-  }), [selectedExample, selectExample, deploymentOptions, availablePipelines, deploymentSelectable, availableTransports, effectiveTransport, setTransport, currentSessionId,
+  }), [selectedExample, selectExample, deploymentOptions, deploymentSelectable, availableTransports, effectiveTransport, setTransport, currentSessionId,
        llms, llmsLoading, effectiveSelectedLLMId, selectLLM, addLLM, updateLLM, removeLLM, selectedLLM,
        asrServices, asrLoading, effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
        ttsServices, ttsLoading, effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,

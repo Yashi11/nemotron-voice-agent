@@ -38,11 +38,11 @@ def _example_with_catalog(contents: str):
 class PromptCatalogTests(unittest.TestCase):
     def test_builtin_catalogs_have_expected_prompts(self) -> None:
         cases = {
-            PROJECT_ROOT / "src/cascaded/generic/prompts.yaml": {
+            PROJECT_ROOT / "src/examples/generic/prompts.yaml": {
                 "flowershop",
                 "generic_assistant",
             },
-            PROJECT_ROOT / "src/cascaded/multilingual/prompts.yaml": {
+            PROJECT_ROOT / "src/examples/multilingual/prompts.yaml": {
                 "multilingual_voice_assistant",
             },
         }
@@ -54,10 +54,10 @@ class PromptCatalogTests(unittest.TestCase):
         self.assertEqual(default_prompt_key(catalog), "prompt_1000_tokens")
 
     def test_resolves_to_package_local_prompts_yaml(self) -> None:
-        module_file = PROJECT_ROOT / "src/cascaded/generic/pipeline.py"
+        module_file = PROJECT_ROOT / "src/examples/generic/pipeline.py"
         self.assertEqual(
             resolve_prompt_catalog_path(module_file),
-            PROJECT_ROOT / "src/cascaded/generic/prompts.yaml",
+            PROJECT_ROOT / "src/examples/generic/prompts.yaml",
         )
 
     def test_env_override_wins_over_package_local_path(self) -> None:

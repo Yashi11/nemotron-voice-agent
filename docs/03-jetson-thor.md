@@ -74,7 +74,7 @@ This guide covers deploying the Nemotron Voice Agent on Jetson Thor using Docker
 4. Start the full stack — vLLM (Nemotron Nano), Riva (ASR + TTS), and the Pipecat pipeline — all via Docker Compose:
 
     ```bash
-    docker compose --profile cascaded-generic/jetson-thor up -d
+    docker compose --profile generic-assistant/jetson-thor up -d
     ```
 
     > **Note:** First start waits for Riva's ~90 s warmup. Subsequent starts are fast.
@@ -83,7 +83,7 @@ This guide covers deploying the Nemotron Voice Agent on Jetson Thor using Docker
     >
     > ```bash
     > sudo bash scripts/start-mps.sh
-    > docker compose --profile cascaded-generic/jetson-thor up -d
+    > docker compose --profile generic-assistant/jetson-thor up -d
     > ```
 
 5. Access the application at `https://<jetson-ip>:7860`, or `http://<jetson-ip>:7860` when `PIPELINE_TLS=false`.
@@ -100,11 +100,11 @@ Use the same recipe profile as in step 4.
 
 ```bash
 # View logs
-docker compose --profile cascaded-generic/jetson-thor logs -f cascaded-generic
+docker compose --profile generic-assistant/jetson-thor logs -f generic-assistant
 
 # Stop all services
-docker compose --profile cascaded-generic/jetson-thor down
+docker compose --profile generic-assistant/jetson-thor down
 
 # Rebuild after code changes
-docker compose --profile cascaded-generic/jetson-thor up --build -d cascaded-generic
+docker compose --profile generic-assistant/jetson-thor up --build -d generic-assistant
 ```

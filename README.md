@@ -31,22 +31,25 @@ Check the following requirements before you begin.
 
 ### Hardware Requirements
 
-Pick one **recipe** profile. Cloud recipes use `<family>`. On-prem recipes use `<family>/<hardware>`. Each recipe is a complete stack — do not combine separate hardware profiles.
+Pick one **recipe** profile. Cloud recipes use `<example>`. On-prem recipes use `<example>/<hardware>`. Each recipe is a complete stack — do not combine separate hardware profiles.
 
 | Profile | Hardware | Services |
 |---------|----------|----------|
-| `cascaded-generic` | None | NVIDIA cloud ASR + LLM + TTS (Generic Assistant) |
-| `cascaded-multilingual` | None | NVIDIA cloud multilingual ASR + LLM + TTS |
-| `cascaded-omni` | None | NVIDIA cloud Nemotron Omni (ASR + LLM in one model) + Magpie TTS |
-| `cascaded-thinker-talker` | None | NVIDIA cloud ASR + Talker LLM + Thinker LLM + TTS, plus local booking-server sidecar |
-| `cascaded-generic/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming English + Magpie TTS + LLM |
-| `cascaded-generic/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron ASR Streaming English + Magpie TTS + vLLM LLM |
-| `cascaded-generic/jetson-thor` | 1 GPU, 128 GB unified memory | Local Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
-| `cascaded-multilingual/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming Multilingual + Magpie TTS + LLM |
-| `cascaded-multilingual/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM |
-| `cascaded-omni/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
-| `cascaded-omni/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
-| `cascaded-thinker-talker/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming English + TTS + Talker/Thinker LLM, plus local booking-server sidecar |
+| `generic-assistant` | None | NVIDIA cloud ASR + LLM + TTS (Generic Assistant) |
+| `multilingual-assistant` | None | NVIDIA cloud multilingual ASR + LLM + TTS |
+| `omni-assistant` | None | NVIDIA cloud Nemotron Omni (ASR + LLM in one model) + Magpie TTS |
+| `omni-assistant-subagents` | None | NVIDIA cloud Nemotron Omni (ASR + LLM in one model) + Magpie TTS, multi-agent with attachments + webcam |
+| `thinker-talker` | None | NVIDIA cloud ASR + Talker LLM + Thinker LLM + TTS, plus local booking-server sidecar |
+| `generic-assistant/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming English + Magpie TTS + LLM |
+| `generic-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron ASR Streaming English + Magpie TTS + vLLM LLM |
+| `generic-assistant/jetson-thor` | 1 GPU, 128 GB unified memory | Local Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
+| `multilingual-assistant/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming Multilingual + Magpie TTS + LLM |
+| `multilingual-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM |
+| `omni-assistant/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
+| `omni-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
+| `omni-assistant-subagents/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
+| `omni-assistant-subagents/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
+| `thinker-talker/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming English + TTS + Talker/Thinker LLM, plus local booking-server sidecar |
 
 > Observability profiles (`tracing`, `turn`) can be added alongside any recipe.
 
@@ -86,10 +89,10 @@ Start the application following these steps.
 4. Deploy the application.
 
     ```bash
-    docker compose --profile cascaded-generic up -d
+    docker compose --profile generic-assistant up -d
     ```
 
-    > **Note:** Deployment may take 30–60 minutes on first run. The example above runs the Generic Cascaded pipeline against NVIDIA cloud APIs. Swap the recipe profile (e.g. `cascaded-multilingual`, `cascaded-thinker-talker`, `cascaded-generic/workstation`, `cascaded-thinker-talker/workstation`) to deploy a different stack. Each compose deployment is locked to a single recipe.
+    > **Note:** Deployment may take 30–60 minutes on first run. The example above runs the Generic Cascaded pipeline against NVIDIA cloud APIs. Swap the recipe profile (e.g. `multilingual-assistant`, `thinker-talker`, `generic-assistant/workstation`, `thinker-talker/workstation`) to deploy a different stack. Each compose deployment is locked to a single recipe.
 
 5. Access the application at `https://<machine-ip>:7860`. Set `PIPELINE_TLS=false` in `.env` to use `http://<machine-ip>:7860`.
 
@@ -110,8 +113,8 @@ The application is configured through these files:
 | `<example-package>/prompts.yaml` | Example-local persona and system prompt presets selectable from the UI |
 
 Service and prompt catalogs are example-local under each example package, for example
-`src/cascaded/generic/services.{cloud,local}.yaml` with
-`src/cascaded/generic/prompts.yaml`. The active example (set by the
+`src/examples/generic/services.{cloud,local}.yaml` with
+`src/examples/generic/prompts.yaml`. The active example (set by the
 Docker Compose profile or by `examples_registry.yaml` for host-native runs)
 determines which catalogs are loaded.
 

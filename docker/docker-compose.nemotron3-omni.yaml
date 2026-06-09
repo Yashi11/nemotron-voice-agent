@@ -1,8 +1,10 @@
 services:
   nvidia-llm-vllm-omni:
     profiles:
-      - cascaded-omni/workstation
-      - cascaded-omni/dgx-spark
+      - omni-assistant/workstation
+      - omni-assistant-subagents/workstation
+      - omni-assistant/dgx-spark
+      - omni-assistant-subagents/dgx-spark
     container_name: vllm-nemotron-omni
     image: vllm/vllm-openai:v0.20.0-cu130
     pull_policy: if_not_present

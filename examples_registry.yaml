@@ -2,16 +2,15 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 # Single source of truth for what the UI selector exposes:
-#   all                       → every example across every pipeline family
-#   <family>/all              → every example in that family
-#   <family>/<example>        → lock to one example (no switching)
+#   all            → every registered example (selectable)
+#   <example>      → lock to one example (no switching)
 #
 # The first example listed (YAML insertion order) within the visible set
 # becomes the initial default selection.
 #
 # The ``EXAMPLE_SELECTION`` environment variable overrides this value at
 # runtime so the same YAML can drive multiple compose profiles.
-selection: cascaded-generic/all
+selection: all
 
 # Which transport(s) the UI exposes:
 #   all        → WebRTC and WebSocket
@@ -21,68 +20,54 @@ selection: cascaded-generic/all
 # Override at runtime via the ``TRANSPORT_SELECTION`` environment variable.
 transports: all
 
-pipeline_families:
-  - id: cascaded-generic
-    label: Cascaded
-  - id: cascaded-multilingual
-    label: Cascaded Multilingual
-  - id: cascaded-omni
-    label: Cascaded Omni
-  - id: cascaded-thinker-talker
-    label: Thinker Talker
-
 examples:
-  cascaded-generic:
-    generic-assistant:
-      label: Generic Assistant
-      slots: [llm, asr, tts]
-      defaults:
-        prompt: [generic_assistant]
-        llm: [nemotron-super]
-        asr: [nemotron-asr-streaming-english]
-        tts: [magpie-tts]
-      bot: cascaded.generic.pipeline:bot
+  generic-assistant:
+    label: Generic Assistant
+    slots: [llm, asr, tts]
+    defaults:
+      prompt: [generic_assistant]
+      llm: [nemotron-super]
+      asr: [nemotron-asr-streaming-english]
+      tts: [magpie-tts]
+    bot: examples.generic.pipeline:bot
 
-  cascaded-multilingual:
-    multilingual-assistant:
-      label: Multilingual Assistant
-      slots: [llm, asr, tts]
-      defaults:
-        prompt: [multilingual_voice_assistant]
-        llm: [nemotron-super]
-        asr: [nemotron-asr-streaming-multilingual]
-        tts: [magpie-tts]
-      bot: cascaded.multilingual.pipeline:bot
+  multilingual-assistant:
+    label: Multilingual Assistant
+    slots: [llm, asr, tts]
+    defaults:
+      prompt: [multilingual_voice_assistant]
+      llm: [nemotron-super]
+      asr: [nemotron-asr-streaming-multilingual]
+      tts: [magpie-tts]
+    bot: examples.multilingual.pipeline:bot
 
-  cascaded-omni:
-    omni-assistant:
-      label: Nemotron Omni Assistant
-      slots: [llm, tts]
-      defaults:
-        prompt: [generic_omni_assistant]
-        llm: [nemotron-omni-nvfp4]
-        tts: [magpie-tts]
-      bot: cascaded.omni_assistant.pipeline:bot
+  omni-assistant:
+    label: Nemotron Omni Assistant
+    slots: [llm, tts]
+    defaults:
+      prompt: [generic_omni_assistant]
+      llm: [nemotron-omni-nvfp4]
+      tts: [magpie-tts]
+    bot: examples.omni_assistant.pipeline:bot
 
-    omni-assistant-subagents:
-      label: Nemotron Omni Assistant Subagents
-      slots: [llm, tts]
-      capabilities: [attachments, webcam]
-      defaults:
-        prompt: [generic_omni_assistant]
-        llm: [nemotron-omni-nvfp4]
-        tts: [magpie-tts]
-      bot: cascaded.omni_assistant_subagents.pipeline:bot
+  omni-assistant-subagents:
+    label: Nemotron Omni Assistant Subagents
+    slots: [llm, tts]
+    capabilities: [attachments, webcam]
+    defaults:
+      prompt: [generic_omni_assistant]
+      llm: [nemotron-omni-nvfp4]
+      tts: [magpie-tts]
+    bot: examples.omni_assistant_subagents.pipeline:bot
 
-  cascaded-thinker-talker:
-    thinker-talker:
-      label: Thinker Talker
-      slots: [llm, thinker-llm, booking-server, asr, tts]
-      defaults:
-        prompt: [thinker_talker_talker]
-        llm: [nemotron-nano]
-        thinker-llm: [nemotron-nano]
-        booking-server: [default]
-        asr: [nemotron-asr-streaming-english]
-        tts: [magpie-tts]
-      bot: cascaded.thinker_talker.pipeline:bot
+  thinker-talker:
+    label: Thinker Talker
+    slots: [llm, thinker-llm, booking-server, asr, tts]
+    defaults:
+      prompt: [thinker_talker_talker]
+      llm: [nemotron-nano]
+      thinker-llm: [nemotron-nano]
+      booking-server: [default]
+      asr: [nemotron-asr-streaming-english]
+      tts: [magpie-tts]
+    bot: examples.thinker_talker.pipeline:bot

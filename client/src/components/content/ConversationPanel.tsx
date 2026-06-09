@@ -197,7 +197,7 @@ export function ConversationPanel() {
   // BotStoppedSpeaking, so analyzer follow-ups are surfaced as standalone
   // turns recorded here. Server side mirrors this with
   // ``_ANALYZER_FOLLOWUP_TURN_DELAY_SECS`` in
-  // ``cascaded.omni_assistant_subagents.subagents.transport``.
+  // ``examples.omni_assistant_subagents.subagents.transport``.
   const [assistantTurns, setAssistantTurns] = useState<AssistantTurn[]>([]);
   const canUploadAttachments = selectedExample?.capabilities?.includes("attachments") ?? false;
   const [currentUserTurnActive, setCurrentUserTurnActive] = useState(false);

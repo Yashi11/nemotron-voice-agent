@@ -19,18 +19,21 @@ Before you begin, ensure you have the following:
 
 | Profile | Hardware | Notes |
 |---------|----------|-------|
-| `cascaded-generic` | None (cloud) | Generic Cascaded pipeline (Generic Assistant) |
-| `cascaded-multilingual` | None (cloud) | Multilingual Cascaded pipeline |
-| `cascaded-omni` | None (cloud) | Nemotron Omni (single-model ASR + LLM) + Magpie TTS |
-| `cascaded-thinker-talker` | None (cloud) | Thinker/Talker airline pipeline with local booking-server sidecar |
-| `cascaded-generic/workstation` | 1 GPU (>=80 GB VRAM) | Nemotron ASR Streaming English + Magpie TTS + NIM LLM |
-| `cascaded-generic/dgx-spark` | 1 GPU, 128 GB unified memory | Nemotron ASR Streaming English + Magpie TTS + vLLM LLM |
-| `cascaded-generic/jetson-thor` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
-| `cascaded-multilingual/workstation` | 1 GPU (>=80 GB VRAM) | Nemotron ASR Streaming Multilingual + Magpie TTS + NIM LLM |
-| `cascaded-multilingual/dgx-spark` | 1 GPU, 128 GB unified memory | Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM |
-| `cascaded-omni/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
-| `cascaded-omni/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
-| `cascaded-thinker-talker/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + Talker/Thinker NIM LLM, plus local booking-server sidecar |
+| `generic-assistant` | None (cloud) | Generic Cascaded pipeline (Generic Assistant) |
+| `multilingual-assistant` | None (cloud) | Multilingual Cascaded pipeline |
+| `omni-assistant` | None (cloud) | Nemotron Omni (single-model ASR + LLM) + Magpie TTS |
+| `omni-assistant-subagents` | None (cloud) | Nemotron Omni multi-agent variant with attachments + webcam |
+| `thinker-talker` | None (cloud) | Thinker/Talker airline pipeline with local booking-server sidecar |
+| `generic-assistant/workstation` | 1 GPU (>=80 GB VRAM) | Nemotron ASR Streaming English + Magpie TTS + NIM LLM |
+| `generic-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Nemotron ASR Streaming English + Magpie TTS + vLLM LLM |
+| `generic-assistant/jetson-thor` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
+| `multilingual-assistant/workstation` | 1 GPU (>=80 GB VRAM) | Nemotron ASR Streaming Multilingual + Magpie TTS + NIM LLM |
+| `multilingual-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM |
+| `omni-assistant/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
+| `omni-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
+| `omni-assistant-subagents/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
+| `omni-assistant-subagents/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
+| `thinker-talker/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + Talker/Thinker NIM LLM, plus local booking-server sidecar |
 | `tracing` | Optional overlay | Phoenix OTel collector |
 | `turn` | Optional overlay | coturn TURN server |
 
@@ -70,15 +73,16 @@ Before you begin, ensure you have the following:
 5. Deploy a cloud-only example:
 
     ```bash
-    docker compose --profile cascaded-generic up -d         # Generic Cascaded
-    docker compose --profile cascaded-multilingual up -d    # Multilingual Cascaded
-    docker compose --profile cascaded-omni up -d            # Nemotron Omni Assistant
-    docker compose --profile cascaded-thinker-talker up -d  # Thinker/Talker Airline Assistant
+    docker compose --profile generic-assistant up -d            # Generic Cascaded
+    docker compose --profile multilingual-assistant up -d       # Multilingual Cascaded
+    docker compose --profile omni-assistant up -d               # Nemotron Omni Assistant
+    docker compose --profile omni-assistant-subagents up -d     # Nemotron Omni Assistant Subagents
+    docker compose --profile thinker-talker up -d               # Thinker/Talker Airline Assistant
     ```
 
-    Pick the profile that matches the pipeline family you want to run. `docker compose up` with no profile is intentionally a no-op so the deployment is always explicit.
+    Pick the profile that matches the example you want to run. `docker compose up` with no profile is intentionally a no-op so the deployment is always explicit.
 
-    > **Note:** Each Docker Compose profile sets `EXAMPLE_SELECTION=<family>/all`, so the container exposes all examples within that family in the UI selector. To lock to a single example, set environment variable `EXAMPLE_SELECTION=<family>/<example>`.
+    > **Note:** Each Docker Compose profile pins `EXAMPLE_SELECTION=<example>`, so the container runs that single example. Set `EXAMPLE_SELECTION=all` to expose every example in the UI selector instead.
 
     > **Note:** Deployment may take 30–60 minutes on first run.
 
@@ -103,28 +107,28 @@ DGX Spark and Jetson additionally need `HF_TOKEN` for the vLLM model download. I
 
 ```bash
 # Generic Cascaded — full local NIM stack on a workstation
-docker compose --profile cascaded-generic/workstation up -d
+docker compose --profile generic-assistant/workstation up -d
 
 # Generic Cascaded — DGX Spark
-docker compose --profile cascaded-generic/dgx-spark up -d
+docker compose --profile generic-assistant/dgx-spark up -d
 
 # Generic Cascaded — Jetson Thor edge (set HF_TOKEN in .env)
-docker compose --profile cascaded-generic/jetson-thor up -d
+docker compose --profile generic-assistant/jetson-thor up -d
 
 # Multilingual Cascaded — workstation (Nemotron ASR Streaming Multilingual + Magpie TTS + NIM LLM)
-docker compose --profile cascaded-multilingual/workstation up -d
+docker compose --profile multilingual-assistant/workstation up -d
 
 # Multilingual Cascaded — DGX Spark
-docker compose --profile cascaded-multilingual/dgx-spark up -d
+docker compose --profile multilingual-assistant/dgx-spark up -d
 
 # Omni Assistant — local Omni vLLM + NIM TTS on a workstation
-docker compose --profile cascaded-omni/workstation up -d
+docker compose --profile omni-assistant/workstation up -d
 
 # Omni Assistant — local Omni vLLM + NIM TTS on DGX Spark
-docker compose --profile cascaded-omni/dgx-spark up -d
+docker compose --profile omni-assistant/dgx-spark up -d
 
 # Thinker/Talker Airline Assistant — workstation (local NIM ASR / TTS / LLM + booking server)
-docker compose --profile cascaded-thinker-talker/workstation up -d
+docker compose --profile thinker-talker/workstation up -d
 ```
 
 List compatible LLM NIM profiles for your hardware:
@@ -136,7 +140,7 @@ docker run --rm --gpus all \
   list-model-profiles
 ```
 
-Run with just an example profile (e.g., `--profile cascaded-generic`) to stay cloud/NVCF only.
+Run with just an example profile (e.g., `--profile generic-assistant`) to stay cloud/NVCF only.
 
 For Jetson-specific setup, refer to [Jetson Thor Deployment](03-jetson-thor.md).
 
@@ -188,11 +192,12 @@ For development and debugging, you can run the server directly:
 
     | `selection` in `examples_registry.yaml` | UI behavior |
     |-----------------------------------------|-------------|
-    | `cascaded-generic/all` | Show all Generic Cascaded examples (default) |
-    | `cascaded-generic/generic-assistant` | Lock to Generic Assistant |
-    | `cascaded-multilingual/all` | Show all Multilingual Cascaded examples |
-    | `cascaded-omni/all` | Show all Omni examples |
-    | `all` | Show every registered example across all pipeline families |
+    | `all` | Show every registered example (default) |
+    | `generic-assistant` | Lock to Generic Assistant |
+    | `multilingual-assistant` | Lock to Multilingual Assistant |
+    | `omni-assistant` | Lock to Nemotron Omni Assistant |
+    | `omni-assistant-subagents` | Lock to Nemotron Omni Assistant Subagents |
+    | `thinker-talker` | Lock to Thinker Talker |
 
     After editing, run:
 
@@ -200,7 +205,7 @@ For development and debugging, you can run the server directly:
     uv run python src/server.py --host 0.0.0.0 --port 7860
     ```
 
-    > **Note:** Docker Compose deployments set `EXAMPLE_SELECTION=<family>/all` by default, exposing all examples in the family via the UI selector. Override with `EXAMPLE_SELECTION=<family>/<example>` to lock to a single example.
+    > **Note:** Docker Compose deployments pin `EXAMPLE_SELECTION=<example>` to a single example. Set `EXAMPLE_SELECTION=all` to expose every example in the UI selector instead.
 
 6. Access the application at `https://localhost:7860`, or `http://localhost:7860` when `PIPELINE_TLS=false`.
 
@@ -215,8 +220,8 @@ Only needed when the browser connects from a different network than the host (NA
 A Coturn service ships in `docker-compose.yml` behind an opt-in `turn` profile. Add `--profile turn` to any deploy command (x86_64 only):
 
 ```bash
-docker compose --profile cascaded-generic --profile turn up -d              # cloud-only + TURN
-docker compose --profile cascaded-generic/workstation --profile turn up -d  # local NIM + TURN
+docker compose --profile generic-assistant --profile turn up -d              # cloud-only + TURN
+docker compose --profile generic-assistant/workstation --profile turn up -d  # local NIM + TURN
 ```
 
 - Coturn binds host ports UDP `3478` and UDP `49160-49200`. These must be reachable from clients (open them on your cloud firewall / security group).

@@ -1,13 +1,15 @@
 services:
   tts-service:
     profiles:
-      - cascaded-generic/workstation
-      - cascaded-generic/dgx-spark
-      - cascaded-multilingual/workstation
-      - cascaded-multilingual/dgx-spark
-      - cascaded-omni/workstation
-      - cascaded-omni/dgx-spark
-      - cascaded-thinker-talker/workstation
+      - generic-assistant/workstation
+      - generic-assistant/dgx-spark
+      - multilingual-assistant/workstation
+      - multilingual-assistant/dgx-spark
+      - omni-assistant/workstation
+      - omni-assistant-subagents/workstation
+      - omni-assistant/dgx-spark
+      - omni-assistant-subagents/dgx-spark
+      - thinker-talker/workstation
     image: nvcr.io/nvstaging/nim/magpie-tts-multilingual:1.9.0-53531670
     user: "0:0"
     environment:

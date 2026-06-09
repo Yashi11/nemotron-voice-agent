@@ -1,12 +1,12 @@
 # Generic Cascaded Example — Deployment Reference
 
-Use this reference from the `deploy` skill when deploying the cascaded-generic voice pipeline example (NVIDIA STT, NIM LLM, NVIDIA TTS with function calling).
+Use this reference from the `deploy` skill when deploying the generic voice pipeline example (NVIDIA STT, NIM LLM, NVIDIA TTS with function calling).
 
 ## When to use
 
-Pinning a Docker Compose deployment to the Generic Cascaded example. Recipe profile names are `<family>` for cloud-only and `<family>/<hardware>` for on-prem (the active example is resolved from `examples_registry.yaml`, not encoded in the profile name). Selector modes (`cascaded-generic/all`, `all`) are host-native only — they are not exposed as compose profiles.
+Pinning a Docker Compose deployment to the Generic Cascaded example. Recipe profile names are `<example>` for cloud-only and `<example>/<hardware>` for on-prem. Selector modes (`all`, or a single `<example>`) are host-native only — they are not exposed as compose profiles.
 
-Per-example catalogs at `src/cascaded/generic/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active recipe.
+Per-example catalogs at `src/examples/generic/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active recipe.
 
 ## Compose deploy
 
@@ -18,10 +18,10 @@ docker compose --profile <recipe> up -d
 
 | Recipe profile | App service | Sidecars from `docker/` |
 | --- | --- | --- |
-| `cascaded-generic` | `cascaded-generic` | none (cloud NVCF) |
-| `cascaded-generic/workstation` | `cascaded-generic` | `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service` |
-| `cascaded-generic/dgx-spark` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-asr-streaming-english`, `tts-service` |
-| `cascaded-generic/jetson-thor` | `cascaded-generic` | `nvidia-llm-vllm`, `nemotron-speech` |
+| `generic-assistant` | `generic-assistant` | none (cloud NVCF) |
+| `generic-assistant/workstation` | `generic-assistant` | `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service` |
+| `generic-assistant/dgx-spark` | `generic-assistant` | `nvidia-llm-vllm`, `nemotron-asr-streaming-english`, `tts-service` |
+| `generic-assistant/jetson-thor` | `generic-assistant` | `nvidia-llm-vllm`, `nemotron-speech` |
 
 Tear down with the same recipe used at `up` time:
 
@@ -32,7 +32,7 @@ docker compose --profile <recipe> down
 ## Verify
 
 - UI at `https://<host>:7860/` by default, or `http://<host>:7860/` when `PIPELINE_TLS=false`.
-- `docker compose ps` and `docker compose logs --tail 200 cascaded-generic`.
+- `docker compose ps` and `docker compose logs --tail 200 generic-assistant`.
 
 ## Local LLM NIM profiles
 

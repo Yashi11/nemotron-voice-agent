@@ -26,31 +26,31 @@ Cloud catalog entries use NVCF endpoints (`grpc.nvcf.nvidia.com:443`, `https://i
 
 ## Apply Commands
 
-Pick a single recipe profile (`<family>` for cloud or `<family>/<hardware>` for on-prem). Each recipe is a complete deployment — never combine two recipes.
+Pick a single recipe profile (`<example>` for cloud or `<example>/<hardware>` for on-prem). Each recipe is a complete deployment — never combine two recipes.
 
 ```bash
 # Cloud-only (NVCF)
-docker compose --profile cascaded-generic up -d
-docker compose --profile cascaded-multilingual up -d
-docker compose --profile cascaded-omni up -d
-docker compose --profile cascaded-thinker-talker up -d
+docker compose --profile generic-assistant up -d
+docker compose --profile multilingual-assistant up -d
+docker compose --profile omni-assistant up -d
+docker compose --profile thinker-talker up -d
 
 # Workstation (local NIM ASR/TTS/LLM)
-docker compose --profile cascaded-generic/workstation up -d
-docker compose --profile cascaded-multilingual/workstation up -d
-docker compose --profile cascaded-omni/workstation up -d
-docker compose --profile cascaded-thinker-talker/workstation up -d
+docker compose --profile generic-assistant/workstation up -d
+docker compose --profile multilingual-assistant/workstation up -d
+docker compose --profile omni-assistant/workstation up -d
+docker compose --profile thinker-talker/workstation up -d
 
 # DGX Spark
-docker compose --profile cascaded-generic/dgx-spark up -d
-docker compose --profile cascaded-multilingual/dgx-spark up -d
-docker compose --profile cascaded-omni/dgx-spark up -d
+docker compose --profile generic-assistant/dgx-spark up -d
+docker compose --profile multilingual-assistant/dgx-spark up -d
+docker compose --profile omni-assistant/dgx-spark up -d
 
 # Jetson (Generic Cascaded only. Omni does not fit on Orin today)
-docker compose --profile cascaded-generic/jetson-thor up -d
+docker compose --profile generic-assistant/jetson-thor up -d
 ```
 
-For YAML-only edits that don't change env or sidecar membership, `docker compose restart <service>` is enough (e.g. `docker compose restart cascaded-generic`).
+For YAML-only edits that don't change env or sidecar membership, `docker compose restart <service>` is enough (e.g. `docker compose restart generic-assistant`).
 
 ## Optional Profile Overlays
 
@@ -67,9 +67,9 @@ Add when:
 Add when clients connect from outside the host's network. Credentials come from `TURN_USERNAME` / `TURN_PASSWORD` in `.env` (defaults are `admin:admin`). Set `TURN_URL=turn:<host>:3478` if TURN runs on a different host. The client auto-fetches ICE config from `/api/ice-servers`.
 
 ```bash
-docker compose --profile cascaded-generic --profile tracing up -d
-docker compose --profile cascaded-generic/workstation --profile turn up -d
-docker compose --profile cascaded-generic/dgx-spark --profile tracing --profile turn up -d
+docker compose --profile generic-assistant --profile tracing up -d
+docker compose --profile generic-assistant/workstation --profile turn up -d
+docker compose --profile generic-assistant/dgx-spark --profile tracing --profile turn up -d
 ```
 
 ## Validation Checklist

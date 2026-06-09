@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-import { PipelineModeSelector } from "../PipelineModeSelector";
 import { PipelineExampleSelector } from "../PipelineExampleSelector";
 import { TransportSelector } from "../TransportSelector";
 import { PromptSelector } from "../PromptSelector";
@@ -11,7 +10,6 @@ import { VoiceSettings } from "../VoiceSettings";
 export function StatusPanel() {
   return (
     <aside className="status-panel">
-      <PipelineModeSelector />
       <PipelineExampleSelector />
       <TransportSelector />
       <PromptSelector />

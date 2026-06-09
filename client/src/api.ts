@@ -162,7 +162,6 @@ export type ServiceCatalog = Record<string, ServiceEntry[]>;
 export type DeploymentDefaults = Record<string, Array<ServiceEntry | Prompt> | undefined>;
 
 export interface DeploymentOption {
-  family: string;
   id: string;
   key: string;
   label: string;
@@ -178,16 +177,10 @@ export interface TransportOption {
   label: string;
 }
 
-export interface PipelineOption {
-  id: string;
-  label: string;
-}
-
 export interface DeploymentResponse {
   active: DeploymentOption;
   selectable: boolean;
   options: DeploymentOption[];
-  pipelines: PipelineOption[];
   transports: TransportOption[];
 }
 
