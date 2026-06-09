@@ -4,14 +4,15 @@ name: nemotron-voice-agent
 # self-contained deployment recipe so users never have to AND two
 # profiles together.
 #
-#   <family>                   cloud-only models
-#   <family>/<hardware>        on-prem models with local sidecars
+#   <example>                  cloud-only models
+#   <example>/<hardware>       on-prem models with local sidecars
 #
-# Families:
-#   cascaded-generic          Cascaded ASR + LLM + TTS Pipeline (Generic Assistant)
-#   cascaded-multilingual     Cascaded Multilingual ASR + LLM + TTS Pipeline (Multilingual Assistant)
-#   cascaded-omni             Cascaded Omni LLM + TTS Pipeline (Omni Assistant + Omni Assistant Subagents)
-#   cascaded-thinker-talker   Cascaded Thinker/Talker Pipeline (Airline Assistant)
+# Examples:
+#   generic-assistant            Cascaded ASR + LLM + TTS Pipeline (Generic Assistant)
+#   multilingual-assistant       Cascaded Multilingual ASR + LLM + TTS Pipeline (Multilingual Assistant)
+#   omni-assistant               Cascaded Omni LLM + TTS Pipeline (Omni Assistant)
+#   omni-assistant-subagents     Cascaded Omni LLM + TTS Pipeline (Omni Assistant Subagents)
+#   thinker-talker               Cascaded Thinker/Talker Pipeline (Airline Assistant)
 #
 # Hardware targets:
 #   workstation               Single GPU with 80+ GB VRAM or modify to support multiple GPUs
@@ -19,20 +20,23 @@ name: nemotron-voice-agent
 #   jetson-thor               Jetson Thor with 128 GB unified memory
 #
 # Cloud-only recipes:
-#   docker compose --profile cascaded-generic up
-#   docker compose --profile cascaded-multilingual up
-#   docker compose --profile cascaded-omni up
-#   docker compose --profile cascaded-thinker-talker up
+#   docker compose --profile generic-assistant up
+#   docker compose --profile multilingual-assistant up
+#   docker compose --profile omni-assistant up
+#   docker compose --profile omni-assistant-subagents up
+#   docker compose --profile thinker-talker up
 #
 # On-prem recipes:
-#   docker compose --profile cascaded-generic/workstation up
-#   docker compose --profile cascaded-generic/dgx-spark up
-#   docker compose --profile cascaded-generic/jetson-thor up
-#   docker compose --profile cascaded-multilingual/workstation up
-#   docker compose --profile cascaded-multilingual/dgx-spark up
-#   docker compose --profile cascaded-omni/workstation up
-#   docker compose --profile cascaded-omni/dgx-spark up
-#   docker compose --profile cascaded-thinker-talker/workstation up
+#   docker compose --profile generic-assistant/workstation up
+#   docker compose --profile generic-assistant/dgx-spark up
+#   docker compose --profile generic-assistant/jetson-thor up
+#   docker compose --profile multilingual-assistant/workstation up
+#   docker compose --profile multilingual-assistant/dgx-spark up
+#   docker compose --profile omni-assistant/workstation up
+#   docker compose --profile omni-assistant/dgx-spark up
+#   docker compose --profile omni-assistant-subagents/workstation up
+#   docker compose --profile omni-assistant-subagents/dgx-spark up
+#   docker compose --profile thinker-talker/workstation up
 #
 # Observability profiles compose orthogonally with any recipe:
 #   docker compose --profile <recipe> --profile tracing up   # Phoenix OTel
@@ -49,7 +53,7 @@ include:
   - path: docker/docker-compose.speech-jetson.yaml
   - path: docker/docker-compose.coturn.yaml
   - path: docker/docker-compose.phoenix.yaml
-  - path: src/cascaded/thinker_talker/airline/database/docker-compose.yml
+  - path: src/examples/thinker_talker/airline/database/docker-compose.yml
 
 x-app: &app-base
   build:
@@ -81,46 +85,57 @@ x-app: &app-base
       max-file: "5"
 
 services:
-  cascaded-generic:
+  generic-assistant:
     <<: *app-base
     profiles:
-      - cascaded-generic
-      - cascaded-generic/workstation
-      - cascaded-generic/dgx-spark
-      - cascaded-generic/jetson-thor
+      - generic-assistant
+      - generic-assistant/workstation
+      - generic-assistant/dgx-spark
+      - generic-assistant/jetson-thor
     environment:
       APP_RUNTIME: container
-      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded-generic/all}
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-generic-assistant}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
-  cascaded-multilingual:
+  multilingual-assistant:
     <<: *app-base
     profiles:
-      - cascaded-multilingual
-      - cascaded-multilingual/workstation
-      - cascaded-multilingual/dgx-spark
+      - multilingual-assistant
+      - multilingual-assistant/workstation
+      - multilingual-assistant/dgx-spark
     environment:
       APP_RUNTIME: container
-      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded-multilingual/all}
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-multilingual-assistant}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
-  cascaded-omni:
+  omni-assistant:
     <<: *app-base
     profiles:
-      - cascaded-omni
-      - cascaded-omni/workstation
-      - cascaded-omni/dgx-spark
+      - omni-assistant
+      - omni-assistant/workstation
+      - omni-assistant/dgx-spark
     environment:
       APP_RUNTIME: container
-      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded-omni/all}
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
-  cascaded-thinker-talker:
+  omni-assistant-subagents:
     <<: *app-base
     profiles:
-      - cascaded-thinker-talker
-      - cascaded-thinker-talker/workstation
+      - omni-assistant-subagents
+      - omni-assistant-subagents/workstation
+      - omni-assistant-subagents/dgx-spark
     environment:
       APP_RUNTIME: container
-      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-cascaded-thinker-talker/all}
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant-subagents}
+      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
+
+  thinker-talker:
+    <<: *app-base
+    profiles:
+      - thinker-talker
+      - thinker-talker/workstation
+    environment:
+      APP_RUNTIME: container
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-thinker-talker}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}

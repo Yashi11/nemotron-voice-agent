@@ -19,20 +19,20 @@ language to match.
 
 ## Deploying the Multilingual Example
 
-Use the `cascaded-multilingual` pipeline family:
+Use the `multilingual-assistant` example:
 
 ```bash
 # Cloud-only (Parakeet RNNT ASR + Magpie TTS via NVCF)
-docker compose --profile cascaded-multilingual up -d
+docker compose --profile multilingual-assistant up -d
 
 # Workstation — local Nemotron ASR Streaming Multilingual + Magpie TTS + NIM LLM
-docker compose --profile cascaded-multilingual/workstation up -d
+docker compose --profile multilingual-assistant/workstation up -d
 
 # DGX Spark — local Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM
-docker compose --profile cascaded-multilingual/dgx-spark up -d
+docker compose --profile multilingual-assistant/dgx-spark up -d
 ```
 
-For host-native runs, set `selection: cascaded-multilingual/all` in
+For host-native runs, set `selection: multilingual-assistant` in
 `examples_registry.yaml` and start the server normally.
 
 ## Requirements
@@ -54,7 +54,7 @@ configured TTS service. The `{lang_codes}` placeholder in the prompt is replaced
 automatically with the discovered codes — no manual language list is needed.
 
 To customise the prompt or swap service endpoints, edit the files under
-`src/cascaded/multilingual/`:
+`src/examples/multilingual/`:
 
 | File | Purpose |
 | --- | --- |
@@ -64,7 +64,7 @@ To customise the prompt or swap service endpoints, edit the files under
 
 ## Testing
 
-1. Start the app with the `cascaded-multilingual` profile.
+1. Start the app with the `multilingual-assistant` profile.
 2. Speak in English and verify the bot responds in English.
 3. Speak in another supported language (e.g. German, French, Spanish).
 4. Verify that:
@@ -78,5 +78,5 @@ To customise the prompt or swap service endpoints, edit the files under
 |-------|-------|---------------|
 | Response stays in English | LLM did not emit the expected structured format | Verify the selected prompt instructs the model to use `Language: / Text: / MetaData:` |
 | TTS uses the wrong voice or language | Detected language is not supported by the active TTS service | Check the configured TTS service exposes that language code |
-| Transcript shows raw structured output | `skip_aggregator_types` not applied | Confirm you are using the `cascaded-multilingual` pipeline, not `cascaded-generic` |
+| Transcript shows raw structured output | `skip_aggregator_types` not applied | Confirm you are using the `multilingual-assistant` pipeline, not `generic-assistant` |
 | No voices discovered at startup | TTS prewarm failed | Check TTS sidecar health (`docker compose ps`) and `NVIDIA_API_KEY` |

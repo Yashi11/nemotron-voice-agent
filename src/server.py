@@ -66,7 +66,7 @@ from pipecat.transports.smallwebrtc.request_handler import (
 import config_store
 import examples_registry
 from attachment_store import store_attachment
-from cascaded.shared.prewarm import prewarm_tts, warmup_tts_synthesis
+from examples.shared.prewarm import prewarm_tts, warmup_tts_synthesis
 from utils import (
     PROJECT_ROOT,
     build_services_api_response,
@@ -181,7 +181,7 @@ def _multi_worker_session_config_response() -> JSONResponse:
 def _deployment_response(active: dict, options: list[dict]) -> dict:
     """Build the metadata payload consumed by the client selector page.
 
-    Visibility (examples, families, transports) is driven entirely by the YAML
+    Visibility (examples, transports) is driven entirely by the YAML
     registry plus its environment overrides, so this function just packages
     what the registry has already resolved.
     """
@@ -193,7 +193,6 @@ def _deployment_response(active: dict, options: list[dict]) -> dict:
         "active": active_deployment,
         "selectable": not examples_registry.is_locked(),
         "options": options,
-        "pipelines": examples_registry.pipeline_options(examples_registry.visible_families()),
         "transports": [option for option in _TRANSPORT_OPTIONS if option["id"] in transports],
     }
 
@@ -574,7 +573,6 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
     logger.info(
         f"Active selection: {fallback_example_key} "
         f"(locked={examples_registry.is_locked()}, "
-        f"families={examples_registry.visible_families()}, "
         f"examples={examples_registry.visible_example_keys()}, "
         f"transports={examples_registry.visible_transports()})"
     )

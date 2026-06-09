@@ -43,7 +43,7 @@ straight from a fresh `uv sync --group benchmark`.
 ### Prompt override for perf runs
 
 If you want a benchmark-specific server prompt, point the registry at the
-Generic Cascaded example by setting `selection: cascaded/generic` in
+Generic Cascaded example by setting `selection: generic-assistant` in
 [`examples_registry.yaml`](../../examples_registry.yaml), then start the
 server with the prompt catalog in this directory:
 

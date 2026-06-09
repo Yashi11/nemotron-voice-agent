@@ -13,7 +13,7 @@
 # split is symmetric 50/50.
 #
 # After this runs:
-#     docker compose --profile cascaded/generic/jetson up -d
+#     docker compose --profile generic-assistant/jetson-thor up -d
 #
 # Idempotent — safe to run multiple times.
 
@@ -66,7 +66,7 @@ echo "  default active thread %: ${DEFAULT_PCT:-unknown}"
 echo ""
 echo "Next steps:"
 echo "  1. Start (or restart) the stack:"
-echo "       docker compose --profile cascaded/generic/jetson up -d"
+echo "       docker compose --profile generic-assistant/jetson-thor up -d"
 echo "  2. Verify both containers are attached as MPS clients:"
 echo "       echo get_device_client_list | nvidia-cuda-mps-control"
 echo ""

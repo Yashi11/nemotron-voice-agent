@@ -36,8 +36,8 @@ services:
   nemotron-asr-streaming-english:
     <<: *asr-common
     profiles:
-      - cascaded-generic/workstation
-      - cascaded-thinker-talker/workstation
+      - generic-assistant/workstation
+      - thinker-talker/workstation
     image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
@@ -46,7 +46,7 @@ services:
   nemotron-asr-streaming-multilingual:
     <<: *asr-common
     profiles:
-      - cascaded-multilingual/workstation
+      - multilingual-assistant/workstation
     image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
@@ -55,7 +55,7 @@ services:
   nemotron-asr-streaming-multilingual-dgx-spark:
     <<: *asr-common
     profiles:
-      - cascaded-multilingual/dgx-spark
+      - multilingual-assistant/dgx-spark
     image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
@@ -68,7 +68,7 @@ services:
   asr-service-dgx-spark:
     <<: *asr-common
     profiles:
-      - cascaded-generic/dgx-spark
+      - generic-assistant/dgx-spark
     image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env

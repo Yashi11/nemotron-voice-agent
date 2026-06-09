@@ -16,8 +16,8 @@ metadata:
 - Preserve existing `.env`. Create it only if missing.
 - Use `configure-pipeline` for `.env`, catalog, or prompt changes.
 - Every deployment specifies **exactly one recipe profile** (plus optional observability profiles). `docker compose up` with no profile is a no-op.
-- Recipe profile names are `<family>` for cloud-only deployments and `<family>/<hardware>` for on-prem deployments (for example `cascaded-generic` and `cascaded-generic/workstation`). The profile is a complete, self-contained recipe — never combine two recipes.
-- Selector modes (`<family>/all`, `all`, e.g. `cascaded-generic/all`) remain host-native only (`uv run`) and have no compose profile.
+- Recipe profile names are `<example>` for cloud-only deployments and `<example>/<hardware>` for on-prem deployments (for example `generic-assistant` and `generic-assistant/workstation`). The profile is a complete, self-contained recipe — never combine two recipes.
+- Selector modes (`all`, or a single `<example>` such as `generic-assistant`) remain host-native only (`uv run`) and have no compose profile.
 - Observability profiles (`tracing`, `turn`) compose orthogonally with any recipe.
 
 ## Deploy
@@ -49,20 +49,20 @@ Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that 
 
 | Goal | Recipe profile |
 | --- | --- |
-| Cloud-only Generic Cascaded | `cascaded-generic` |
-| Cloud-only Multilingual Cascaded | `cascaded-multilingual` |
-| Cloud-only Omni Assistant | `cascaded-omni` |
-| Cloud-only Omni Assistant Subagents | `cascaded-omni` |
-| Cloud-only Thinker/Talker Airline Assistant | `cascaded-thinker-talker` |
-| Generic Cascaded on a workstation | `cascaded-generic/workstation` |
-| Generic Cascaded on DGX Spark | `cascaded-generic/dgx-spark` |
-| Generic Cascaded on Jetson Thor | `cascaded-generic/jetson-thor` |
-| Multilingual Cascaded on a workstation | `cascaded-multilingual/workstation` |
-| Multilingual Cascaded on DGX Spark | `cascaded-multilingual/dgx-spark` |
-| Omni Assistant on a workstation | `cascaded-omni/workstation` |
-| Omni Assistant on DGX Spark | `cascaded-omni/dgx-spark` |
-| Omni Assistant Subagents on DGX Spark | `cascaded-omni/dgx-spark` |
-| Thinker/Talker Airline Assistant on a workstation | `cascaded-thinker-talker/workstation` |
+| Cloud-only Generic Cascaded | `generic-assistant` |
+| Cloud-only Multilingual Cascaded | `multilingual-assistant` |
+| Cloud-only Omni Assistant | `omni-assistant` |
+| Cloud-only Omni Assistant Subagents | `omni-assistant-subagents` |
+| Cloud-only Thinker/Talker Airline Assistant | `thinker-talker` |
+| Generic Cascaded on a workstation | `generic-assistant/workstation` |
+| Generic Cascaded on DGX Spark | `generic-assistant/dgx-spark` |
+| Generic Cascaded on Jetson Thor | `generic-assistant/jetson-thor` |
+| Multilingual Cascaded on a workstation | `multilingual-assistant/workstation` |
+| Multilingual Cascaded on DGX Spark | `multilingual-assistant/dgx-spark` |
+| Omni Assistant on a workstation | `omni-assistant/workstation` |
+| Omni Assistant on DGX Spark | `omni-assistant/dgx-spark` |
+| Omni Assistant Subagents on DGX Spark | `omni-assistant-subagents/dgx-spark` |
+| Thinker/Talker Airline Assistant on a workstation | `thinker-talker/workstation` |
 
 
 For any on-prem recipe, log in to `nvcr.io` first.
@@ -82,7 +82,7 @@ docker compose ps
 docker compose logs --tail 200 <service-name>
 ```
 
-App service names follow the active recipe family: `cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, or `cascaded-thinker-talker`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `nemotron-asr-streaming-english`, `nemotron-asr-streaming-multilingual`, `parakeet-ctc-asr`, `parakeet-rnnt-asr`, `tts-service`, `nemotron-speech`, `booking-server`).
+App service names follow the active example: `generic-assistant`, `multilingual-assistant`, `omni-assistant`, `omni-assistant-subagents`, or `thinker-talker`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `nemotron-asr-streaming-english`, `nemotron-asr-streaming-multilingual`, `parakeet-ctc-asr`, `parakeet-rnnt-asr`, `tts-service`, `nemotron-speech`, `booking-server`).
 
 ## References
 

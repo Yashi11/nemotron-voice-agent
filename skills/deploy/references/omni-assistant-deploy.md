@@ -1,12 +1,12 @@
 # Omni Assistant Cascaded Example — Deployment Reference
 
-Use this reference from the `deploy` skill when deploying the cascaded/omni_assistant example — Nemotron 3 Nano Omni handles ASR and LLM in a single multimodal chat-completions call, with Magpie TTS for the spoken reply.
+Use this reference from the `deploy` skill when deploying the examples/omni_assistant example — Nemotron 3 Nano Omni handles ASR and LLM in a single multimodal chat-completions call, with Magpie TTS for the spoken reply.
 
 ## When to use
 
-Pinning a Docker Compose deployment to the Omni Assistant example. Recipe profile names are `<family>` for cloud-only and `<family>/<hardware>` for on-prem; the `cascaded-omni` family serves both Omni examples, and the active one is resolved from `examples_registry.yaml` (not encoded in the profile name). Selector modes (`cascaded-omni/all`, `all`) are host-native only — they are not exposed as compose profiles.
+Pinning a Docker Compose deployment to the Omni Assistant example. Recipe profile names are `<example>` for cloud-only and `<example>/<hardware>` for on-prem. The companion `omni-assistant-subagents` example is a separate recipe (see its deploy reference). Selector modes (`all`, or a single `<example>`) are host-native only — they are not exposed as compose profiles.
 
-Per-example catalogs at `src/cascaded/omni_assistant/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active recipe.
+Per-example catalogs at `src/examples/omni_assistant/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active recipe.
 
 Hardware support: cloud-only, `workstation`, and `dgxspark`. The 30B Omni NVFP4 model does not fit on Orin-class hardware today. There is no `jetson` recipe.
 
@@ -14,25 +14,25 @@ Hardware support: cloud-only, `workstation`, and `dgxspark`. The 30B Omni NVFP4 
 
 ```bash
 # Cloud (NVCF)
-docker compose --profile cascaded-omni up -d
+docker compose --profile omni-assistant up -d
 
 # Workstation / DGX Spark (local Omni vLLM + NIM TTS)
-docker compose --profile cascaded-omni/workstation up -d
-docker compose --profile cascaded-omni/dgx-spark up -d
+docker compose --profile omni-assistant/workstation up -d
+docker compose --profile omni-assistant/dgx-spark up -d
 ```
 
 | Recipe profile | App service | Sidecars from `docker/` |
 | --- | --- | --- |
-| `cascaded-omni` | `cascaded-omni` | none (cloud NVCF) |
-| `cascaded-omni/workstation` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
-| `cascaded-omni/dgx-spark` | `cascaded-omni` | `nvidia-llm-vllm-omni`, `tts-service` |
+| `omni-assistant` | `omni-assistant` | none (cloud NVCF) |
+| `omni-assistant/workstation` | `omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
+| `omni-assistant/dgx-spark` | `omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
 
 Tear down with the same recipe used at `up` time.
 
 ## Verify
 
 - UI at `https://<host>:7860/` by default, or `http://<host>:7860/` when `PIPELINE_TLS=false`.
-- App logs: `docker compose logs --tail 200 cascaded-omni`.
+- App logs: `docker compose logs --tail 200 omni-assistant`.
 - Omni vLLM logs (local recipes only): `docker compose logs --tail 200 nvidia-llm-vllm-omni`.
 - Omni vLLM health: `curl -f http://localhost:8002/health` from the host or `curl -f http://nvidia-llm-vllm-omni:8002/health` from inside the compose network.
 

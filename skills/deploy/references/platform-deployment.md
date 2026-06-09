@@ -12,49 +12,49 @@ echo "$NGC_API_KEY" | docker login nvcr.io -u '$oauthtoken' --password-stdin
 
 Required `.env` keys:
 - All recipes: `NVIDIA_API_KEY`
-- Any recipe ending in `/dgx-spark` or `/jetson-thor`: `HF_TOKEN`
+- Any recipe ending in `/dgx-spark` or `/jetson-thor`, plus `omni-assistant/workstation` and `omni-assistant-subagents/workstation` (local Omni vLLM downloads the model from HF on first run): `HF_TOKEN`
 
 ## Workstation
 
-Recipes: `cascaded-generic/workstation`, `cascaded-multilingual/workstation`, `cascaded-omni/workstation`, `cascaded-thinker-talker/workstation`.
+Recipes: `generic-assistant/workstation`, `multilingual-assistant/workstation`, `omni-assistant/workstation`, `thinker-talker/workstation`.
 
 Services depend on the recipe:
-- `cascaded-generic/workstation`: `cascaded-generic`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
-- `cascaded-multilingual/workstation`: `cascaded-multilingual`, `nvidia-llm`, `nemotron-asr-streaming-multilingual`, `tts-service`
-- `cascaded-omni/workstation`: `cascaded-omni`, `nvidia-llm-vllm-omni`, `tts-service`
-- `cascaded-thinker-talker/workstation`: `cascaded-thinker-talker`, `booking-server`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
+- `generic-assistant/workstation`: `generic-assistant`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
+- `multilingual-assistant/workstation`: `multilingual-assistant`, `nvidia-llm`, `nemotron-asr-streaming-multilingual`, `tts-service`
+- `omni-assistant/workstation`: `omni-assistant`, `nvidia-llm-vllm-omni`, `tts-service`
+- `thinker-talker/workstation`: `thinker-talker`, `booking-server`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
 
 Requires enough GPU VRAM for the selected local NIM services. Single-GPU hosts are valid when capacity is sufficient. Multi-GPU hosts may split ASR/TTS and LLM across devices.
 
 ```bash
 nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
-docker compose --profile cascaded-generic/workstation up -d
-# or: docker compose --profile cascaded-multilingual/workstation up -d
-# or: docker compose --profile cascaded-omni/workstation up -d
-# or: docker compose --profile cascaded-thinker-talker/workstation up -d
+docker compose --profile generic-assistant/workstation up -d
+# or: docker compose --profile multilingual-assistant/workstation up -d
+# or: docker compose --profile omni-assistant/workstation up -d
+# or: docker compose --profile thinker-talker/workstation up -d
 ```
 
 ## DGX Spark
 
-Recipes: `cascaded-generic/dgx-spark`, `cascaded-multilingual/dgx-spark`, `cascaded-omni/dgx-spark`.
+Recipes: `generic-assistant/dgx-spark`, `multilingual-assistant/dgx-spark`, `omni-assistant/dgx-spark`.
 
 Services depend on the recipe:
-- `cascaded-generic/dgx-spark`: `cascaded-generic`, `nvidia-llm-vllm`, `nemotron-asr-streaming-english`, `tts-service`
-- `cascaded-multilingual/dgx-spark`: `cascaded-multilingual`, `nvidia-llm-vllm`, `nemotron-asr-streaming-multilingual`, `tts-service`
-- `cascaded-omni/dgx-spark`: `cascaded-omni`, `nvidia-llm-vllm-omni`, `tts-service`
+- `generic-assistant/dgx-spark`: `generic-assistant`, `nvidia-llm-vllm`, `nemotron-asr-streaming-english`, `tts-service`
+- `multilingual-assistant/dgx-spark`: `multilingual-assistant`, `nvidia-llm-vllm`, `nemotron-asr-streaming-multilingual`, `tts-service`
+- `omni-assistant/dgx-spark`: `omni-assistant`, `nvidia-llm-vllm-omni`, `tts-service`
 
 ```bash
 free -h
-docker compose --profile cascaded-generic/dgx-spark up -d
-# docker compose --profile cascaded-multilingual/dgx-spark up -d
-# docker compose --profile cascaded-omni/dgx-spark up -d
+docker compose --profile generic-assistant/dgx-spark up -d
+# docker compose --profile multilingual-assistant/dgx-spark up -d
+# docker compose --profile omni-assistant/dgx-spark up -d
 ```
 
 ## Jetson Thor
 
-Recipes: `cascaded-generic/jetson-thor` only. Omni and Multilingual examples are not supported on Jetson today.
+Recipes: `generic-assistant/jetson-thor` only. Omni and Multilingual examples are not supported on Jetson today.
 
-Services: `cascaded-generic`, `nvidia-llm-vllm`, `nemotron-speech`.
+Services: `generic-assistant`, `nvidia-llm-vllm`, `nemotron-speech`.
 
 One-time Riva model setup, from the repo parent. Uses the Riva Speech Skills v2.26.0 (RC2) L4T quickstart and the `nvstaging` org for 2.26.0 models:
 
@@ -73,7 +73,7 @@ Deploy:
 
 ```bash
 sudo bash scripts/start-mps.sh
-docker compose --profile cascaded-generic/jetson-thor up -d
+docker compose --profile generic-assistant/jetson-thor up -d
 ```
 
 Thor tuning `.env`:
@@ -91,8 +91,8 @@ PIPECAT_CPUSET=8-11
 Add `--profile turn` when clients connect from outside the host network.
 
 ```bash
-docker compose --profile cascaded-generic --profile turn up -d
-docker compose --profile cascaded-generic/workstation --profile turn up -d
+docker compose --profile generic-assistant --profile turn up -d
+docker compose --profile generic-assistant/workstation --profile turn up -d
 ```
 
 ## Verify / Stop

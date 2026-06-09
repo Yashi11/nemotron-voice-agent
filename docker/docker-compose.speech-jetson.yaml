@@ -1,7 +1,7 @@
 services:
   nemotron-speech:
     profiles:
-      - cascaded-generic/jetson-thor
+      - generic-assistant/jetson-thor
     container_name: nemotron-speech
     image: gitlab-master.nvidia.com:5005/dl/riva/riva-speech/riva:dev..ydharavath..magpie-v1-zeroshot-PR.53617348-l4t-aarch64
     runtime: nvidia

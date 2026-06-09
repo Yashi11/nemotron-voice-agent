@@ -26,9 +26,8 @@ class ExampleEntry(TypedDict):
 
 
 class EnrichedExample(ExampleEntry):
-    """Registry entry plus derived family/id/key fields."""
+    """Registry entry plus derived id/key fields (``key == id``)."""
 
-    family: str
     id: str
     key: str
 
@@ -52,13 +51,6 @@ class PromptDefault(TypedDict, total=False):
     default: bool
     builtIn: bool
     tools: list[str]
-
-
-class PipelineFamily(TypedDict):
-    """Pipeline family metadata exposed to the client."""
-
-    id: str
-    label: str
 
 
 _SRC_ROOT = Path(__file__).resolve().parent
@@ -327,65 +319,40 @@ def prompt_default_key(example_key: str = "") -> str | None:
     return prompt_keys[0] if prompt_keys else None
 
 
-def _load_pipeline_families(data: dict) -> tuple[PipelineFamily, ...]:
-    families = data.get("pipeline_families")
-    if not isinstance(families, list):
-        raise RuntimeError("examples_registry.yaml requires a pipeline_families list")
-
-    result: list[PipelineFamily] = []
-    for family in families:
-        if not isinstance(family, dict):
-            raise RuntimeError("Each pipeline_families item must be a mapping")
-        family_id = str(family.get("id") or "").strip()
-        label = str(family.get("label") or "").strip()
-        if not family_id or not label:
-            raise RuntimeError("Each pipeline family requires id and label")
-        result.append({"id": family_id, "label": label})
-    return tuple(result)
-
-
-def _load_examples(data: dict) -> dict[str, dict[str, ExampleEntry]]:
+def _load_examples(data: dict) -> dict[str, ExampleEntry]:
     raw_examples = data.get("examples")
     if not isinstance(raw_examples, dict):
         raise RuntimeError("examples_registry.yaml requires an examples mapping")
 
-    examples: dict[str, dict[str, ExampleEntry]] = {}
-    for family, family_examples in raw_examples.items():
-        if not isinstance(family_examples, dict):
-            raise RuntimeError(f"Examples for family {family!r} must be a mapping")
-        examples[str(family)] = {}
-        for example_id, entry in family_examples.items():
-            if not isinstance(entry, dict):
-                raise RuntimeError(f"Example {family}/{example_id} must be a mapping")
-            label = str(entry.get("label") or "").strip()
-            bot_spec = str(entry.get("bot") or "").strip()
-            slots = entry.get("slots", [])
-            capabilities = entry.get("capabilities", [])
-            defaults = entry.get("defaults", {})
-            if not label or not bot_spec:
-                raise RuntimeError(f"Example {family}/{example_id} requires label and bot")
-            if not isinstance(slots, list) or not all(isinstance(slot, str) for slot in slots):
-                raise RuntimeError(f"Example {family}/{example_id} slots must be a list of strings")
-            if not isinstance(capabilities, list) or not all(
-                isinstance(capability, str) for capability in capabilities
-            ):
-                raise RuntimeError(f"Example {family}/{example_id} capabilities must be a list of strings")
-            if not isinstance(defaults, dict):
-                raise RuntimeError(f"Example {family}/{example_id} defaults must be a mapping")
-            normalized_defaults: dict[str, list[str]] = {}
-            for slot, service_ids in defaults.items():
-                if not isinstance(service_ids, list) or not all(
-                    isinstance(service_id, str) for service_id in service_ids
-                ):
-                    raise RuntimeError(f"Example {family}/{example_id} defaults[{slot!r}] must be a list of strings")
-                normalized_defaults[str(slot)] = list(service_ids)
-            examples[str(family)][str(example_id)] = {
-                "label": label,
-                "slots": list(slots),
-                "capabilities": list(capabilities),
-                "defaults": normalized_defaults,
-                "bot": bot_spec,
-            }
+    examples: dict[str, ExampleEntry] = {}
+    for example_id, entry in raw_examples.items():
+        if not isinstance(entry, dict):
+            raise RuntimeError(f"Example {example_id!r} must be a mapping")
+        label = str(entry.get("label") or "").strip()
+        bot_spec = str(entry.get("bot") or "").strip()
+        slots = entry.get("slots", [])
+        capabilities = entry.get("capabilities", [])
+        defaults = entry.get("defaults", {})
+        if not label or not bot_spec:
+            raise RuntimeError(f"Example {example_id!r} requires label and bot")
+        if not isinstance(slots, list) or not all(isinstance(slot, str) for slot in slots):
+            raise RuntimeError(f"Example {example_id!r} slots must be a list of strings")
+        if not isinstance(capabilities, list) or not all(isinstance(capability, str) for capability in capabilities):
+            raise RuntimeError(f"Example {example_id!r} capabilities must be a list of strings")
+        if not isinstance(defaults, dict):
+            raise RuntimeError(f"Example {example_id!r} defaults must be a mapping")
+        normalized_defaults: dict[str, list[str]] = {}
+        for slot, service_ids in defaults.items():
+            if not isinstance(service_ids, list) or not all(isinstance(service_id, str) for service_id in service_ids):
+                raise RuntimeError(f"Example {example_id!r} defaults[{slot!r}] must be a list of strings")
+            normalized_defaults[str(slot)] = list(service_ids)
+        examples[str(example_id)] = {
+            "label": label,
+            "slots": list(slots),
+            "capabilities": list(capabilities),
+            "defaults": normalized_defaults,
+            "bot": bot_spec,
+        }
     return examples
 
 
@@ -394,52 +361,33 @@ class Selection(NamedTuple):
 
     raw: str
     locked: bool
-    families: tuple[str, ...]
     example_keys: tuple[str, ...]
     default_key: str
 
 
 def _parse_selection(
     raw: str,
-    examples: dict[str, dict[str, ExampleEntry]],
+    examples: dict[str, ExampleEntry],
 ) -> Selection:
     """Parse the ``selection`` value into a :class:`Selection`.
 
     Accepted values:
-      * ``all`` — every example across every pipeline family.
-      * ``<family>/all`` — every example in that family.
-      * ``<family>/<example>`` — lock to one example, no switching.
+      * ``all`` — every registered example (selectable).
+      * ``<example>`` — lock to one example, no switching.
     """
     cleaned = (raw or "").strip()
     if not cleaned:
         raise RuntimeError("examples_registry.yaml requires a 'selection' value")
 
     if cleaned == "all":
-        families = tuple(examples.keys())
-        example_keys = tuple(
-            f"{family}/{example_id}" for family, family_examples in examples.items() for example_id in family_examples
-        )
+        example_keys = tuple(examples.keys())
         if not example_keys:
             raise RuntimeError("selection 'all' requires at least one example")
-        return Selection(cleaned, False, families, example_keys, example_keys[0])
+        return Selection(cleaned, False, example_keys, example_keys[0])
 
-    if "/" not in cleaned:
-        raise RuntimeError(f"selection {cleaned!r} must be 'all', '<family>/all', or '<family>/<example>'")
-
-    family, suffix = cleaned.split("/", 1)
-    if family not in examples:
-        raise RuntimeError(f"selection {cleaned!r}: unknown family {family!r}")
-
-    if suffix == "all":
-        example_keys = tuple(f"{family}/{example_id}" for example_id in examples[family])
-        if not example_keys:
-            raise RuntimeError(f"selection {cleaned!r}: family has no examples")
-        return Selection(cleaned, False, (family,), example_keys, example_keys[0])
-
-    if suffix not in examples[family]:
-        raise RuntimeError(f"selection {cleaned!r}: unknown example {suffix!r} in family {family!r}")
-    key = f"{family}/{suffix}"
-    return Selection(cleaned, True, (family,), (key,), key)
+    if cleaned not in examples:
+        raise RuntimeError(f"selection {cleaned!r} must be 'all' or a known example id")
+    return Selection(cleaned, True, (cleaned,), cleaned)
 
 
 _SUPPORTED_TRANSPORTS: tuple[str, ...] = ("webrtc", "websocket")
@@ -461,7 +409,6 @@ def _parse_transports(raw: str) -> tuple[str, ...]:
 
 
 _REGISTRY_DATA = _load_yaml_registry()
-PIPELINE_FAMILIES = _load_pipeline_families(_REGISTRY_DATA)
 EXAMPLES = _load_examples(_REGISTRY_DATA)
 _SELECTION = _parse_selection(
     os.getenv("EXAMPLE_SELECTION", "").strip() or str(_REGISTRY_DATA.get("selection") or ""),
@@ -472,25 +419,9 @@ _TRANSPORTS = _parse_transports(
 )
 
 
-def pipeline_family_ids() -> tuple[str, ...]:
-    """Return all pipeline family ids defined in the YAML registry."""
-    return tuple(family["id"] for family in PIPELINE_FAMILIES)
-
-
-def pipeline_options(families: tuple[str, ...] | None = None) -> list[PipelineFamily]:
-    """Return client-facing pipeline family metadata."""
-    allowed = set(pipeline_family_ids() if families is None else families)
-    return [family for family in PIPELINE_FAMILIES if family["id"] in allowed]
-
-
 def is_locked() -> bool:
     """Return whether the selection pins the session to a single example."""
     return _SELECTION.locked
-
-
-def visible_families() -> tuple[str, ...]:
-    """Return the pipeline families exposed by the current selection."""
-    return _SELECTION.families
 
 
 def visible_example_keys() -> tuple[str, ...]:
@@ -503,15 +434,14 @@ def visible_transports() -> tuple[str, ...]:
     return _TRANSPORTS
 
 
-def _enrich(family: str, example_id: str, entry: ExampleEntry) -> EnrichedExample:
-    """Project a registry entry into a flat dict with family/id and a wire ``key``."""
-    return {**entry, "family": family, "id": example_id, "key": f"{family}/{example_id}"}
+def _enrich(example_id: str, entry: ExampleEntry) -> EnrichedExample:
+    """Project a registry entry into a flat dict with an ``id`` and wire ``key`` (both the example id)."""
+    return {**entry, "id": example_id, "key": example_id}
 
 
 def _lookup_by_key(key: str) -> EnrichedExample:
-    """Return the :class:`EnrichedExample` for ``family/id``; raises on miss."""
-    family, example_id = key.split("/", 1)
-    return _enrich(family, example_id, EXAMPLES[family][example_id])
+    """Return the :class:`EnrichedExample` for the example id ``key``; raises on miss."""
+    return _enrich(key, EXAMPLES[key])
 
 
 def find(value: str = "") -> EnrichedExample:
@@ -519,14 +449,14 @@ def find(value: str = "") -> EnrichedExample:
 
     Routing rules:
       * Locked selection always wins, regardless of ``value``.
-      * Otherwise prefer an explicit ``family/example`` match within the
-        visible set, then fall back to the default example.
+      * Otherwise prefer an explicit example-id match within the visible
+        set, then fall back to the default example.
     """
     if _SELECTION.locked:
         return _lookup_by_key(_SELECTION.default_key)
 
     cleaned = (value or "").strip().lower()
-    if cleaned and "/" in cleaned and cleaned in _SELECTION.example_keys:
+    if cleaned and cleaned in _SELECTION.example_keys:
         return _lookup_by_key(cleaned)
     return _lookup_by_key(_SELECTION.default_key)
 
@@ -538,7 +468,6 @@ def metadata(example: EnrichedExample) -> dict:
     if prompt_defaults:
         defaults["prompt"] = prompt_defaults
     return {
-        "family": example["family"],
         "id": example["id"],
         "key": example["key"],
         "label": example["label"],

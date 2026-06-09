@@ -1,9 +1,9 @@
 services:
   nvidia-llm:
     profiles:
-      - cascaded-generic/workstation
-      - cascaded-multilingual/workstation
-      - cascaded-thinker-talker/workstation
+      - generic-assistant/workstation
+      - multilingual-assistant/workstation
+      - thinker-talker/workstation
     image: nvcr.io/nim/nvidia/nemotron-3-nano:2.0.5
     user: "0:0"
     environment:
@@ -41,9 +41,9 @@ services:
 
   nvidia-llm-vllm:
     profiles:
-      - cascaded-generic/dgx-spark
-      - cascaded-multilingual/dgx-spark
-      - cascaded-generic/jetson-thor
+      - generic-assistant/dgx-spark
+      - multilingual-assistant/dgx-spark
+      - generic-assistant/jetson-thor
     container_name: nvidia-llm-vllm
     image: nvcr.io/nvidia/vllm:25.12.post1-py3
     pull_policy: if_not_present

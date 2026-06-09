@@ -27,12 +27,12 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 
 ## Instructions
 
-1. Identify the active example by inspecting the running app container (`cascaded-generic`, `cascaded-multilingual`, `cascaded-omni`, or `cascaded-thinker-talker`). Each example has its own catalog under `src/<family>/<example>/`.
+1. Identify the active example by inspecting the running app container (`generic-assistant`, `multilingual-assistant`, `omni-assistant`, `omni-assistant-subagents`, or `thinker-talker`). Each example has its own catalog under its package directory in `src/examples/` (the example id maps to a package dir: `generic-assistant` → `src/examples/generic`, `multilingual-assistant` → `src/examples/multilingual`, `omni-assistant` → `src/examples/omni_assistant`, `omni-assistant-subagents` → `src/examples/omni_assistant_subagents`, `thinker-talker` → `src/examples/thinker_talker`).
 
 2. Edit the smallest configuration surface that satisfies the request:
    - `.env`: feature flags, tracing, chat history, audio debugging, and buffering.
    - `examples_registry.yaml`: visible examples (`selection`), allowed transports (`transports`), and per-example slot defaults (`defaults`).
-   - `<example-package>/services.cloud.yaml` (remote / NVCF) and `<example-package>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`, matching the example's supported `<family>/<hardware>` recipes): built-in LLM, ASR, TTS, and example-specific role catalogs.
+   - `<example-package-dir>/services.cloud.yaml` (remote / NVCF) and `<example-package-dir>/services.local.yaml` (Compose-managed local NIMs nested under `workstation` / `dgxspark` / `jetson`, matching the example's supported `<example-id>/<hardware>` recipes): built-in LLM, ASR, TTS, and example-specific role catalogs.
    - `<example-package>/prompts.yaml`: built-in prompt presets and prompt content for the active example.
 
 3. Validate:

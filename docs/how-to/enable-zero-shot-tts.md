@@ -39,5 +39,5 @@ Zero-shot TTS allows you to clone any voice using a short audio sample (5+ secon
 6. Deploy the services with the recipe profile that matches your example and hardware, for example:
 
     ```bash
-    docker compose --profile cascaded-generic/workstation up -d
+    docker compose --profile generic-assistant/workstation up -d
     ```

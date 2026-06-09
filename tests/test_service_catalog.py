@@ -113,7 +113,7 @@ llm:
             self.assertEqual(config["extra_params"], '{"extra_body":{"top_k":1}}')
 
     def test_registry_defaults_fall_back_to_cloud_when_local_endpoint_is_unreachable(self) -> None:
-        example = examples_registry._lookup_by_key("cascaded-generic/generic-assistant")
+        example = examples_registry._lookup_by_key("generic-assistant")
 
         with patch("examples_registry.is_endpoint_reachable", return_value=False):
             defaults = examples_registry.metadata(example)["defaults"]
@@ -121,7 +121,7 @@ llm:
         self.assertEqual(defaults["asr"][0]["id"], "cloud-nim:nemotron-asr-streaming-english")
 
     def test_registry_defaults_use_cloud_multilingual_when_local_only_default_is_unreachable(self) -> None:
-        example = examples_registry._lookup_by_key("cascaded-multilingual/multilingual-assistant")
+        example = examples_registry._lookup_by_key("multilingual-assistant")
 
         with patch("examples_registry.is_endpoint_reachable", return_value=False):
             defaults = examples_registry.metadata(example)["defaults"]
@@ -129,16 +129,16 @@ llm:
         self.assertEqual(defaults["asr"][0]["id"], "cloud-nim:parakeet-rnnt")
 
     def test_cloud_nemotron_asr_uses_current_english_model_name(self) -> None:
-        generic_catalog = utils.load_yaml_file(Path("src/cascaded/generic/services.cloud.yaml"))
-        thinker_catalog = utils.load_yaml_file(Path("src/cascaded/thinker_talker/services.cloud.yaml"))
-        multilingual_catalog = utils.load_yaml_file(Path("src/cascaded/multilingual/services.cloud.yaml"))
+        generic_catalog = utils.load_yaml_file(Path("src/examples/generic/services.cloud.yaml"))
+        thinker_catalog = utils.load_yaml_file(Path("src/examples/thinker_talker/services.cloud.yaml"))
+        multilingual_catalog = utils.load_yaml_file(Path("src/examples/multilingual/services.cloud.yaml"))
 
         self.assertEqual(generic_catalog["asr"]["nemotron-asr-streaming-english"]["model"], "nemotron-asr-streaming")
         self.assertEqual(thinker_catalog["asr"]["nemotron-asr-streaming-english"]["model"], "nemotron-asr-streaming")
         self.assertNotIn("nemotron-asr-streaming-multilingual", multilingual_catalog["asr"])
 
     def test_registry_defaults_promote_reachable_local_multilingual_asr(self) -> None:
-        example = examples_registry._lookup_by_key("cascaded-multilingual/multilingual-assistant")
+        example = examples_registry._lookup_by_key("multilingual-assistant")
 
         with patch("examples_registry.is_endpoint_reachable", return_value=True):
             defaults = examples_registry.metadata(example)["defaults"]
@@ -147,7 +147,7 @@ llm:
         self.assertEqual(defaults["asr"][0]["language_code"], "auto")
 
     def test_jetson_default_uses_reachable_nemotron_speech_asr(self) -> None:
-        example = examples_registry._lookup_by_key("cascaded-generic/generic-assistant")
+        example = examples_registry._lookup_by_key("generic-assistant")
 
         def reachable(endpoint: str) -> bool:
             return endpoint in {"nemotron-speech:50051", "localhost:50051"}
@@ -159,7 +159,7 @@ llm:
         self.assertIn(defaults["asr"][0]["server"], {"nemotron-speech:50051", "localhost:50051"})
 
     def test_runtime_default_uses_reachable_nemotron_speech_asr(self) -> None:
-        token = utils._service_context.set((Path("src/cascaded/generic"), ("llm", "asr", "tts")))
+        token = utils._service_context.set((Path("src/examples/generic"), ("llm", "asr", "tts")))
         try:
 
             def reachable(endpoint: str) -> bool:

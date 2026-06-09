@@ -9,21 +9,19 @@ export function PipelineExampleSelector() {
   const { selectedExample, selectExample, deploymentOptions, deploymentSelectable } = useApp();
   const disabled = isLocked || !deploymentSelectable;
 
-  if (!selectedExample) return null;
-
-  const examplesInFamily = deploymentOptions.filter((option) => option.family === selectedExample.family);
+  if (!selectedExample || deploymentOptions.length <= 1) return null;
 
   return (
     <div className="panel-section">
-      <p className="panel-label">PIPELINE EXAMPLE</p>
+      <p className="panel-label">EXAMPLE</p>
       <select
         className="select-dark select-full"
         value={selectedExample.key}
         onChange={(e) => selectExample(e.target.value)}
         disabled={disabled}
-        aria-label="Pipeline example"
+        aria-label="Example"
       >
-        {examplesInFamily.map((option) => (
+        {deploymentOptions.map((option) => (
           <option key={option.key} value={option.key}>
             {option.label}
           </option>
