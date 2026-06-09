@@ -84,7 +84,7 @@ skills-validate:
       bash -lc "python -m venv /tmp/nv-base-venv &&
       . /tmp/nv-base-venv/bin/activate &&
       pip install nv-base -i https://urm.nvidia.com/artifactory/api/pypi/nv-shared-pypi/simple &&
-      nv-base validate .agents --no-llm --no-dedup --checks schema,pii,code-integrity,unicode,quality,lint -r cli json html -o /work/skills-report/"
+      nv-base validate skills --no-llm --no-dedup --checks schema,pii,code-integrity,unicode,quality,lint -r cli json html -o /work/skills-report/"
   artifacts:
     when: always
     paths:

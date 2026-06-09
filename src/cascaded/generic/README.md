@@ -94,13 +94,13 @@ and never `from src.cascaded.generic ...`.
 
 ## Agent skills
 
-The repository ships AI agent skills under `.agents/skills/` that may help
+The repository ships AI agent skills under `skills/` that may help
 with deployment and configuration:
 
 | Skill | Purpose |
 | --- | --- |
-| [`deploy`](../../../.agents/skills/deploy/SKILL.md) | recipe-profile selection, NGC login, and root-compose deploy across supported example/hardware stacks |
-| [`configure-pipeline`](../../../.agents/skills/configure-pipeline/SKILL.md) | edit `.env`, example-local `prompts.yaml`, or example-local `services.{cloud,local}.yaml`, then re-apply |
+| [`deploy`](../../../skills/deploy/SKILL.md) | recipe-profile selection, NGC login, and root-compose deploy across supported example/hardware stacks |
+| [`configure-pipeline`](../../../skills/configure-pipeline/SKILL.md) | edit `.env`, example-local `prompts.yaml`, or example-local `services.{cloud,local}.yaml`, then re-apply |
 
 Install them into your coding agent with `npx skills add .` (see the
 [top-level README](../../../README.md#agent-skills)).
