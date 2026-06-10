@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-"""Nemotron Omni assistant decomposed into Pipecat Subagents.
+"""Nemotron Omni assistant decomposed into Pipecat multi-agent workers.
 
-The session is split into four cooperating agents sharing a single
-``AgentBus``:
+The session is split into four cooperating workers (``pipecat.workers``)
+sharing a single ``WorkerBus``:
 
 * ``OmniTransportAgent`` owns transport I/O, VAD/turn detection, TTS, and
-  routes user frames to ``SpeakerOmniAgent`` through a ``BusBridge``.
+  routes user frames to ``SpeakerOmniAgent`` through a ``BusBridgeProcessor``.
 * ``SpeakerOmniAgent`` wraps ``NvidiaOmniMultimodalService`` and is the only
   agent allowed to emit spoken responses.
 * ``MediaAnalyzerWorker`` analyzes uploaded image/audio/video attachments
@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.runner.types import RunnerArguments
-from pipecat_subagents.runner import AgentRunner
+from pipecat.workers.runner import WorkerRunner
 
 from examples.omni_assistant.pipeline import _create_transport
 from examples.omni_assistant_subagents.subagents.media_analyzer import MediaAnalyzerWorker
@@ -90,7 +90,7 @@ async def bot(runner_args: RunnerArguments) -> None:
     tts_voice = body.get("tts_voice_id", "") or default_tts.get("voice_id", "Magpie-Multilingual.EN-US.Aria")
     api_key = os.getenv("NVIDIA_API_KEY")
 
-    runner = AgentRunner(handle_sigint=runner_args.handle_sigint)
+    runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)
     transport_agent = OmniTransportAgent(
         bus=runner.bus,
         transport=transport,
@@ -103,7 +103,6 @@ async def bot(runner_args: RunnerArguments) -> None:
         session_id=session_id,
     )
     speaker_agent = SpeakerOmniAgent(
-        bus=runner.bus,
         context=context,
         api_key=api_key,
         base_url=base_url,
@@ -114,7 +113,6 @@ async def bot(runner_args: RunnerArguments) -> None:
         uploaded_attachment_available=transport_agent.has_uploaded_attachment,
     )
     media_analyzer_agent = MediaAnalyzerWorker(
-        bus=runner.bus,
         api_key=api_key,
         base_url=base_url,
         model_id=model_id,
@@ -122,7 +120,6 @@ async def bot(runner_args: RunnerArguments) -> None:
         system_prompt=_agent_prompt_content(prompt_catalog, "MediaAnalyzerAgent", "analysis_system_prompt"),
     )
     webcam_agent = WebcamAgent(
-        bus=runner.bus,
         api_key=api_key,
         base_url=base_url,
         model_id=model_id,
@@ -130,8 +127,7 @@ async def bot(runner_args: RunnerArguments) -> None:
         summary_system_prompt=_agent_prompt_content(prompt_catalog, "WebcamAgent", "summary_system_prompt"),
     )
 
-    await runner.add_agent(transport_agent)
-    await runner.add_agent(media_analyzer_agent)
-    await runner.add_agent(webcam_agent)
-    await runner.add_agent(speaker_agent)
+    # The transport worker is the root/main worker; helper workers (speaker,
+    # media analyzer, webcam) coordinate over the runner's shared bus.
+    await runner.add_workers(transport_agent, media_analyzer_agent, webcam_agent, speaker_agent)
     await runner.run()

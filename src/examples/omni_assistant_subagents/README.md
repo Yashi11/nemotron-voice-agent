@@ -1,7 +1,7 @@
 # Nemotron Omni Assistant Subagents - cascaded pipeline example
 
 Multi-agent variant of [`omni-assistant`](../omni_assistant/README.md)
-built on [`pipecat-ai-subagents`](https://pypi.org/project/pipecat-ai-subagents/).
+built on Pipecat's built-in multi-agent framework (`pipecat.workers`).
 A transport agent owns I/O and TTS, a speaker agent owns spoken output,
 and two worker agents handle uploaded media and live webcam vision.
 
@@ -16,7 +16,7 @@ defined in the root and `docker/` compose files.
 | Area | Details |
 | --- | --- |
 | Example intent | A multimodal, multi-agent Omni assistant that keeps the voice conversation responsive while specialized agents analyze uploaded media and live webcam frames. |
-| Architecture pattern | Split responsibility across a transport agent, speaker agent, media analyzer, and webcam agent using `pipecat-ai-subagents`, with explicit dispatch and acknowledgement points. |
+| Architecture pattern | Split responsibility across a transport agent, speaker agent, media analyzer, and webcam agent using `pipecat.workers`, with explicit dispatch and acknowledgement points. |
 | What to study | Agent boundaries, prompt separation, visual barge-in, deferred media dispatch, webcam scene summaries, and how UI capabilities are declared for attachments and webcam support. |
 | Best fit | Teams building assistants that need spoken interaction plus asynchronous visual or media understanding without blocking the user-facing voice loop. |
 | Extend into | Visual troubleshooting, field-service copilots, retail product assistance, inspection workflows, education and training tutors, accessibility helpers, or support agents that combine conversation with uploaded images, audio, video, or live camera context. |
@@ -25,7 +25,7 @@ defined in the root and `docker/` compose files.
 
 | Path | Role |
 | --- | --- |
-| `pipeline.py` | pipecat-subagents entry point that wires the four agents into an `AgentRunner` |
+| `pipeline.py` | entry point that wires the four workers into a `WorkerRunner` over a shared `WorkerBus` |
 | `subagents/speaker/agent.py` | `SpeakerOmniAgent` + structured-JSON wrapper around `NvidiaOmniMultimodalService` |
 | `subagents/transport/agent.py` | `OmniTransportAgent` — transport I/O, TTS, visual barge-in, analyzer dispatch |
 | `subagents/media_analyzer/agent.py` | `MediaAnalyzerWorker` for uploaded image / audio / video attachments |

@@ -16,7 +16,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 
 from loguru import logger
 from pipecat.frames.frames import AggregatedTextFrame, Frame, LLMTextFrame, TTSUpdateSettingsFrame
-from pipecat.pipeline.task import PipelineTask
+from pipecat.pipeline.worker import PipelineWorker
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.services.nvidia.tts import NvidiaTTSService, NvidiaTTSSettings
 from pipecat.utils.text.base_text_aggregator import (
@@ -238,7 +238,7 @@ def get_lang_codes() -> str:
 
 def make_language_handler(
     tts: NvidiaTTSService,
-    task: PipelineTask,
+    task: PipelineWorker,
     *,
     on_language_switched: _LanguageSwitchNotifier | None = None,
 ) -> _LanguageHandler:

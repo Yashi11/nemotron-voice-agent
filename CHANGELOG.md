@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New session-scoped HTTP endpoints `POST /api/sessions/{session_id}/attachments`, `POST /api/sessions/{session_id}/webcam/frames`, `GET /api/webcam-config` (capability-driven, not example-named)
 - Generic client-visible `metric-group` server-message protocol for the Metrics panel. Any pipeline can publish grouped per-turn metrics
 - Recipe-style compose profiles (`<family>/<example>` for cloud-only and `<family>/<example>/<hardware>` for on-prem). Every profile is a complete, self-contained deployment stack — no orthogonal hardware profile to combine, no silent mis-pairing
-- `pipecat-ai-subagents>=0.6.0` declared in `pyproject.toml` (consumed by `cascaded/omni-assistant-subagents`)
+- `cascaded/omni-assistant-subagents` is built on Pipecat's built-in multi-agent framework (`pipecat.workers`: `WorkerRunner`, `PipelineWorker`/`BaseWorker`, `@job`, `WorkerBus`, `BusBridgeProcessor`)
 - `examples_registry.yaml` becomes the single source of truth for which examples and transports the UI exposes (`selection`, `transports` fields) and per-example slot defaults (`defaults`). `EXAMPLE_SELECTION` / `TRANSPORT_SELECTION` env vars provide runtime overrides without surfacing in `.env.example`
 - Compose recipes are named after the registry key for cloud-only deployments and append hardware for on-prem deployments (for example, `cascaded/generic/dgxspark`). Observability profiles (`tracing`, `turn`) remain optional overlays.
 - `nemotron-speech` compose service promotes Riva (ASR + TTS) to a first-class Jetson service so the full stack lifecycles via `docker compose --profile cascaded/generic/jetson up -d`. Replaces the prior host-side `riva_start.sh` flow

@@ -50,14 +50,14 @@ class WebcamController:
         *,
         session_id: str,
         speaker_context: SpeakerContextManager,
-        request_task: Callable[..., Awaitable[str]],
+        request_job: Callable[..., Awaitable[str]],
         queue_frame: Callable[[Any], Awaitable[None]],
         is_visual_control_stopped: Callable[[], bool],
     ) -> None:
         """Initialize webcam summary and upload-control state for one session."""
         self._session_id = session_id
         self._speaker_context = speaker_context
-        self._request_task = request_task
+        self._request_job = request_job
         self._queue_frame = queue_frame
         self._is_visual_control_stopped = is_visual_control_stopped
         self._summary_loop_task: asyncio.Task[None] | None = None
@@ -281,7 +281,7 @@ class WebcamController:
                     continue
                 self._last_summary_sequence = frame.sequence
                 try:
-                    self._summary_task_id = await self._request_task(
+                    self._summary_task_id = await self._request_job(
                         WebcamAgent.AGENT_NAME,
                         name=WEBCAM_SUMMARY_TASK_NAME,
                         payload={
