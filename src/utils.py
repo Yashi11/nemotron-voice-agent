@@ -387,11 +387,17 @@ def _load_local_services_catalog() -> dict:
             if active is not None:
                 active_platform, active_entry = active
                 target[key] = active_entry
+                emitted = [active_entry]
             else:
                 active_platform = ""
+                emitted = []
             for platform_name, entry in entries:
-                if platform_name != active_platform:
-                    target[f"{key}-{platform_name}"] = entry
+                if platform_name == active_platform:
+                    continue
+                if any(entry == seen for seen in emitted):
+                    continue
+                target[f"{key}-{platform_name}"] = entry
+                emitted.append(entry)
     return _rewrite_local_runtime_endpoints(_normalize_services_catalog(merged))
 
 

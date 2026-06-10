@@ -177,6 +177,23 @@ llm:
         self.assertEqual(len(selected), 1)
         self.assertEqual(selected[0]["id"], "self-hosted:parakeet-ctc")
 
+    def test_workstation_tts_has_no_duplicate_self_hosted_entry(self) -> None:
+        token = utils._service_context.set((Path("src/examples/generic"), ("llm", "asr", "tts")))
+        try:
+
+            def reachable(endpoint: str) -> bool:
+                return endpoint in {"tts-service:50051", "localhost:50151"}
+
+            with patch("utils.is_endpoint_reachable", side_effect=reachable):
+                tts = build_services_api_response()["tts"]
+        finally:
+            utils._service_context.reset(token)
+
+        self_hosted = [entry for entry in tts if entry["source"] == "self-hosted"]
+        self.assertEqual(len(self_hosted), 1)
+        self.assertEqual(self_hosted[0]["id"], "self-hosted:magpie-tts")
+        self.assertEqual(self_hosted[0]["server"], "localhost:50151")
+
 
 if __name__ == "__main__":
     unittest.main()
