@@ -661,6 +661,7 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
             tool_call_id="cancel_test",
             arguments={},
             llm=llm,
+            pipeline_worker=None,
             context=None,
             result_callback=result_callback,
         )
@@ -759,6 +760,7 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
                 "date": "2026-05-26",
             },
             llm=llm,
+            pipeline_worker=None,
             context=None,
             result_callback=result_callback,
         )
@@ -791,6 +793,7 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
                 "filler_text": "I need to check the live booking tools for that.",
             },
             llm=llm,
+            pipeline_worker=None,
             context=None,
             result_callback=result_callback,
         )
@@ -823,6 +826,7 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
                 "date": "2026-05-26",
             },
             llm=llm,
+            pipeline_worker=None,
             context=None,
             result_callback=result_callback,
         )
@@ -850,6 +854,7 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
                 "date": "2026-05-26",
             },
             llm=llm,
+            pipeline_worker=None,
             context=None,
             result_callback=result_callback,
         )
@@ -871,6 +876,7 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
             tool_call_id="call_test",
             arguments={"query": "Search flights from New York to Seattle tomorrow"},
             llm=llm,
+            pipeline_worker=None,
             context=None,
             result_callback=result_callback,
         )
@@ -904,6 +910,7 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
                 "date": "2026-05-26",
             },
             llm=llm,
+            pipeline_worker=None,
             context=None,
             result_callback=call_result_callback,
         )
@@ -912,6 +919,7 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
             tool_call_id="cancel_test",
             arguments={},
             llm=llm,
+            pipeline_worker=None,
             context=None,
             result_callback=cancel_result_callback,
         )
@@ -946,6 +954,7 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
             tool_call_id="cancel_test",
             arguments={},
             llm=llm,
+            pipeline_worker=None,
             context=None,
             result_callback=result_callback,
         )
@@ -982,6 +991,7 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
             tool_call_id="cancel_test",
             arguments={},
             llm=llm,
+            pipeline_worker=None,
             context=None,
             result_callback=result_callback,
         )

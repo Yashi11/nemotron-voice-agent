@@ -28,8 +28,7 @@ from pipecat.frames.frames import (
 )
 from pipecat.observers.user_bot_latency_observer import UserBotLatencyObserver
 from pipecat.pipeline.pipeline import Pipeline
-from pipecat.pipeline.runner import PipelineRunner
-from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
@@ -45,6 +44,7 @@ from pipecat.turns.user_mute.mute_until_first_bot_complete_user_mute_strategy im
 from pipecat.turns.user_start.vad_user_turn_start_strategy import VADUserTurnStartStrategy
 from pipecat.turns.user_turn_processor import UserTurnProcessor
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
+from pipecat.workers.runner import WorkerRunner
 
 from examples.omni_assistant.audio_only_smart_turn_strategy import AudioOnlySmartTurnStopStrategy
 from examples.omni_assistant.nvidia_omni_multimodal_service import (
@@ -246,7 +246,7 @@ async def bot(runner_args: RunnerArguments) -> None:
         latest_latency_turn_id = ""
         latest_latency_turn_label = ""
 
-    task = PipelineTask(
+    task = PipelineWorker(
         pipeline,
         params=PipelineParams(
             enable_metrics=True,
@@ -290,8 +290,9 @@ async def bot(runner_args: RunnerArguments) -> None:
         if message.type == "set-voice":
             await _apply_set_voice(payload)
 
-    runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
-    await runner.run(task)
+    runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)
+    await runner.add_workers(task)
+    await runner.run()
 
 
 def _create_transport(runner_args: RunnerArguments):

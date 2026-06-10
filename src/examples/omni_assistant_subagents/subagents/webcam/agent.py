@@ -9,11 +9,10 @@ import json
 from typing import Any
 
 from loguru import logger
+from pipecat.bus.messages import BusJobRequestMessage
+from pipecat.pipeline.job_decorator import job
 from pipecat.processors.aggregators.llm_context import LLMContext
-from pipecat_subagents.agents import BaseAgent
-from pipecat_subagents.agents import task as subagent_task
-from pipecat_subagents.bus import AgentBus
-from pipecat_subagents.bus.messages import BusTaskRequestMessage
+from pipecat.workers.base_worker import BaseWorker
 
 from examples.omni_assistant.nvidia_omni_multimodal_service import (
     NvidiaOmniService,
@@ -39,7 +38,7 @@ _SUMMARY_SYSTEM_PROMPT = (
 )
 
 
-class WebcamAgent(BaseAgent):
+class WebcamAgent(BaseWorker):
     """Worker that summarizes browser webcam snapshots with Nemotron Omni."""
 
     AGENT_NAME = "omni_webcam"
@@ -48,7 +47,6 @@ class WebcamAgent(BaseAgent):
         self,
         name: str | None = None,
         *,
-        bus: AgentBus,
         api_key: str,
         base_url: str,
         model_id: str,
@@ -56,7 +54,7 @@ class WebcamAgent(BaseAgent):
         summary_system_prompt: str = "",
     ) -> None:
         """Initialize the webcam vision worker."""
-        super().__init__(name or self.AGENT_NAME, bus=bus, active=True)
+        super().__init__(name or self.AGENT_NAME, active=True)
         self._base_url = base_url
         self._model_id = model_id
         summary_reasoning = parse_env_bool("WEBCAM_SUMMARY_REASONING", default=False)
@@ -86,8 +84,8 @@ class WebcamAgent(BaseAgent):
             ),
         )
 
-    @subagent_task(name=WEBCAM_SUMMARY_TASK_NAME)
-    async def summarize_webcam_frame(self, message: BusTaskRequestMessage) -> None:
+    @job(name=WEBCAM_SUMMARY_TASK_NAME)
+    async def summarize_webcam_frame(self, message: BusJobRequestMessage) -> None:
         """Summarize one webcam frame for rolling scene memory."""
         payload = message.payload or {}
         frame_metadata = payload.get("frame") if isinstance(payload.get("frame"), dict) else {}
@@ -126,8 +124,8 @@ class WebcamAgent(BaseAgent):
             self._last_published_observations[session_id] = observation
             self._remember_observation(session_id, frame, observation, event_reason)
 
-        await self.send_task_response(
-            message.task_id,
+        await self.send_job_response(
+            message.job_id,
             {
                 "mode": "summary",
                 "publish": bool(observation),

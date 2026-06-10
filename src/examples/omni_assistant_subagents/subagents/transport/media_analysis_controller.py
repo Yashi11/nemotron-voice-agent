@@ -10,10 +10,10 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from loguru import logger
+from pipecat.bus.messages import BusJobResponseMessage
 from pipecat.frames.frames import LLMFullResponseEndFrame, LLMFullResponseStartFrame, LLMTextFrame
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.frameworks.rtvi.frames import RTVIServerMessageFrame
-from pipecat_subagents.bus.messages import BusTaskResponseMessage
 
 from attachment_store import latest_attachment
 from examples.omni_assistant_subagents.subagents.media_analyzer import MEDIA_ANALYSIS_TASK_NAME, MediaAnalyzerWorker
@@ -28,7 +28,7 @@ class MediaAnalysisController:
         *,
         session_id: str,
         context: LLMContext,
-        request_task: Callable[..., Awaitable[str]],
+        request_job: Callable[..., Awaitable[str]],
         queue_frame: Callable[[Any], Awaitable[None]],
         is_visual_control_stopped: Callable[[], bool],
         followup_delay_secs: float,
@@ -36,7 +36,7 @@ class MediaAnalysisController:
         """Initialize uploaded-media dispatch state for one session."""
         self._session_id = session_id
         self._context = context
-        self._request_task = request_task
+        self._request_job = request_job
         self._queue_frame = queue_frame
         self._is_visual_control_stopped = is_visual_control_stopped
         self._followup_delay_secs = followup_delay_secs
@@ -115,7 +115,7 @@ class MediaAnalysisController:
             return
 
         self._active_attachment_id = attachment_id
-        task_id = await self._request_task(
+        task_id = await self._request_job(
             MediaAnalyzerWorker.AGENT_NAME,
             name=MEDIA_ANALYSIS_TASK_NAME,
             payload={
@@ -154,8 +154,8 @@ class MediaAnalysisController:
         self._pending_prompt = ""
         self._pending_action = "none"
 
-    async def handle_task_response(self, message: BusTaskResponseMessage) -> bool:
-        """Emit uploaded-media task results. Return whether the response was handled."""
+    async def handle_job_response(self, message: BusJobResponseMessage) -> bool:
+        """Emit uploaded-media job results. Return whether the response was handled."""
         response = message.response or {}
         answer = str(response.get("answer") or "").strip()
         reasoning = str(response.get("reasoning") or "").strip()
@@ -167,7 +167,7 @@ class MediaAnalysisController:
         await self._emit_analysis_response(
             answer,
             transcript,
-            task_id=message.task_id,
+            task_id=message.job_id,
             agent=str(getattr(message, "source", "") or MediaAnalyzerWorker.AGENT_NAME),
             attachment=attachment,
             reasoning=reasoning,

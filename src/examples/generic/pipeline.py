@@ -17,8 +17,7 @@ from loguru import logger
 from pipecat.frames.frames import LLMRunFrame, TTSUpdateSettingsFrame
 from pipecat.observers.user_bot_latency_observer import UserBotLatencyObserver
 from pipecat.pipeline.pipeline import Pipeline
-from pipecat.pipeline.runner import PipelineRunner
-from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
@@ -28,6 +27,7 @@ from pipecat.runner.types import RunnerArguments
 from pipecat.services.nvidia.llm import NvidiaLLMService, NvidiaLLMSettings
 from pipecat.services.nvidia.stt import NvidiaSTTService, NvidiaSTTSettings
 from pipecat.services.nvidia.tts import NvidiaTTSService, NvidiaTTSSettings
+from pipecat.workers.runner import WorkerRunner
 
 from examples.generic.tools import TOOL_HANDLERS, build_tools_schema
 from examples.shared.audio_recorder import create_audio_recorder
@@ -236,7 +236,7 @@ async def bot(runner_args: RunnerArguments) -> None:
         if events:
             logger.info(f"Latency breakdown: {' | '.join(events)}")
 
-    task = PipelineTask(
+    task = PipelineWorker(
         pipeline,
         params=PipelineParams(
             enable_metrics=True,
@@ -295,5 +295,6 @@ async def bot(runner_args: RunnerArguments) -> None:
         if message.type == "set-voice":
             await _apply_set_voice(payload)
 
-    runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
-    await runner.run(task)
+    runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)
+    await runner.add_workers(task)
+    await runner.run()

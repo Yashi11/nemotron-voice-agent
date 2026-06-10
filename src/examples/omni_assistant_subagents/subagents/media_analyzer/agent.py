@@ -8,13 +8,12 @@ from __future__ import annotations
 from typing import Any
 
 from loguru import logger
+from pipecat.bus.messages import BusFrameMessage, BusJobRequestMessage
+from pipecat.pipeline.job_decorator import job
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.processors.frameworks.rtvi.frames import RTVIServerMessageFrame
-from pipecat_subagents.agents import BaseAgent
-from pipecat_subagents.agents import task as subagent_task
-from pipecat_subagents.bus import AgentBus
-from pipecat_subagents.bus.messages import BusFrameMessage, BusTaskRequestMessage
+from pipecat.workers.base_worker import BaseWorker
 
 from attachment_store import Attachment, get_attachment
 from examples.omni_assistant.nvidia_omni_multimodal_service import (
@@ -34,7 +33,7 @@ _SYSTEM_PROMPT = (
 )
 
 
-class MediaAnalyzerWorker(BaseAgent):
+class MediaAnalyzerWorker(BaseWorker):
     """Worker that analyzes uploaded media with Nemotron Omni and reports over the bus."""
 
     AGENT_NAME = "omni_media_analyzer"
@@ -43,7 +42,6 @@ class MediaAnalyzerWorker(BaseAgent):
         self,
         name: str | None = None,
         *,
-        bus: AgentBus,
         api_key: str,
         base_url: str,
         model_id: str,
@@ -51,7 +49,7 @@ class MediaAnalyzerWorker(BaseAgent):
         system_prompt: str = "",
     ) -> None:
         """Configure the OpenAI-compatible client and analyzer defaults."""
-        super().__init__(name or self.AGENT_NAME, bus=bus, active=True)
+        super().__init__(name or self.AGENT_NAME, active=True)
         self._base_url = base_url
         self._model_id = model_id
         self._system_prompt = system_prompt.strip() or _SYSTEM_PROMPT
@@ -77,8 +75,8 @@ class MediaAnalyzerWorker(BaseAgent):
             ),
         )
 
-    @subagent_task(name=MEDIA_ANALYSIS_TASK_NAME)
-    async def analyze_media(self, message: BusTaskRequestMessage) -> None:
+    @job(name=MEDIA_ANALYSIS_TASK_NAME)
+    async def analyze_media(self, message: BusJobRequestMessage) -> None:
         """Analyze one uploaded attachment."""
         payload = message.payload or {}
         requester = message.source
@@ -92,7 +90,7 @@ class MediaAnalyzerWorker(BaseAgent):
 
         await self._emit_update(
             target=requester,
-            task_id=message.task_id,
+            task_id=message.job_id,
             status="running",
             stage="started",
             detail=f"Analyzing {attachment.get('kind', 'media')} attachment...",
@@ -109,7 +107,7 @@ class MediaAnalyzerWorker(BaseAgent):
                     stored_attachment,
                     query,
                     requester=requester,
-                    task_id=message.task_id,
+                    task_id=message.job_id,
                     attachment_metadata=attachment,
                 )
             except Exception as exc:
@@ -117,8 +115,8 @@ class MediaAnalyzerWorker(BaseAgent):
                 answer = "I could not analyze the uploaded media because the analyzer request failed."
                 reasoning = ""
 
-        await self.send_task_response(
-            message.task_id,
+        await self.send_job_response(
+            message.job_id,
             {
                 "answer": answer,
                 "reasoning": reasoning,

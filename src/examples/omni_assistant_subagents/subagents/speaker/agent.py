@@ -11,9 +11,8 @@ from typing import Any
 
 from loguru import logger
 from pipecat.pipeline.pipeline import Pipeline
+from pipecat.pipeline.worker import PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
-from pipecat_subagents.agents import BaseAgent
-from pipecat_subagents.bus import AgentBus
 
 from examples.omni_assistant.nvidia_omni_multimodal_service import (
     NvidiaOmniMultimodalService,
@@ -178,8 +177,13 @@ def _missing_uploaded_attachment_response(transcript: str) -> str:
     return "Please upload or attach the media first, then I can take a look."
 
 
-class SpeakerOmniAgent(BaseAgent):
-    """Main conversational agent backed by the upstream-style Omni service."""
+class SpeakerOmniAgent(PipelineWorker):
+    """Main conversational agent backed by the upstream-style Omni service.
+
+    A bus-bridged ``PipelineWorker`` (``bridged=()`` accepts frames from all
+    bridges): it receives user frames teed from the transport worker's
+    ``BusBridgeProcessor`` and is the only worker that emits spoken responses.
+    """
 
     AGENT_NAME = "speaker_omni"
 
@@ -187,7 +191,6 @@ class SpeakerOmniAgent(BaseAgent):
         self,
         name: str | None = None,
         *,
-        bus: AgentBus,
         context: LLMContext,
         api_key: str,
         base_url: str,
@@ -198,25 +201,13 @@ class SpeakerOmniAgent(BaseAgent):
         uploaded_attachment_available: Callable[[], bool] | None = None,
     ) -> None:
         """Initialize the bridged Speaker Omni agent."""
-        super().__init__(name or self.AGENT_NAME, bus=bus, active=True, bridged=())
-        self._context = context
-        self._api_key = api_key
-        self._base_url = base_url
-        self._model_id = model_id
-        self._extra_params = dict(extra_params or {})
-        self._audio_response_instruction = audio_response_instruction
-        self._media_analysis_prompt_handler = media_analysis_prompt_handler
-        self._uploaded_attachment_available = uploaded_attachment_available
-
-    async def build_pipeline(self) -> Pipeline:
-        """Build the agent-local Omni pipeline."""
         omni = SubagentsSpeakerOmniService(
-            api_key=self._api_key,
-            base_url=self._base_url,
-            context=self._context,
-            extra=self._extra_params,
+            api_key=api_key,
+            base_url=base_url,
+            context=context,
+            extra=dict(extra_params or {}),
             settings=NvidiaOmniSettings(
-                model=self._model_id,
+                model=model_id,
                 max_tokens=parse_env_int("OMNI_MAX_TOKENS", 8192, min_value=64),
                 temperature=parse_env_float("OMNI_TEMPERATURE", 0.7, min_value=0.0),
                 top_p=parse_env_float("OMNI_TOP_P", 0.95, min_value=0.0),
@@ -224,8 +215,8 @@ class SpeakerOmniAgent(BaseAgent):
                 emit_transcriptions=True,
                 min_user_audio_secs=parse_env_float("OMNI_MIN_USER_AUDIO_SECS", 0.3, min_value=0.0),
             ),
-            media_analysis_prompt_handler=self._media_analysis_prompt_handler,
-            uploaded_attachment_available=self._uploaded_attachment_available,
-            audio_response_instruction=self._audio_response_instruction,
+            media_analysis_prompt_handler=media_analysis_prompt_handler,
+            uploaded_attachment_available=uploaded_attachment_available,
+            audio_response_instruction=audio_response_instruction,
         )
-        return Pipeline([omni])
+        super().__init__(Pipeline([omni]), name=name or self.AGENT_NAME, active=True, bridged=())
