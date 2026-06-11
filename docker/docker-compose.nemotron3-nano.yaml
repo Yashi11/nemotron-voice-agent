@@ -12,6 +12,7 @@ services:
       - NIM_TAGS_SELECTOR=precision=fp8,tp=1
       - NIM_KV_CACHE_PERCENT=0.45
       - NIM_MAX_MODEL_LEN=32768
+      - NIM_PASSTHROUGH_ARGS=--enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser nemotron_v3
     ports:
       - "18000:8000"
     volumes:
@@ -45,7 +46,7 @@ services:
       - multilingual-assistant/dgx-spark
       - generic-assistant/jetson-thor
     container_name: nvidia-llm-vllm
-    image: nvcr.io/nvidia/vllm:25.12.post1-py3
+    image: nvcr.io/nvidia/vllm:26.05.post1-py3
     pull_policy: if_not_present
     shm_size: 16GB
     cpuset: ${VLLM_CPUSET:-}
@@ -72,8 +73,6 @@ services:
     command:
       - |
         (sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null) || true && \
-        pip install --no-cache-dir "flashinfer-jit-cache==0.6.0+cu130" \
-          --index-url https://flashinfer.ai/whl/cu130 && \
         vllm serve nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4 \
           --host 0.0.0.0 \
           --port 8000 \
@@ -82,6 +81,7 @@ services:
           --trust-remote-code \
           --enable-auto-tool-choice \
           --tool-call-parser qwen3_coder \
+          --reasoning-parser nemotron_v3 \
           --async-scheduling \
           --kv-cache-dtype fp8
     healthcheck:
