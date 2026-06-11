@@ -93,6 +93,8 @@ Before you begin, ensure you have the following:
 
     To verify all services are healthy, run `docker compose ps`.
 
+DGX Spark and Jetson additionally need `HF_TOKEN` for the vLLM model download. If the Magpie TTS image is staging or private, use a `NVIDIA_API_KEY` with access to that image.
+
 ---
 
 ## Optional: Deploy with Local NIM Profiles
@@ -102,8 +104,6 @@ Local NIM ASR/TTS/LLM sidecars run alongside the example container when you laun
 > **OOM troubleshooting:** If the LLM process is killed, the NIM/vLLM runtime reports model-load or OOM errors, or latency degrades under load, use separate GPUs when available. On a two-GPU host, place ASR/TTS on one GPU and the LLM on the other. Otherwise, reduce KV cache / context length (lower memory, less long-context capacity). Lowering batch size or precision can also help. Confirm `NVIDIA_API_KEY` and `HF_TOKEN` are set where required so auth failures are not mistaken for OOM.
 
 Workstation profiles place ASR, TTS, and LLM on one GPU by default. Single-GPU deployments are supported only when at least 80 GB of VRAM is available.
-
-DGX Spark and Jetson additionally need `HF_TOKEN` for the vLLM model download. If the Magpie TTS image is staging or private, use a `NVIDIA_API_KEY` with access to that image.
 
 ```bash
 # Generic Cascaded — full local NIM stack on a workstation
