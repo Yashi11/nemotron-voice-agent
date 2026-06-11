@@ -60,7 +60,7 @@ llm:
 ```
 
 - Reasoning OFF: `chat_template_kwargs.enable_thinking: false`. Reasoning ON: `enable_thinking: true`.
-- The `*-reasoning` variants are **cloud (NVCF) only**. On NVCF the thinking comes back in a separate `reasoning_content` field, so TTS speaks only the final answer (`content`); the local Nano NIM emits it inline in `content`, so reasoning isn't offered on-prem.
+- The `*-reasoning` variants work on **cloud and on-prem**. Cloud has the parsers enabled server-side; self-hosted (NIM or raw vLLM) needs `--reasoning-parser nemotron_v3` so reasoning is separated and TTS speaks only `content`. Local `*-reasoning` entries ship for **workstation** and **dgxspark** in `services.local.yaml`. See [Troubleshooting](#troubleshooting-tool-calling--reasoning) if local tools return HTTP 400 or reasoning leaks.
 - Select a variant from the Services tab, or set it as the default in `examples_registry.yaml`.
 
 ## Changing built-in defaults
@@ -69,7 +69,7 @@ Each example declares its default service per slot via `defaults` in `examples_r
 
 When the same default key exists in both `services.cloud.yaml` and `services.local.yaml`, the resolver prefers the **self-hosted** variant so that deploying local NIM sidecars automatically promotes them to the active default — no UI click needed. If the self-hosted endpoint is unreachable at session-start time, the runtime falls back to the cloud variant.
 
-> **On-prem note:** self-hosted promotion only applies when the `defaults` key also exists in `services.local.yaml`. A default with no on-prem entry (e.g. a cloud-only `nemotron-super`) resolves to the cloud model even on an on-prem recipe — point `defaults` at a local key or pick the model from the Services tab.
+> **On-prem note:** self-hosted promotion only applies when the `defaults` key also exists in `services.local.yaml`. A default whose key exists **only** in `services.cloud.yaml` resolves to the cloud model even on an on-prem recipe — point `defaults` at a local key or pick the model from the Services tab.
 
 ## On-prem catalog
 
@@ -137,3 +137,11 @@ docker compose --profile thinker-talker/workstation up -d
 ```
 
 Running a cloud-only profile (e.g. `--profile generic-assistant`) stays cloud-only and uses just `services.cloud.yaml`.
+
+## Troubleshooting: tool calling & reasoning
+
+Self-hosted Nemotron-3 only — cloud (NVCF) has the parsers enabled server-side. The repo's `docker/docker-compose.nemotron3-*.yaml` already set these.
+
+- **`HTTP 400: "auto" tool choice requires --enable-auto-tool-choice and --tool-call-parser`** -> the 2.x builds don't auto-enable the parsers. Pass them on the LLM service — NIM: `NIM_PASSTHROUGH_ARGS=--enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser nemotron_v3`; raw vLLM (DGX-Spark/Jetson): the same flags on `vllm serve`.
+- **Reasoning is spoken by TTS / `<think>` leaks into the answer** -> the reasoning parser isn't set; add `--reasoning-parser nemotron_v3` (separates reasoning from `content` and keeps reasoning-OFF working).
+- **Raw vLLM: `nemotron_v3` not found, or Super won't load (`MIXED_PRECISION`)** -> the image's vLLM is too old. Use NGC `nvcr.io/nvidia/vllm:26.05.post1-py3` (vLLM ≥ 0.20 ships both); `nvcr.io/nvidia/vllm:25.12.post1-py3` (0.12.0) lacks them — upgrade or mount a plugin via `--reasoning-parser-plugin`.
