@@ -3,27 +3,47 @@
 
 import { useConnectionState } from "../hooks/useConnectionState";
 import { useApp } from "../context/useApp";
+import { webRTCTransportUnavailableMessage } from "../utils";
 import { PanelSection } from "./PanelSection";
 
 export function TransportSelector() {
   const { isLocked } = useConnectionState();
-  const { availableTransports, selectedTransport, setTransport } = useApp();
+  const {
+    availableTransports,
+    selectedTransport,
+    setTransport,
+    webRTCAvailable,
+    transportError,
+    clearTransportError,
+  } = useApp();
 
   return (
     <PanelSection label="TRANSPORT">
       <div className="transport-options">
-        {availableTransports.map((transport) => (
-          <button
-            key={transport.id}
-            className={`transport-btn ${selectedTransport === transport.id ? "transport-btn--active" : ""}`}
-            onClick={() => setTransport(transport.id)}
-            disabled={isLocked || availableTransports.length === 1}
-            aria-pressed={selectedTransport === transport.id}
-          >
-            {transport.label}
-          </button>
-        ))}
+        {availableTransports.map((transport) => {
+          const unavailableWebRTC = transport.id === "webrtc" && !webRTCAvailable;
+          return (
+            <button
+              key={transport.id}
+              className={`transport-btn ${selectedTransport === transport.id ? "transport-btn--active" : ""}`}
+              onClick={() => setTransport(transport.id)}
+              disabled={isLocked || availableTransports.length === 1}
+              aria-pressed={selectedTransport === transport.id}
+              title={unavailableWebRTC ? webRTCTransportUnavailableMessage() : undefined}
+            >
+              {transport.label}
+            </button>
+          );
+        })}
       </div>
+      {transportError && (
+        <div className="transport-error" role="alert">
+          <span>{transportError}</span>
+          <button type="button" aria-label="Dismiss WebRTC warning" onClick={clearTransportError}>
+            ×
+          </button>
+        </div>
+      )}
     </PanelSection>
   );
 }

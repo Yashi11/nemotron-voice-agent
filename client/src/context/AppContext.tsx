@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useDeployment, useDefaultLLMs, useDefaultPrompts, useDefaultASR, useDefaultTTS, useDefaultTools, type DeploymentOption, type LLMService, type Prompt, type SimpleService, type Tool, type TransportOption, type TransportType } from "../api";
-import { isSelectablePrompt, readLSArray, readLSString, writeLSString, writeLSJson, removeLSKey } from "../utils";
+import { canUseWebRTCTransport, isSelectablePrompt, readLSArray, readLSString, writeLSString, writeLSJson, removeLSKey, webRTCTransportUnavailableMessage } from "../utils";
 import { AppContext } from "./app-context";
 
 const ASR_STORAGE = "nvidia-voice-agent-asr-custom";
@@ -69,6 +69,11 @@ function getDefaultServiceId(selectedExample: DeploymentOption | undefined, slot
 function getDefaultPromptKey(selectedExample: DeploymentOption | undefined): string {
   const entry = selectedExample?.defaults?.prompt?.[0];
   return entry && "key" in entry && typeof entry.key === "string" ? entry.key : "";
+}
+
+function readInitialTransport(): TransportType {
+  if (!canUseWebRTCTransport()) return "websocket";
+  return readLSString(TRANSPORT_STORAGE) === "websocket" ? "websocket" : "webrtc";
 }
 
 type ManagedServiceCatalogOptions<T extends ManagedService> = {
@@ -148,6 +153,9 @@ export interface AppState {
   availableTransports: TransportOption[];
   selectedTransport: TransportType;
   setTransport: (t: TransportType) => void;
+  webRTCAvailable: boolean;
+  transportError: string | null;
+  clearTransportError: () => void;
   currentSessionId: string;
   setCurrentSessionId: (id: string) => void;
 
@@ -220,14 +228,17 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     return deployment?.transports ?? [];
   }, [deployment]);
 
-  const [selectedTransport, setSelectedTransport] = useState<TransportType>(() => {
-    return readLSString(TRANSPORT_STORAGE) === "websocket" ? "websocket" : "webrtc";
-  });
+  const [selectedTransport, setSelectedTransport] = useState<TransportType>(readInitialTransport);
+  const [transportError, setTransportError] = useState<string | null>(null);
+  const webRTCAvailable = useMemo(() => canUseWebRTCTransport(), []);
 
   const effectiveTransport = useMemo<TransportType>(() => {
+    if (!webRTCAvailable && availableTransports.some((transport) => transport.id === "websocket")) {
+      return "websocket";
+    }
     if (availableTransports.some((transport) => transport.id === selectedTransport)) return selectedTransport;
     return availableTransports[0]?.id ?? selectedTransport;
-  }, [selectedTransport, availableTransports]);
+  }, [selectedTransport, availableTransports, webRTCAvailable]);
 
   useEffect(() => {
     if (availableTransports.length === 0 || effectiveTransport === selectedTransport) return;
@@ -235,8 +246,17 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, [availableTransports, effectiveTransport, selectedTransport]);
 
   const setTransport = useCallback((t: TransportType) => {
+    if (t === "webrtc" && !webRTCAvailable) {
+      setTransportError(webRTCTransportUnavailableMessage());
+      return;
+    }
+    setTransportError(null);
     setSelectedTransport(t);
     writeLSString(TRANSPORT_STORAGE, t);
+  }, [webRTCAvailable]);
+
+  const clearTransportError = useCallback(() => {
+    setTransportError(null);
   }, []);
 
   const [currentSessionId, setCurrentSessionId] = useState("");
@@ -387,6 +407,9 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     deploymentSelectable,
     availableTransports,
     selectedTransport: effectiveTransport, setTransport,
+    webRTCAvailable,
+    transportError,
+    clearTransportError,
     currentSessionId, setCurrentSessionId,
     llms, llmsLoading, selectedLLMId: effectiveSelectedLLMId, selectLLM, addLLM, updateLLM, removeLLM, selectedLLM,
     asrServices, asrLoading, selectedASRId: effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
@@ -394,7 +417,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     selectedVoiceId, setSelectedVoiceId,
     prompts, promptsLoading, selectedPromptKey: effectiveSelectedPromptKey, selectPrompt, addPrompt, updatePrompt, removePrompt, selectedPrompt,
     tools, toolsLoading,
-  }), [selectedExample, selectExample, deploymentOptions, deploymentSelectable, availableTransports, effectiveTransport, setTransport, currentSessionId,
+  }), [selectedExample, selectExample, deploymentOptions, deploymentSelectable, availableTransports, effectiveTransport, setTransport, webRTCAvailable, transportError, clearTransportError, currentSessionId,
        llms, llmsLoading, effectiveSelectedLLMId, selectLLM, addLLM, updateLLM, removeLLM, selectedLLM,
        asrServices, asrLoading, effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
        ttsServices, ttsLoading, effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,

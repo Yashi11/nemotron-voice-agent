@@ -86,7 +86,9 @@ This guide covers deploying the Nemotron Voice Agent on Jetson Thor using Docker
     > docker compose --profile generic-assistant/jetson-thor up -d
     > ```
 
-5. Access the application at `https://<jetson-ip>:7860`, or `http://<jetson-ip>:7860` when `PIPELINE_TLS=false`.
+5. Access the application at `https://<jetson-ip>:7860`. Keep TLS enabled when testing the browser UI.
+
+    > **Note:** `PIPELINE_TLS=false` is intended for headless performance and API testing, not interactive browser UI testing. Browser microphone access and WebRTC require a secure context.
 
     > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
 

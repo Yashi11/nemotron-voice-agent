@@ -981,6 +981,11 @@ def main():
             cert_file, key_file = ensure_self_signed_cert(cert_dir)
             ssl_kwargs = {"ssl_certfile": cert_file, "ssl_keyfile": key_file}
         scheme = "https"
+    elif args.host not in {"localhost", "127.0.0.1", "::1"}:
+        logger.warning(
+            "Serving HTTP on a remote interface. Browser microphone and WebRTC access require HTTPS, "
+            "localhost, or a Chrome secure-origin override."
+        )
 
     ui_url = f"{scheme}://{args.host}:{args.port}/"
     if CLIENT_DIST.is_dir():

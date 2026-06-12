@@ -75,8 +75,9 @@ docker compose --profile generic-assistant/workstation down
 | `generic-assistant/dgx-spark` | `generic-assistant` | `nvidia-llm-vllm`, `nemotron-asr-streaming-english`, `tts-service` |
 | `generic-assistant/jetson-thor` | `generic-assistant` | `nvidia-llm-vllm`, `nemotron-speech` |
 
-The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
-when `PIPELINE_TLS=false`.
+The UI is served at `https://localhost:7860/` by default. Keep TLS enabled for
+browser UI testing; `PIPELINE_TLS=false` is intended for headless performance
+and API testing.
 
 The pipeline always uses this package's `services.cloud.yaml` and
 `services.local.yaml` because the active example is resolved from

@@ -59,6 +59,8 @@ uv sync --group benchmark
 PIPELINE_TLS=false uv run python src/server.py
 ```
 
+`PIPELINE_TLS=false` is used here for headless benchmark traffic. Keep TLS enabled when testing the interactive browser UI.
+
 Then, from `benchmarking_tools/Full-Duplex-Bench-Eval/`, point the client at the running server:
 
 ```bash
