@@ -936,6 +936,7 @@ _SUITE_HEADERS = (
     "Server E2E",
     "VAD+Smart Turn",
     "LLM Proc Time",
+    "LLM Tok/s",
     "Glitches",
 )
 
@@ -1229,6 +1230,7 @@ def _row_from_summary(summary: dict[str, Any], num_clients: int) -> dict[str, An
         "server_e2e": sa.get("server_e2e"),
         "vad_smart_turn": sa.get("vad_smart_turn"),
         "llm_processing_time": sa.get("llm_processing_time"),
+        "llm_tokens_per_sec": sa.get("llm_tokens_per_sec"),
         "audio_glitches": r["glitch_detection"]["clients_with_glitches"],
     }
 
@@ -1251,6 +1253,7 @@ def _client_row_from_result(client: dict[str, Any]) -> dict[str, Any]:
         "server_e2e": _client_server_metric_average(client, "server_e2e"),
         "vad_smart_turn": _client_server_metric_average(client, "vad_smart_turn"),
         "llm_processing_time": _client_server_metric_average(client, "llm_processing_time"),
+        "llm_tokens_per_sec": _client_server_metric_average(client, "llm_tokens_per_sec"),
         "audio_glitches": 1 if client.get("glitch_detected") else 0,
     }
 
@@ -1281,6 +1284,7 @@ def _metric_row_to_strings(row: dict[str, Any], label_key: str) -> list[str]:
         round3(row["server_e2e"]),
         round3(row["vad_smart_turn"]),
         round3(row["llm_processing_time"]),
+        round3(row["llm_tokens_per_sec"]),
         str(row["audio_glitches"]),
     ]
 

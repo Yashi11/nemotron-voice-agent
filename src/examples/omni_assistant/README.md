@@ -55,6 +55,12 @@ docker compose --profile omni-assistant/workstation up -d
 docker compose --profile omni-assistant/dgx-spark up -d
 ```
 
+Jetson Thor (local Omni vLLM + on-device Riva TTS):
+
+```bash
+docker compose --profile omni-assistant/jetson-thor up -d
+```
+
 Tear down with the same profile used at `up` time.
 
 | Recipe profile | App service | Shared sidecars pulled from `docker/` |
@@ -62,8 +68,12 @@ Tear down with the same profile used at `up` time.
 | `omni-assistant` | `omni-assistant` | none (cloud NVCF) |
 | `omni-assistant/workstation` | `omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
 | `omni-assistant/dgx-spark` | `omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
+| `omni-assistant/jetson-thor` | `omni-assistant` | `nvidia-llm-vllm-omni`, `nemotron-speech-tts` (Riva TTS) |
 
-> Jetson is not supported today: the 30B Omni NVFP4 model does not fit on Orin-class hardware. A jetson recipe will be added once a smaller Omni variant lands.
+> Jetson Thor (128 GB unified memory) fits the 30B Omni NVFP4 model and reuses
+> the same Omni vLLM sidecar as the other recipes, with TTS served by the
+> on-device Riva `nemotron-speech-tts` service instead of the Magpie NIM. Orin-class
+> Jetson hardware is still not supported because the model does not fit.
 
 The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
 when `PIPELINE_TLS=false`.

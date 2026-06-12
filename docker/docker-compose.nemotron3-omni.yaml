@@ -5,6 +5,7 @@ services:
       - omni-assistant-subagents/workstation
       - omni-assistant/dgx-spark
       - omni-assistant-subagents/dgx-spark
+      - omni-assistant/jetson-thor
     container_name: vllm-nemotron-omni
     image: vllm/vllm-openai:v0.20.0-cu130
     pull_policy: if_not_present
@@ -35,7 +36,7 @@ services:
           --max-model-len 32768 \
           --port 8002 \
           --trust-remote-code \
-          --gpu-memory-utilization 0.35 \
+          --gpu-memory-utilization 0.3 \
           --limit-mm-per-prompt '{"video": 999, "image": 999, "audio": 999}' \
           --media-io-kwargs '{"video": {"fps": 2,  "num_frames": 256}}' \
           --enable-prefix-caching \

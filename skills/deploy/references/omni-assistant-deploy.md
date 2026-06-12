@@ -8,7 +8,7 @@ Pinning a Docker Compose deployment to the Omni Assistant example. Recipe profil
 
 Per-example catalogs at `src/examples/omni_assistant/services.{cloud,local}.yaml` are auto-selected on container startup because the registry resolves the example for the active recipe.
 
-Hardware support: cloud-only, `workstation`, and `dgxspark`. The 30B Omni NVFP4 model does not fit on Orin-class hardware today. There is no `jetson` recipe.
+Hardware support: cloud-only, `workstation`, `dgxspark`, and `jetson-thor`. Jetson Thor's 128 GB unified memory fits the 30B Omni NVFP4 model and reuses the same Omni vLLM sidecar, with TTS served by the on-device Riva `nemotron-speech-tts` service instead of the Magpie NIM. Orin-class Jetson hardware is still unsupported because the model does not fit.
 
 ## Compose deploy
 
@@ -19,6 +19,9 @@ docker compose --profile omni-assistant up -d
 # Workstation / DGX Spark (local Omni vLLM + NIM TTS)
 docker compose --profile omni-assistant/workstation up -d
 docker compose --profile omni-assistant/dgx-spark up -d
+
+# Jetson Thor (local Omni vLLM + on-device Riva TTS)
+docker compose --profile omni-assistant/jetson-thor up -d
 ```
 
 | Recipe profile | App service | Sidecars from `docker/` |
@@ -26,6 +29,7 @@ docker compose --profile omni-assistant/dgx-spark up -d
 | `omni-assistant` | `omni-assistant` | none (cloud NVCF) |
 | `omni-assistant/workstation` | `omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
 | `omni-assistant/dgx-spark` | `omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
+| `omni-assistant/jetson-thor` | `omni-assistant` | `nvidia-llm-vllm-omni`, `nemotron-speech-tts` (Riva TTS) |
 
 Tear down with the same recipe used at `up` time.
 

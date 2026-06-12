@@ -588,6 +588,7 @@ class NvidiaOmniMultimodalService(LLMService):
         raw_content = ""
         response_started = False
         sentence_buffer = ""
+        ttfb_stopped = False
 
         await self.start_processing_metrics(start_time=metrics_start_time)
         await self.start_ttfb_metrics(start_time=metrics_start_time)
@@ -602,6 +603,10 @@ class NvidiaOmniMultimodalService(LLMService):
                 if not content:
                     continue
                 raw_content += content
+
+                if not ttfb_stopped:
+                    await self.stop_ttfb_metrics()
+                    ttfb_stopped = True
 
                 if transcript_streamer and not transcript_emitted:
                     streamed_transcript += transcript_streamer.feed(content)
@@ -629,7 +634,9 @@ class NvidiaOmniMultimodalService(LLMService):
                 if not response_started:
                     response_started = True
                     await self.push_frame(LLMFullResponseStartFrame())
-                    await self.stop_ttfb_metrics()
+                    if not ttfb_stopped:
+                        await self.stop_ttfb_metrics()
+                        ttfb_stopped = True
                 sentence_buffer += response_chunk
                 sentences, sentence_buffer = _pop_complete_sentences(sentence_buffer)
                 for sentence in sentences:

@@ -34,6 +34,7 @@ name: nemotron-voice-agent
 #   docker compose --profile multilingual-assistant/dgx-spark up
 #   docker compose --profile omni-assistant/workstation up
 #   docker compose --profile omni-assistant/dgx-spark up
+#   docker compose --profile omni-assistant/jetson-thor up
 #   docker compose --profile omni-assistant-subagents/workstation up
 #   docker compose --profile omni-assistant-subagents/dgx-spark up
 #   docker compose --profile thinker-talker/workstation up
@@ -114,6 +115,7 @@ services:
       - omni-assistant
       - omni-assistant/workstation
       - omni-assistant/dgx-spark
+      - omni-assistant/jetson-thor
     environment:
       APP_RUNTIME: container
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant}

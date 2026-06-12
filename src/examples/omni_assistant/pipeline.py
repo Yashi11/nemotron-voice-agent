@@ -117,6 +117,10 @@ async def bot(runner_args: RunnerArguments) -> None:
 
     emit_transcriptions = parse_env_bool("OMNI_EMIT_TRANSCRIPTIONS", default=True)
     omni = NvidiaOmniService(
+        # Name carries "llm" so metrics consumers (UI metric-group, perf
+        # benchmark) attribute Omni's TTFB/processing/token-usage metrics to the
+        # LLM stage. Omni fuses ASR+LLM, so these are the pipeline's LLM metrics.
+        name="NemotronOmniLLM",
         api_key=os.getenv("NVIDIA_API_KEY"),
         base_url=base_url,
         context=context,
@@ -175,6 +179,19 @@ async def bot(runner_args: RunnerArguments) -> None:
     latest_latency_turn_label = ""
     latest_latency_ms: float | None = None
 
+    @latency_observer.event_handler("on_first_bot_speech_latency")
+    async def on_first_bot_speech(observer, latency):
+        logger.info(f"First bot speech latency: {latency:.3f}s")
+        await task.queue_frame(
+            RTVIServerMessageFrame(
+                data={
+                    "type": "user-bot-latency",
+                    "latency": round(latency, 3),
+                    "first": True,
+                }
+            )
+        )
+
     @latency_observer.event_handler("on_latency_measured")
     async def on_latency(observer, latency):
         nonlocal latest_latency_ms, latest_latency_turn_id, latest_latency_turn_label
@@ -182,6 +199,17 @@ async def bot(runner_args: RunnerArguments) -> None:
         latest_latency_turn_label = f"Turn {latency_turn_count}"
         latest_latency_ms = round(latency * 1000, 3)
         logger.info(f"User->Bot latency: {latency:.3f}s")
+        # Also emit the benchmark-compatible message (server_e2e) alongside the
+        # UI metric-group below.
+        await task.queue_frame(
+            RTVIServerMessageFrame(
+                data={
+                    "type": "user-bot-latency",
+                    "latency": round(latency, 3),
+                    "first": False,
+                }
+            )
+        )
 
     @latency_observer.event_handler("on_latency_breakdown")
     async def on_latency_breakdown(observer, breakdown):
@@ -239,6 +267,19 @@ async def bot(runner_args: RunnerArguments) -> None:
             )
         )
         events = breakdown.chronological_events()
+        # Benchmark-compatible breakdown message (vad_smart_turn) in addition to
+        # the UI metric-group above.
+        await task.queue_frame(
+            RTVIServerMessageFrame(
+                data={
+                    "type": "latency-breakdown",
+                    "vad_smart_turn": round(breakdown.user_turn_secs, 3)
+                    if breakdown.user_turn_secs is not None
+                    else None,
+                    "events": events,
+                }
+            )
+        )
         if events:
             logger.info(f"Latency breakdown: {' | '.join(events)}")
         latency_turn_count += 1
