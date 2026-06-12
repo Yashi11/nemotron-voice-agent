@@ -87,7 +87,9 @@ Before you begin, ensure you have the following:
     > **Note:** Deployment may take 30–60 minutes on first run.
 
 6. Access the application at `https://<machine-ip>:7860`.
-   HTTPS is enabled by default. Set `PIPELINE_TLS=false` in `.env` to serve plain HTTP at `http://<machine-ip>:7860`.
+   HTTPS is enabled by default and should remain enabled for browser UI testing.
+
+   > **Note:** `PIPELINE_TLS=false` is intended for headless performance and API testing, not interactive browser UI testing. Browser microphone access and WebRTC require a secure context; use the default HTTPS UI path for browser validation.
 
     > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
 
@@ -182,11 +184,13 @@ For development and debugging, you can run the server directly:
 
     > **Note:** `src/server.py` defaults to `--host localhost --port 7860`, which only binds the loopback interface. Pass `--host 0.0.0.0 --port 7860` so the UI is reachable from another host (e.g., when accessing `https://<machine-ip>:7860` from a browser on a different machine). Drop the flags only when you intend the server to be reachable from the local machine alone.
 
-    To serve plain HTTP instead of HTTPS, set `PIPELINE_TLS=false` in `.env` or prefix the command:
+    For headless performance or API testing, you can disable TLS and serve plain HTTP by setting `PIPELINE_TLS=false` in `.env` or prefixing the command:
 
     ```bash
     PIPELINE_TLS=false uv run python src/server.py --host 0.0.0.0 --port 7860
     ```
+
+    > **Note:** Do not use `PIPELINE_TLS=false` for browser UI validation. Browser microphone access and WebRTC require a secure context; keep TLS enabled when testing the UI.
 
     Host-native runs read [`examples_registry.yaml`](../examples_registry.yaml) at the repository root. Edit the `selection` field to choose what the UI exposes, then start the server normally. The server has no example/pipeline CLI flags.
 
@@ -207,7 +211,7 @@ For development and debugging, you can run the server directly:
 
     > **Note:** Docker Compose deployments pin `EXAMPLE_SELECTION=<example>` to a single example. Set `EXAMPLE_SELECTION=all` to expose every example in the UI selector instead.
 
-6. Access the application at `https://localhost:7860`, or `http://localhost:7860` when `PIPELINE_TLS=false`.
+6. Access the application at `https://localhost:7860`. Keep TLS enabled for browser UI testing.
 
 ---
 
