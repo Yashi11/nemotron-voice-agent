@@ -149,6 +149,7 @@ def _rewrite_entry_for_host_runtime(entry: dict) -> dict:
                 .replace("parakeet-ctc-asr:50052", "localhost:50152")
                 .replace("parakeet-rnnt-asr:50052", "localhost:50152")
                 .replace("nemotron-speech:50051", "localhost:50051")
+                .replace("nemotron-speech-tts:50051", "localhost:50051")
                 .replace("booking-server:8001", "localhost:8001")
                 .replace("host.docker.internal", "localhost")
             )
