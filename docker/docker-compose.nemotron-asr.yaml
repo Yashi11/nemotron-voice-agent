@@ -1,4 +1,5 @@
 x-asr-common: &asr-common
+  image: nvcr.io/nim/nvidia/nemotron-asr-streaming:1.2.0
   user: "0:0"
   ports:
     - "50152:50052"
@@ -38,45 +39,40 @@ services:
     profiles:
       - generic-assistant/workstation
       - thinker-talker/workstation
-    image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
-      NIM_TAGS_SELECTOR: ${ASR_ENGLISH_NIM_TAGS:-type=en-US,mode=str}
+      NIM_TAGS_SELECTOR: type=en-US,mode=str
 
   nemotron-asr-streaming-multilingual:
     <<: *asr-common
     profiles:
       - multilingual-assistant/workstation
-    image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
-      NIM_TAGS_SELECTOR: ${ASR_MULTILINGUAL_NIM_TAGS:-type=multi,mode=str}
+      NIM_TAGS_SELECTOR: type=multi,mode=str
 
   nemotron-asr-streaming-multilingual-dgx-spark:
     <<: *asr-common
     profiles:
       - multilingual-assistant/dgx-spark
-    image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
-      NIM_TAGS_SELECTOR: ${ASR_MULTILINGUAL_DGX_SPARK_NIM_TAGS:-type=multi,mode=str,gpu=dgx_spark,batch_size=32}
+      NIM_TAGS_SELECTOR: type=multi,mode=str,gpu=dgx_spark,batch_size=8
     networks:
       default:
         aliases:
           - nemotron-asr-streaming-multilingual
 
-  asr-service-dgx-spark:
+  nemotron-asr-streaming-english-dgx-spark:
     <<: *asr-common
     profiles:
       - generic-assistant/dgx-spark
-    image: ${ASR_NIM_IMAGE:-nvcr.io/nvstaging/nim/nemotron-asr-streaming:1.2.0-53350743}
     environment:
       <<: *nemotron-asr-env
-      NIM_TAGS_SELECTOR: ${ASR_NIM_TAGS:-mode=str,gpu=dgx_spark}
+      NIM_TAGS_SELECTOR: mode=str,gpu=dgx_spark,batch_size=8
     networks:
       default:
         aliases:
-          - asr-service
           - nemotron-asr-streaming-english
 
 volumes:

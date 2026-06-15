@@ -68,8 +68,6 @@ Before you begin, ensure you have the following:
     printf '%s' "$NVIDIA_API_KEY" | docker login nvcr.io -u '$oauthtoken' --password-stdin
     ```
 
-    For DGX Spark staging or private Magpie TTS images, ensure `NVIDIA_API_KEY` has access before logging in.
-
 5. Deploy a cloud-only example:
 
     ```bash
@@ -95,7 +93,7 @@ Before you begin, ensure you have the following:
 
     To verify all services are healthy, run `docker compose ps`.
 
-DGX Spark and Jetson additionally need `HF_TOKEN` for the vLLM model download. If the Magpie TTS image is staging or private, use a `NVIDIA_API_KEY` with access to that image.
+DGX Spark and Jetson additionally need `HF_TOKEN` for the vLLM model download.
 
 ---
 
