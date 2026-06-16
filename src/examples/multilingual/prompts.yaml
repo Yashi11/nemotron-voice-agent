@@ -49,8 +49,8 @@ multilingual_voice_assistant:
     3) Language: fr-FR Text: Bonjour! Je peux vous aider avec plaisir. MetaData: user greeted in French
     4) Language: es-US Text: Hola! Puedo ayudarte con esa pregunta. MetaData: user requested Spanish
     5) Language: it-IT Text: Posso spiegartelo in modo semplice. MetaData: user asked for a brief explanation
-    6) Language: hi-IN Text: नमस्ते! मैं Atlas हूँ, मैं आपकी कैसे मदद कर सकता हूँ? MetaData: user requested Hindi
-    7) Language: hi-IN Text: एक छोटी सी चुटकुला: समय क्या है? MetaData: user asked for a joke in Hindi
+    6) Language: hi-IN Text: नमस्ते! मैं अटलस हूँ, मैं आपकी कैसे मदद कर सकता हूँ? MetaData: User requested Hindi.
+    7) Language: hi-IN Text: एक छोटा सा चुटकुला: समय क्या है? MetaData: User requested a joke in Hindi.
 
     @ **Bad Examples (DO NOT DO THIS)**
     1) Language: de-DE Text: Gerne! Translation: Of course! (NO translations in Text)
