@@ -23,6 +23,9 @@ const PROMPT_SELECTION = "nvidia-voice-agent-prompt-selection";
 const TRANSPORT_STORAGE = "nvidia-voice-agent-transport";
 const SELECTED_EXAMPLE_STORAGE = "nvidia-voice-agent-selected-example";
 
+/** Empty string = auto-detect language on each turn. */
+export const SESSION_LANGUAGE_AUTO = "";
+
 type ManagedService = {
   id: string;
   builtIn: boolean;
@@ -181,6 +184,10 @@ export interface AppState {
   selectedVoiceId: string;
   setSelectedVoiceId: (id: string) => void;
 
+  /** Empty string = auto-detect per turn when session language selection is enabled. */
+  selectedSessionLanguage: string;
+  setSelectedSessionLanguage: (code: string) => void;
+
   prompts: Prompt[];
   promptsLoading: boolean;
   selectedPromptKey: string;
@@ -301,6 +308,8 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const [selectedVoiceId, setSelectedVoiceId] = useState("");
 
+  const [selectedSessionLanguage, setSelectedSessionLanguage] = useState(SESSION_LANGUAGE_AUTO);
+
   // --- TTS state ---
   const { data: defaultTTS = [], isLoading: ttsLoading } = useDefaultTTS(serviceCatalogKey);
   const {
@@ -392,13 +401,14 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
     asrServices, asrLoading, selectedASRId: effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
     ttsServices, ttsLoading, selectedTTSId: effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,
     selectedVoiceId, setSelectedVoiceId,
+    selectedSessionLanguage, setSelectedSessionLanguage,
     prompts, promptsLoading, selectedPromptKey: effectiveSelectedPromptKey, selectPrompt, addPrompt, updatePrompt, removePrompt, selectedPrompt,
     tools, toolsLoading,
   }), [selectedExample, selectExample, deploymentOptions, deploymentSelectable, availableTransports, effectiveTransport, setTransport, currentSessionId,
        llms, llmsLoading, effectiveSelectedLLMId, selectLLM, addLLM, updateLLM, removeLLM, selectedLLM,
        asrServices, asrLoading, effectiveSelectedASRId, selectASR, addASR, updateASR, removeASR, selectedASR,
        ttsServices, ttsLoading, effectiveSelectedTTSId, selectTTS, addTTS, updateTTS, removeTTS, selectedTTS,
-       selectedVoiceId,
+       selectedVoiceId, selectedSessionLanguage, setSelectedSessionLanguage,
        prompts, promptsLoading, effectiveSelectedPromptKey, selectPrompt, addPrompt, updatePrompt, removePrompt, selectedPrompt,
        tools, toolsLoading]);
 

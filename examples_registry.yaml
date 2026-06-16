@@ -34,6 +34,10 @@ examples:
   multilingual-assistant:
     label: Multilingual Assistant
     slots: [llm, asr, tts]
+    capabilities: [session_languages]
+    agent_prompt_keys:
+      - fixed_session_language_addon
+      - auto_detect_language_addon
     defaults:
       prompt: [multilingual_voice_assistant]
       llm: [nemotron-super]

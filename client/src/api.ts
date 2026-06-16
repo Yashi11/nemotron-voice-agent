@@ -236,13 +236,22 @@ export function useServiceCatalog(pipelineMode = "") {
   return useQuery(serviceCatalogQueryOptions(pipelineMode));
 }
 
-export function useTTSConfig(server?: string, voiceId?: string) {
+export function useVoiceCatalog(
+  server?: string,
+  voiceId?: string,
+  asrServer?: string,
+  asrModel?: string,
+  asrFunctionId?: string,
+) {
   return useQuery<TTSConfig>({
-    queryKey: ["tts-config", server || "default", voiceId || ""],
+    queryKey: ["tts-config", server || "default", voiceId || "", asrServer || "", asrModel || "", asrFunctionId || ""],
     queryFn: () => {
       const params = new URLSearchParams();
       if (server) params.set("server", server);
       if (voiceId) params.set("voice_id", voiceId);
+      if (asrServer) params.set("asr_server", asrServer);
+      if (asrModel) params.set("asr_model", asrModel);
+      if (asrFunctionId) params.set("asr_function_id", asrFunctionId);
       const url = params.size > 0 ? `/api/tts-config?${params.toString()}` : "/api/tts-config";
       return fetchJson<TTSConfig>(url);
     },

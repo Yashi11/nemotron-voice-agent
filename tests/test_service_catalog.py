@@ -78,7 +78,7 @@ tts:
             self.assertEqual(config["asr_server"], "catalog-asr:443")
             self.assertEqual(config["asr_model"], "catalog-asr-model")
             self.assertEqual(config["asr_function_id"], "catalog-asr-function")
-            self.assertEqual(config["asr_language_code"], "auto")
+            self.assertEqual(config["asr_language_code"], "client-asr-language")
             self.assertEqual(config["tts_server"], "catalog-tts:443")
             self.assertEqual(config["tts_function_id"], "catalog-tts-function")
 
@@ -136,6 +136,20 @@ llm:
         self.assertEqual(generic_catalog["asr"]["nemotron-asr-streaming-english"]["model"], "nemotron-asr-streaming")
         self.assertEqual(thinker_catalog["asr"]["nemotron-asr-streaming-english"]["model"], "nemotron-asr-streaming")
         self.assertNotIn("nemotron-asr-streaming-multilingual", multilingual_catalog["asr"])
+
+    def test_multilingual_agent_prompt_keys_are_registry_declared(self) -> None:
+        unlocked = examples_registry.Selection(
+            raw="all",
+            locked=False,
+            example_keys=tuple(examples_registry.EXAMPLES),
+            default_key=next(iter(examples_registry.EXAMPLES)),
+        )
+        with patch.object(examples_registry, "_SELECTION", unlocked):
+            keys = examples_registry.agent_prompt_keys("multilingual-assistant")
+        self.assertEqual(
+            keys,
+            frozenset({"fixed_session_language_addon", "auto_detect_language_addon"}),
+        )
 
     def test_registry_defaults_promote_reachable_local_multilingual_asr(self) -> None:
         example = examples_registry._lookup_by_key("multilingual-assistant")

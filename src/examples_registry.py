@@ -21,6 +21,7 @@ class ExampleEntry(TypedDict):
     label: str
     slots: list[str]
     capabilities: list[str]
+    agent_prompt_keys: list[str]
     defaults: dict[str, list[str]]
     bot: str
 
@@ -320,6 +321,11 @@ def prompt_default_key(example_key: str = "") -> str | None:
     return prompt_keys[0] if prompt_keys else None
 
 
+def agent_prompt_keys(example_key: str = "") -> frozenset[str]:
+    """Return prompt-catalog keys that are pipeline-only (hidden from the UI selector)."""
+    return frozenset(find(example_key).get("agent_prompt_keys", []))
+
+
 def _load_examples(data: dict) -> dict[str, ExampleEntry]:
     raw_examples = data.get("examples")
     if not isinstance(raw_examples, dict):
@@ -333,6 +339,7 @@ def _load_examples(data: dict) -> dict[str, ExampleEntry]:
         bot_spec = str(entry.get("bot") or "").strip()
         slots = entry.get("slots", [])
         capabilities = entry.get("capabilities", [])
+        agent_prompt_keys = entry.get("agent_prompt_keys", [])
         defaults = entry.get("defaults", {})
         if not label or not bot_spec:
             raise RuntimeError(f"Example {example_id!r} requires label and bot")
@@ -340,6 +347,8 @@ def _load_examples(data: dict) -> dict[str, ExampleEntry]:
             raise RuntimeError(f"Example {example_id!r} slots must be a list of strings")
         if not isinstance(capabilities, list) or not all(isinstance(capability, str) for capability in capabilities):
             raise RuntimeError(f"Example {example_id!r} capabilities must be a list of strings")
+        if not isinstance(agent_prompt_keys, list) or not all(isinstance(key, str) for key in agent_prompt_keys):
+            raise RuntimeError(f"Example {example_id!r} agent_prompt_keys must be a list of strings")
         if not isinstance(defaults, dict):
             raise RuntimeError(f"Example {example_id!r} defaults must be a mapping")
         normalized_defaults: dict[str, list[str]] = {}
@@ -351,6 +360,7 @@ def _load_examples(data: dict) -> dict[str, ExampleEntry]:
             "label": label,
             "slots": list(slots),
             "capabilities": list(capabilities),
+            "agent_prompt_keys": list(agent_prompt_keys),
             "defaults": normalized_defaults,
             "bot": bot_spec,
         }

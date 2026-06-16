@@ -6,10 +6,12 @@
 import os
 
 from loguru import logger
+from pipecat.services.nvidia.stt import NvidiaSTTService
 from pipecat.services.nvidia.tts import NvidiaTTSService, NvidiaTTSSettings
+from riva.client.proto import riva_asr_pb2
 
 import config_store
-from utils import is_nvcf
+from utils import is_nvcf, normalize_lang_code
 
 
 def _create_tts_service(server: str, voice_id: str) -> NvidiaTTSService:
@@ -19,6 +21,13 @@ def _create_tts_service(server: str, voice_id: str) -> NvidiaTTSService:
         settings=NvidiaTTSSettings(voice=voice_id),
         use_ssl=is_nvcf(server),
     )
+
+
+def _parse_language_codes_param(raw: str) -> list[str]:
+    """Parse comma-separated Nemotron Speech language_code model parameters."""
+    if not raw or raw.strip().lower() == "auto":
+        return []
+    return [normalize_lang_code(part.strip()) for part in raw.split(",") if part.strip()]
 
 
 def _parse_tts_config(raw_config, model_prefix: str) -> dict:
@@ -31,7 +40,7 @@ def _parse_tts_config(raw_config, model_prefix: str) -> dict:
         return {"languages": [], "voices": []}
 
     params = dict(raw_config.model_config[0].parameters)
-    languages = [lang_code.strip() for lang_code in params.get("language_code", "").split(",") if lang_code.strip()]
+    languages = _parse_language_codes_param(params.get("language_code", ""))
     subvoices_raw = params.get("subvoices", "")
 
     voices: list[dict] = []
@@ -58,8 +67,70 @@ def _parse_tts_config(raw_config, model_prefix: str) -> dict:
     }
 
 
-def _cache_key(server: str) -> str:
+def _parse_asr_config(raw_config) -> dict:
+    """Parse ASR recognition config into a frontend-friendly structure."""
+    if not raw_config or not raw_config.model_config:
+        return {"languages": []}
+
+    params = dict(raw_config.model_config[0].parameters)
+    return {"languages": _parse_language_codes_param(params.get("language_code", ""))}
+
+
+def _tts_language_set(tts_config: dict) -> set[str]:
+    langs = {_normalize_catalog_code(code) for code in tts_config.get("languages", []) if code}
+    for voice in tts_config.get("voices", []):
+        lang = voice.get("language") if isinstance(voice, dict) else None
+        if lang:
+            langs.add(_normalize_catalog_code(lang))
+    return langs
+
+
+def _normalize_catalog_code(code: str) -> str:
+    return normalize_lang_code(code).lower()
+
+
+def intersect_session_languages(asr_config: dict, tts_config: dict) -> list[str]:
+    """Languages supported by both ASR and TTS (LLM prompt uses the TTS catalog)."""
+    tts_langs = _tts_language_set(tts_config)
+    if not tts_langs:
+        return []
+
+    asr_langs = {_normalize_catalog_code(code) for code in (asr_config or {}).get("languages", []) if code}
+    if not asr_langs:
+        result = tts_langs
+    else:
+        result = asr_langs & tts_langs
+
+    return sorted(
+        (normalize_lang_code(code) for code in result),
+        key=str.lower,
+    )
+
+
+def build_session_languages(
+    asr_server: str,
+    asr_model: str,
+    asr_function_id: str,
+    tts_server: str,
+    tts_voice_id: str,
+) -> dict:
+    """Return the ASR∩TTS language catalog and TTS voices for session configuration."""
+    tts_config = prewarm_tts(tts_server, tts_voice_id)
+    asr_config = prewarm_asr(asr_server, asr_model, asr_function_id)
+    languages = intersect_session_languages(asr_config, tts_config)
+    return {
+        "languages": languages,
+        "voices": tts_config.get("voices", []),
+        "defaultVoiceId": tts_config.get("defaultVoiceId", tts_voice_id),
+    }
+
+
+def _tts_cache_key(server: str) -> str:
     return f"tts:{server}"
+
+
+def _asr_cache_key(server: str, model: str, function_id: str) -> str:
+    return f"asr:{server}:{model}:{function_id}"
 
 
 def prewarm_tts(server: str, voice_id: str) -> dict:
@@ -68,7 +139,7 @@ def prewarm_tts(server: str, voice_id: str) -> dict:
     Returns the TTS config dict (languages, voices, defaultVoiceId).
     Results are cached per server in config_store.
     """
-    cached = config_store.get(_cache_key(server))
+    cached = config_store.get(_tts_cache_key(server))
     if cached:
         logger.debug(f"TTS config for {server} already cached")
         return cached
@@ -84,7 +155,7 @@ def prewarm_tts(server: str, voice_id: str) -> dict:
         tts_config["defaultVoiceId"] = voice_id
         tts_config["server"] = server
 
-        config_store.set(_cache_key(server), tts_config)
+        config_store.set(_tts_cache_key(server), tts_config)
         config_store.set("tts", tts_config)
 
         n_langs = len(tts_config["languages"])
@@ -100,6 +171,50 @@ def prewarm_tts(server: str, voice_id: str) -> dict:
             "server": server,
             "error": str(e),
         }
+
+
+_ASR_PREWARM_RPC_TIMEOUT_SECS = float(os.getenv("ASR_PREWARM_RPC_TIMEOUT_SECS", "5"))
+
+
+def prewarm_asr(server: str, model: str = "", function_id: str = "") -> dict:
+    """Pre-warm an ASR server and cache its supported language codes.
+
+    Uses Pipecat/Riva private hooks (``_initialize_client``, ``_asr_service.stub``)
+    because Nemotron Speech does not yet expose a public language-catalog API.
+    Revisit when upstream adds a supported discovery path.
+    """
+    cache_key = _asr_cache_key(server, model, function_id)
+    cached = config_store.get(cache_key)
+    if cached:
+        logger.debug(f"ASR config for {server} already cached")
+        return cached
+
+    logger.info(f"Pre-warming ASR on {server}...")
+    try:
+        asr_kwargs: dict = {
+            "api_key": os.getenv("NVIDIA_API_KEY"),
+            "server": server,
+            "use_ssl": is_nvcf(server),
+        }
+        if function_id or model:
+            asr_kwargs["model_function_map"] = {
+                "function_id": function_id,
+                "model_name": model or "custom-asr",
+            }
+        svc = NvidiaSTTService(**asr_kwargs)
+        svc._initialize_client()
+        raw_config = svc._asr_service.stub.GetRivaSpeechRecognitionConfig(
+            riva_asr_pb2.RivaSpeechRecognitionConfigRequest(model_name=model or ""),
+            timeout=_ASR_PREWARM_RPC_TIMEOUT_SECS,
+        )
+        asr_config = _parse_asr_config(raw_config)
+        asr_config["server"] = server
+        config_store.set(cache_key, asr_config)
+        logger.info(f"ASR pre-warmed ({server}) — {len(asr_config['languages']) or 'all'} languages from model config")
+        return asr_config
+    except Exception as e:
+        logger.warning(f"ASR pre-warm failed for {server}: {e}")
+        return {"languages": [], "server": server, "error": str(e)}
 
 
 def warmup_tts_synthesis(server: str, voice_id: str) -> bool:
@@ -126,3 +241,31 @@ def warmup_tts_synthesis(server: str, voice_id: str) -> bool:
     except Exception as e:
         logger.warning(f"TTS synthesis warm-up failed ({server}): {e}")
         return False
+
+
+def load_voice_map() -> dict[str, str]:
+    """``{lower_lang_code: first_voice_id}`` from the prewarm cache."""
+    tts_config = config_store.get("tts", {})
+    voices = tts_config.get("voices", []) if isinstance(tts_config, dict) else []
+    result: dict[str, str] = {}
+    for v in voices:
+        lang = (v.get("language") or "").strip()
+        vid = (v.get("id") or "").strip()
+        if lang and vid and lang.lower() not in result:
+            result[lang.lower()] = vid
+    return result
+
+
+def resolve_voice_for_language(language_code: str, preferred_voice_id: str = "") -> str:
+    """Pick a TTS voice id for ``language_code`` from the prewarmed catalog."""
+    normalized = normalize_lang_code(language_code).lower()
+    voice_map = load_voice_map()
+    if preferred_voice_id:
+        for voice in config_store.get("tts", {}).get("voices", []):
+            if voice.get("id") == preferred_voice_id and voice.get("language", "").lower() == normalized:
+                return preferred_voice_id
+    voice_id = voice_map.get(normalized)
+    if voice_id:
+        return voice_id
+    logger.warning(f"Multilingual: no TTS voice for language {language_code!r}")
+    return ""

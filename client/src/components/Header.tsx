@@ -31,6 +31,7 @@ type SessionConfigOptions = {
   selectedVoiceId: string;
   selectedPrompt?: Prompt;
   selectedPromptKey: string;
+  selectedSessionLanguage?: string;
 };
 
 function getConnectionErrorMessage(err: unknown): string {
@@ -109,9 +110,11 @@ function buildSessionConfig({
   selectedVoiceId,
   selectedPrompt,
   selectedPromptKey,
+  selectedSessionLanguage = "",
 }: SessionConfigOptions): Record<string, string> {
   const slots = new Set(selectedExample.slots);
   const config: Record<string, string> = { pipeline_mode: selectedExample.key };
+  const sessionLanguagesEnabled = selectedExample.capabilities?.includes("session_languages") ?? false;
 
   if (slots.has("llm") && selectedLLM) {
     config.llm_id = selectedLLM.id;
@@ -127,12 +130,17 @@ function buildSessionConfig({
     model: selectedASR?.model,
     function_id: selectedASR?.functionId,
   });
+  if (slots.has("asr") && sessionLanguagesEnabled) {
+    config.asr_language_code = selectedSessionLanguage || "auto";
+  }
   applyService(config, slots.has("tts"), "tts", selectedTTS, {
     function_id: selectedTTS?.functionId,
   });
 
-  const voiceToSend = selectedVoiceId || selectedTTS?.voiceId;
-  if (slots.has("tts") && voiceToSend) config.tts_voice_id = voiceToSend;
+  if (slots.has("tts") && !sessionLanguagesEnabled) {
+    const voiceToSend = selectedVoiceId || selectedTTS?.voiceId;
+    if (voiceToSend) config.tts_voice_id = voiceToSend;
+  }
 
   if (selectedPromptKey) {
     config.prompt_key = selectedPromptKey;
@@ -150,7 +158,18 @@ function sessionIdFromWebRTCUrl(url: string): string {
 export function Header() {
   const client = usePipecatClient() as StartBotClient | undefined;
   const { isConnected, isConnecting } = useConnectionState();
-  const { selectedExample, selectedTransport, selectedLLM, selectedASR, selectedTTS, selectedVoiceId, selectedPrompt, selectedPromptKey, setCurrentSessionId } = useApp();
+  const {
+    selectedExample,
+    selectedTransport,
+    selectedLLM,
+    selectedASR,
+    selectedTTS,
+    selectedVoiceId,
+    selectedPrompt,
+    selectedPromptKey,
+    selectedSessionLanguage,
+    setCurrentSessionId,
+  } = useApp();
   const [connectionError, setConnectionError] = useState("");
 
   const handleClick = async () => {
@@ -176,6 +195,7 @@ export function Header() {
           selectedVoiceId,
           selectedPrompt,
           selectedPromptKey,
+          selectedSessionLanguage,
         });
 
         if (selectedTransport === "websocket") {
