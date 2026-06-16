@@ -10,13 +10,13 @@ services:
       - omni-assistant/dgx-spark
       - omni-assistant-subagents/dgx-spark
       - thinker-talker/workstation
-    image: nvcr.io/nvstaging/nim/magpie-tts-multilingual:1.9.0-53531670
+    image: nvcr.io/nim/nvidia/magpie-tts-multilingual:1.8.0
     user: "0:0"
     environment:
       - NGC_API_KEY=${NVIDIA_API_KEY}
       - NIM_HTTP_API_PORT=9000
       - NIM_GRPC_API_PORT=50051
-      - NIM_TAGS_SELECTOR=${TTS_NIM_TAGS:-name=magpie-tts-multilingual,batch_size=8}
+      - NIM_TAGS_SELECTOR=name=magpie-tts-multilingual,batch_size=8
     ports:
       - "50151:50051"
       - "9000:9000"
