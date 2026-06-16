@@ -19,8 +19,6 @@ Use [`benchmarking_tools/scaling-perf/`](../../benchmarking_tools/scaling-perf/)
     PIPELINE_TLS=false uv run python src/server.py
     ```
 
-    `PIPELINE_TLS=false` is appropriate for these headless performance clients. Keep TLS enabled when testing the interactive browser UI.
-
     To run perf tests against the Generic Cascaded example with the benchmark prompt catalog, set `selection: generic-assistant` in [`examples_registry.yaml`](../../examples_registry.yaml) and then start the server with the perf prompt catalog:
 
     ```bash

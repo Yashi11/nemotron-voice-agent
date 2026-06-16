@@ -13,7 +13,6 @@ import {
   type Prompt,
   type SimpleService,
 } from "../api";
-import { browserMediaSecurityMessage, canUseBrowserMedia } from "../utils";
 import { DevicesSection } from "./status-panel/DevicesSection";
 
 type StartBotClient = {
@@ -169,9 +168,6 @@ export function Header() {
         await client.disconnect();
         setCurrentSessionId("");
       } else {
-        if (!canUseBrowserMedia()) {
-          throw new Error(browserMediaSecurityMessage());
-        }
         const config = buildSessionConfig({
           selectedExample,
           selectedLLM,

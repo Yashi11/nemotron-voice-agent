@@ -83,6 +83,5 @@ docker compose --profile multilingual-assistant/workstation down
 | `multilingual-assistant/workstation` | `multilingual-assistant` | `nvidia-llm`, `nemotron-asr-streaming-multilingual`, `tts-service` |
 | `multilingual-assistant/dgx-spark` | `multilingual-assistant` | `nvidia-llm-vllm`, `nemotron-asr-streaming-multilingual`, `tts-service` |
 
-The UI is served at `https://localhost:7860/` by default. Keep TLS enabled for
-browser UI testing; `PIPELINE_TLS=false` is intended for headless performance
-and API testing.
+The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
+when `PIPELINE_TLS=false`.
