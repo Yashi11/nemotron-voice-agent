@@ -75,9 +75,8 @@ Tear down with the same profile used at `up` time.
 > on-device Riva `nemotron-speech-tts` service instead of the Magpie NIM. Orin-class
 > Jetson hardware is still not supported because the model does not fit.
 
-The UI is served at `https://localhost:7860/` by default. Keep TLS enabled for
-browser UI testing; `PIPELINE_TLS=false` is intended for headless performance
-and API testing.
+The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
+when `PIPELINE_TLS=false`.
 
 ## Tunables
 

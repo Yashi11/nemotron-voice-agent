@@ -47,23 +47,6 @@ export function removeLSKey(key: string): void {
   }
 }
 
-export function canUseBrowserMedia(): boolean {
-  return globalThis.isSecureContext === true;
-}
-
-export function browserMediaSecurityMessage(): string {
-  return "Microphone access requires HTTPS, localhost, or a Chrome secure-origin override.";
-}
-
-export function canUseWebRTCTransport(): boolean {
-  return canUseBrowserMedia() && typeof globalThis.RTCPeerConnection === "function";
-}
-
-export function webRTCTransportUnavailableMessage(): string {
-  if (!canUseBrowserMedia()) return browserMediaSecurityMessage();
-  return "WebRTC is unavailable in this browser session. Use WebSocket or enable WebRTC in Chrome.";
-}
-
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

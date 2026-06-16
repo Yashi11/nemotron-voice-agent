@@ -71,9 +71,8 @@ Tear down with the same profile used at `up` time.
 | `thinker-talker` | `thinker-talker` | `booking-server` |
 | `thinker-talker/workstation` | `thinker-talker` | `booking-server`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service` |
 
-The UI is served at `https://localhost:7860/` by default. Keep TLS enabled for
-browser UI testing; `PIPELINE_TLS=false` is intended for headless performance
-and API testing.
+The UI is served at `https://localhost:7860/` by default, or
+`http://localhost:7860/` when `PIPELINE_TLS=false`.
 
 ## Tunables
 
