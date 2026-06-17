@@ -15,7 +15,12 @@ TTS service configured with ``skip_aggregator_types=SKIP_TTS_AGGREGATIONS``.
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 from loguru import logger
-from pipecat.frames.frames import AggregatedTextFrame, Frame, LLMTextFrame, TTSUpdateSettingsFrame
+from pipecat.frames.frames import (
+    AggregatedTextFrame,
+    Frame,
+    LLMTextFrame,
+    TTSUpdateSettingsFrame,
+)
 from pipecat.pipeline.worker import PipelineWorker
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.services.nvidia.tts import NvidiaTTSService, NvidiaTTSSettings
@@ -27,6 +32,7 @@ from pipecat.utils.text.base_text_aggregator import (
 from pipecat.utils.text.simple_text_aggregator import SimpleTextAggregator
 
 import config_store
+from examples.shared.prewarm import build_session_languages, load_voice_map
 from utils import normalize_lang_code
 
 LANG_TYPE = "lang"
@@ -214,26 +220,36 @@ def _partial_marker_suffix_len(buf: str, marker: str) -> int:
     return 0
 
 
-def _load_voice_map() -> dict[str, str]:
-    """``{lower_lang_code: first_voice_id}`` from the prewarm cache."""
-    tts_config = config_store.get("tts", {})
-    voices = tts_config.get("voices", []) if isinstance(tts_config, dict) else []
-    result: dict[str, str] = {}
-    for v in voices:
-        lang = (v.get("language") or "").strip()
-        vid = (v.get("id") or "").strip()
-        if lang and vid and lang.lower() not in result:
-            result[lang.lower()] = vid
-    return result
-
-
-def get_lang_codes() -> str:
+def get_lang_codes(
+    *,
+    asr_server: str = "",
+    asr_model: str = "",
+    asr_function_id: str = "",
+    tts_server: str = "",
+    tts_voice_id: str = "",
+) -> str:
     """Comma-separated language codes for prompt ``{lang_codes}`` injection."""
+    if asr_server or tts_server:
+        languages = build_session_languages(
+            asr_server,
+            asr_model,
+            asr_function_id,
+            tts_server,
+            tts_voice_id,
+        ).get("languages", [])
+        if languages:
+            return ", ".join(languages)
+
     tts_config = config_store.get("tts", {})
     languages = tts_config.get("languages", []) if isinstance(tts_config, dict) else []
     if languages:
         return ", ".join(languages)
-    return ", ".join(sorted(_load_voice_map()))
+    return ", ".join(sorted(load_voice_map()))
+
+
+FIXED_SESSION_LANGUAGE_ADDON_KEY = "fixed_session_language_addon"
+AUTO_DETECT_LANGUAGE_ADDON_KEY = "auto_detect_language_addon"
+FIXED_SESSION_GREETING_TRIGGER = "[session_start]"
 
 
 def make_language_handler(
@@ -241,24 +257,26 @@ def make_language_handler(
     task: PipelineWorker,
     *,
     on_language_switched: _LanguageSwitchNotifier | None = None,
+    fixed_language: str = "",
 ) -> _LanguageHandler:
     """Build the language handler that queues a TTSUpdateSettingsFrame on language change."""
+    locked = normalize_lang_code(fixed_language) if fixed_language else ""
     current = ""
 
     async def handle(code: str) -> None:
         nonlocal current
-        normalized = normalize_lang_code(code)
+        normalized = normalize_lang_code(locked or code)
         if not normalized:
             logger.warning(f"Multilingual: empty language code in LLM response: {code!r}")
             return
-        if normalized.lower() == current.lower():
+        if current.lower() == normalized.lower():
             return
-        voice_map = _load_voice_map()
+        voice_map = load_voice_map()
         voice_id = voice_map.get(normalized.lower())
         if not voice_id:
             logger.warning(f"Multilingual: language '{normalized}' not in voice catalog ({sorted(voice_map.keys())})")
             return
-        current = normalized
+        current = normalized.lower()
         try:
             await task.queue_frame(
                 TTSUpdateSettingsFrame(

@@ -1,12 +1,13 @@
 // SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { RTVIEvent } from "@pipecat-ai/client-js";
 import { usePipecatClient, useRTVIClientEvent } from "@pipecat-ai/client-react";
-import { useTTSConfig } from "../api";
+import { useVoiceCatalog } from "../api";
 import { useConnectionState } from "../hooks/useConnectionState";
 import { useApp } from "../context/useApp";
+import { SESSION_LANGUAGE_AUTO } from "../context/AppContext";
 import { PanelSection } from "./PanelSection";
 
 type LanguageSwitchedMessage = {
@@ -23,12 +24,27 @@ type VoiceOverrideState = {
 
 export function VoiceSettings() {
   const client = usePipecatClient();
-  const { isConnected } = useConnectionState();
-  const { selectedTTS, setSelectedVoiceId } = useApp();
+  const { isConnected, isConnecting, isLocked } = useConnectionState();
+  const {
+    selectedExample,
+    selectedASR,
+    selectedTTS,
+    selectedSessionLanguage,
+    setSelectedSessionLanguage,
+    setSelectedVoiceId,
+  } = useApp();
 
+  const sessionLanguagesEnabled = selectedExample?.capabilities?.includes("session_languages") ?? false;
   const selectedTTSServer = selectedTTS?.server;
 
-  const { data: ttsConfig, isLoading } = useTTSConfig(selectedTTSServer, selectedTTS?.voiceId);
+  const { data: ttsConfig, isLoading } = useVoiceCatalog(
+    selectedTTSServer,
+    selectedTTS?.voiceId,
+    sessionLanguagesEnabled ? selectedASR?.server : undefined,
+    sessionLanguagesEnabled ? selectedASR?.model : undefined,
+    sessionLanguagesEnabled ? selectedASR?.functionId : undefined,
+  );
+
   const [voiceOverride, setVoiceOverride] = useState<VoiceOverrideState>({
     serviceId: "",
     language: "",
@@ -38,6 +54,7 @@ export function VoiceSettings() {
   useRTVIClientEvent(
     RTVIEvent.ServerMessage,
     useCallback((message: LanguageSwitchedMessage) => {
+      if (sessionLanguagesEnabled) return;
       if (message?.type === "language-switched") {
         const lang = message.language ?? "";
         const voiceId = message.voice_id ?? "";
@@ -49,8 +66,16 @@ export function VoiceSettings() {
           });
         }
       }
-    }, [selectedTTS?.id])
+    }, [sessionLanguagesEnabled, selectedTTS?.id]),
   );
+
+  useEffect(() => {
+    if (!sessionLanguagesEnabled) return;
+    const languages = ttsConfig?.languages ?? [];
+    if (selectedSessionLanguage && !languages.includes(selectedSessionLanguage)) {
+      setSelectedSessionLanguage(SESSION_LANGUAGE_AUTO);
+    }
+  }, [sessionLanguagesEnabled, selectedSessionLanguage, ttsConfig?.languages, setSelectedSessionLanguage]);
 
   const defaultVoice = useMemo(() => {
     if (!ttsConfig?.voices?.length) return null;
@@ -105,6 +130,43 @@ export function VoiceSettings() {
 
   if (isLoading) {
     return <PanelSection label="VOICE SETTINGS" loading loadingText="Loading..." />;
+  }
+
+  if (sessionLanguagesEnabled) {
+    const availableLanguages = ttsConfig?.languages ?? [];
+    if (availableLanguages.length === 0) {
+      return (
+        <PanelSection label="VOICE SETTINGS">
+          <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+            No shared ASR/TTS languages found for the selected services
+          </p>
+        </PanelSection>
+      );
+    }
+
+    const languageSelectTitle = isConnected
+      ? "Disconnect, change language, then Connect again to apply"
+      : "Fixes ASR, TTS voice, and LLM language for the next connection";
+
+    return (
+      <PanelSection label="VOICE SETTINGS">
+        <div className="settings-row">
+          <span className="settings-label">Language</span>
+          <select
+            className="select-dark"
+            value={selectedSessionLanguage || SESSION_LANGUAGE_AUTO}
+            onChange={(e) => setSelectedSessionLanguage(e.target.value)}
+            disabled={isConnecting || isLocked}
+            title={languageSelectTitle}
+          >
+            <option value={SESSION_LANGUAGE_AUTO}>Auto-detect (per turn)</option>
+            {availableLanguages.map((lang) => (
+              <option key={lang} value={lang}>{lang}</option>
+            ))}
+          </select>
+        </div>
+      </PanelSection>
+    );
   }
 
   if (!ttsConfig || ttsConfig.voices.length === 0) {

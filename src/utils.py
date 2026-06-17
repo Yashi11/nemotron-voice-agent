@@ -158,6 +158,23 @@ def resolve_prompt(
     return requested, catalog[requested]["content"]
 
 
+def render_prompt_addon(
+    base_content: str,
+    catalog: dict,
+    addon_key: str,
+    replacements: dict[str, str],
+) -> str:
+    """Append a prompt-catalog block with ``{placeholder}`` substitution."""
+    entry = catalog.get(addon_key, {})
+    addon = entry.get("content", "") if isinstance(entry, dict) else ""
+    if not isinstance(addon, str) or not addon.strip():
+        return base_content
+    rendered = addon
+    for key, value in replacements.items():
+        rendered = rendered.replace(f"{{{key}}}", value)
+    return f"{base_content.rstrip()}\n\n{rendered.rstrip()}\n"
+
+
 def load_yaml_file(filepath: Path) -> dict:
     """Load and return the contents of a YAML file as a dict.
 
@@ -498,6 +515,9 @@ _CATALOG_HYDRATION: tuple[tuple[str, str, dict[str, str]], ...] = (
     ),
 )
 
+# Body fields the client may set explicitly; catalog hydration must not overwrite them.
+_CLIENT_OVERRIDABLE_BODY_FIELDS = frozenset({"asr_language_code"})
+
 
 def hydrate_config_from_catalog(config: dict) -> None:
     """Overwrite detail fields in ``config`` from YAML for built-in selections.
@@ -510,6 +530,11 @@ def hydrate_config_from_catalog(config: dict) -> None:
         if not entry:
             continue
         for yaml_field, body_field in field_map.items():
+            if body_field in _CLIENT_OVERRIDABLE_BODY_FIELDS:
+                user_value = str(config.get(body_field, "") or "").strip()
+                if user_value:
+                    config[body_field] = user_value
+                    continue
             value = entry.get(yaml_field, "")
             if value in ("", None):
                 config.pop(body_field, None)

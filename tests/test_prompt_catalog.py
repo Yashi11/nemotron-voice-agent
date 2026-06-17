@@ -43,6 +43,8 @@ class PromptCatalogTests(unittest.TestCase):
                 "generic_assistant",
             },
             PROJECT_ROOT / "src/examples/multilingual/prompts.yaml": {
+                "auto_detect_language_addon",
+                "fixed_session_language_addon",
                 "multilingual_voice_assistant",
             },
         }

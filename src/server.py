@@ -11,7 +11,7 @@ Routes:
   GET       /api/deployment  - Active example metadata
   GET       /api/prompts     - Prompt catalog
   GET       /api/services    - Service catalog (LLM, TTS, ASR)
-  GET       /api/tts-config  - TTS voices & languages
+  GET       /api/tts-config  - TTS voices & languages (optional ASR params for ASR∩TTS intersection)
   GET       /                - Built client UI (from client/dist/)
 
 Pipeline / example selection lives in ``examples_registry.yaml`` (the
@@ -66,7 +66,7 @@ from pipecat.transports.smallwebrtc.request_handler import (
 import config_store
 import examples_registry
 from attachment_store import store_attachment
-from examples.shared.prewarm import prewarm_tts, warmup_tts_synthesis
+from examples.shared.prewarm import build_session_languages, prewarm_tts, warmup_tts_synthesis
 from utils import (
     PROJECT_ROOT,
     build_services_api_response,
@@ -264,6 +264,15 @@ def _get_default_tts_selection() -> tuple[str, str]:
 def _get_default_asr_selection() -> str:
     default_asr = load_service_entry("asr", "")
     return default_asr.get("server", "grpc.nvcf.nvidia.com:443")
+
+
+def _get_default_asr_catalog() -> tuple[str, str, str]:
+    default_asr = load_service_entry("asr", "")
+    return (
+        default_asr.get("server", "grpc.nvcf.nvidia.com:443"),
+        default_asr.get("model", ""),
+        default_asr.get("function_id", ""),
+    )
 
 
 def _get_default_llm_selection() -> tuple[str, str]:
@@ -797,10 +806,12 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
 
     @app.get("/api/prompts")
     async def get_prompts(pipeline_mode: str = Query(default="")):
-        _, module_file = _example_with_module_file(pipeline_mode or fallback_example_key)
+        example_key = pipeline_mode or fallback_example_key
+        _, module_file = _example_with_module_file(example_key)
         catalog = load_prompt_catalog(module_file)
-        registry_default_key = examples_registry.prompt_default_key(pipeline_mode or fallback_example_key)
+        registry_default_key = examples_registry.prompt_default_key(example_key)
         default_key = registry_default_key if registry_default_key in catalog else default_prompt_key(catalog)
+        hidden_prompt_keys = examples_registry.agent_prompt_keys(example_key)
         prompts = [
             {
                 "key": key,
@@ -808,8 +819,8 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
                 "content": val.get("content", ""),
                 "default": key == default_key,
                 "builtIn": True,
-                "selectable": True,
-                "scope": "session",
+                "selectable": key not in hidden_prompt_keys,
+                "scope": "agent" if key in hidden_prompt_keys else "session",
                 "tools": [t for t in (val.get("tools_available") or []) if isinstance(t, str)],
             }
             for key, val in catalog.items()
@@ -870,7 +881,33 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
     async def tts_config(
         server: str = Query(default=""),
         voice_id: str = Query(default=""),
+        asr_server: str = Query(default=""),
+        asr_model: str = Query(default=""),
+        asr_function_id: str = Query(default=""),
     ):
+        if asr_server or asr_model or asr_function_id:
+            default_asr_server, default_asr_model, default_asr_function_id = _get_default_asr_catalog()
+            default_tts_server, default_tts_voice = _get_default_tts_selection()
+            try:
+                return await _run_blocking(
+                    build_session_languages,
+                    asr_server or default_asr_server,
+                    asr_model or default_asr_model,
+                    asr_function_id or default_asr_function_id,
+                    server or default_tts_server,
+                    voice_id or default_tts_voice,
+                    timeout=_CONNECT_PREWARM_TIMEOUT_SECS,
+                )
+            except TimeoutError:
+                logger.warning(
+                    "tts-config ASR/TTS intersection timed out after {}s",
+                    _CONNECT_PREWARM_TIMEOUT_SECS,
+                )
+                return JSONResponse(
+                    status_code=504,
+                    content={"detail": f"Language catalog timed out after {_CONNECT_PREWARM_TIMEOUT_SECS}s"},
+                )
+
         if server:
             _, default_tts_voice = _get_default_tts_selection()
             cached = config_store.get(f"tts:{server}")

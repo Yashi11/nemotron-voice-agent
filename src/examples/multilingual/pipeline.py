@@ -32,6 +32,9 @@ from pipecat.workers.runner import WorkerRunner
 
 import config_store
 from examples.multilingual.multilingual_processor import (
+    AUTO_DETECT_LANGUAGE_ADDON_KEY,
+    FIXED_SESSION_GREETING_TRIGGER,
+    FIXED_SESSION_LANGUAGE_ADDON_KEY,
     SKIP_TTS_AGGREGATIONS,
     MultilingualTextAggregator,
     RTVISpokenTextEmitter,
@@ -46,15 +49,17 @@ from examples.shared.pipeline_utils import (
     build_user_aggregator_params,
     create_transport,
 )
-from examples.shared.prewarm import prewarm_tts
+from examples.shared.prewarm import prewarm_asr, prewarm_tts, resolve_voice_for_language
 from tracing import IS_TRACING_ENABLED
 from utils import (
     is_nvcf,
     load_ipa_dictionary,
+    load_prompt_catalog,
     load_service_entry,
     normalize_lang_code,
     parse_env_int,
     parse_json_dict,
+    render_prompt_addon,
     resolve_prompt,
 )
 
@@ -65,13 +70,24 @@ CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 10)
 async def _build_multilingual_pipeline(
     tts_server: str,
     tts_voice: str,
+    asr_server: str,
+    asr_model: str,
+    asr_function_id: str,
 ) -> tuple[MultilingualTextAggregator, LLMTextProcessor, RTVISpokenTextEmitter, str]:
     """Prewarm the voice catalog and build the multilingual processors."""
     if not config_store.get("tts"):
         await asyncio.to_thread(prewarm_tts, tts_server, tts_voice)
+    await asyncio.to_thread(prewarm_asr, asr_server, asr_model, asr_function_id)
     aggregator = MultilingualTextAggregator()
     text_processor = LLMTextProcessor(text_aggregator=aggregator)
-    return aggregator, text_processor, RTVISpokenTextEmitter(), get_lang_codes()
+    lang_codes = get_lang_codes(
+        asr_server=asr_server,
+        asr_model=asr_model,
+        asr_function_id=asr_function_id,
+        tts_server=tts_server,
+        tts_voice_id=tts_voice,
+    )
+    return aggregator, text_processor, RTVISpokenTextEmitter(), lang_codes
 
 
 async def bot(runner_args: RunnerArguments) -> None:
@@ -99,17 +115,20 @@ async def bot(runner_args: RunnerArguments) -> None:
     asr_function_id = body.get("asr_function_id", "") or default_asr.get("function_id", "")
     asr_model = body.get("asr_model", "") or default_asr.get("model", "")
     asr_language_code = body.get("asr_language_code", "") or default_asr.get("language_code", "")
+    if asr_language_code and asr_language_code.strip().lower() == "auto":
+        asr_language_code = ""
+    fixed_session_language = normalize_lang_code(asr_language_code) if asr_language_code else ""
     if asr_function_id or asr_model:
         asr_kwargs["model_function_map"] = {
             "function_id": asr_function_id,
             "model_name": asr_model or "custom-asr",
         }
-    if asr_language_code:
-        asr_kwargs["settings"] = NvidiaSTTSettings(language=asr_language_code)
+    if fixed_session_language:
+        asr_kwargs["settings"] = NvidiaSTTSettings(language=fixed_session_language)
     stt = NvidiaSTTService(**asr_kwargs, stop_history=400)
     logger.info(
         f"ASR: server={asr_server}, ssl={asr_ssl}, function_id={asr_function_id or '(default)'}, "
-        f"language={asr_language_code or '(default)'}"
+        f"language={fixed_session_language or 'auto-detect'}"
     )
 
     # --- LLM ---
@@ -141,11 +160,21 @@ async def bot(runner_args: RunnerArguments) -> None:
     tts_ssl = is_nvcf(tts_server)
     tts_voice = body.get("tts_voice_id", "") or default_tts.get("voice_id", "Magpie-Multilingual.EN-US.Aria")
     custom_dictionary = load_ipa_dictionary()
+    if not config_store.get("tts"):
+        await asyncio.to_thread(prewarm_tts, tts_server, tts_voice)
+
+    tts_settings_kwargs: dict = {"voice": tts_voice}
+    if fixed_session_language:
+        tts_settings_kwargs["language"] = fixed_session_language
+        resolved_voice = resolve_voice_for_language(fixed_session_language, tts_voice)
+        if resolved_voice:
+            tts_voice = resolved_voice
+            tts_settings_kwargs["voice"] = resolved_voice
 
     tts = NvidiaTTSService(
         api_key=os.getenv("NVIDIA_API_KEY"),
         server=tts_server,
-        settings=NvidiaTTSSettings(voice=tts_voice),
+        settings=NvidiaTTSSettings(**tts_settings_kwargs),
         use_ssl=tts_ssl,
         text_filters=[NemotronSpeechTextFilter()],
         custom_dictionary=custom_dictionary,
@@ -157,7 +186,13 @@ async def bot(runner_args: RunnerArguments) -> None:
         multilingual_text_processor,
         multilingual_rtvi_emitter,
         lang_codes,
-    ) = await _build_multilingual_pipeline(tts_server, tts_voice)
+    ) = await _build_multilingual_pipeline(
+        tts_server,
+        tts_voice,
+        asr_server,
+        asr_model,
+        asr_function_id,
+    )
 
     logger.info(
         f"TTS: server={tts_server}, ssl={tts_ssl}, voice={tts_voice}, "
@@ -166,8 +201,24 @@ async def bot(runner_args: RunnerArguments) -> None:
     )
 
     # --- Context ---
-    if lang_codes:
+    if fixed_session_language:
+        prompt_catalog = load_prompt_catalog(__file__)
+        base_system_content = base_system_content.replace("{lang_codes}", fixed_session_language)
+        base_system_content = render_prompt_addon(
+            base_system_content,
+            prompt_catalog,
+            FIXED_SESSION_LANGUAGE_ADDON_KEY,
+            {"fixed_language": fixed_session_language, "lang_codes": fixed_session_language},
+        )
+    elif lang_codes:
+        prompt_catalog = load_prompt_catalog(__file__)
         base_system_content = base_system_content.replace("{lang_codes}", lang_codes)
+        base_system_content = render_prompt_addon(
+            base_system_content,
+            prompt_catalog,
+            AUTO_DETECT_LANGUAGE_ADDON_KEY,
+            {"lang_codes": lang_codes},
+        )
 
     messages = build_context_messages(base_system_content, system_prompt)
     context = LLMContext(messages)
@@ -296,7 +347,12 @@ async def bot(runner_args: RunnerArguments) -> None:
         )
 
     multilingual_aggregator.set_on_language(
-        make_language_handler(tts, task, on_language_switched=_notify_language_switched)
+        make_language_handler(
+            tts,
+            task,
+            on_language_switched=_notify_language_switched,
+            fixed_language=fixed_session_language,
+        )
     )
 
     @task.rtvi.event_handler("on_client_ready")
@@ -304,7 +360,11 @@ async def bot(runner_args: RunnerArguments) -> None:
         logger.info("Client connected")
         if audio_recorder:
             await audio_recorder.start_recording()
-        context.add_message({"role": "user", "content": "Please introduce yourself to the user."})
+        if fixed_session_language:
+            context.add_message({"role": "user", "content": FIXED_SESSION_GREETING_TRIGGER})
+        else:
+            # Normal greeting so the LLM auto-detects language on the first LLMRunFrame turn.
+            context.add_message({"role": "user", "content": "Please introduce yourself to the user."})
         await task.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
