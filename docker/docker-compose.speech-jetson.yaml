@@ -7,7 +7,7 @@
 # Mutually exclusive profiles, so they reuse the same host port + model repo.
 
 x-riva-speech: &riva-speech
-  image: gitlab-master.nvidia.com:5005/dl/riva/riva-speech/riva:jetson_refresher_2605.54633105-l4t-aarch64
+  image: nvcr.io/nvidia/riva/riva-speech:2.26.0-l4t-aarch64
   runtime: nvidia
   ipc: host
   cpuset: ${RIVA_CPUSET:-}

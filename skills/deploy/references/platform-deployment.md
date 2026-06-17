@@ -56,16 +56,12 @@ Recipes: `generic-assistant/jetson-thor` only. Omni and Multilingual examples ar
 
 Services: `generic-assistant`, `nvidia-llm-vllm`, `nemotron-speech`.
 
-One-time Riva model setup, from the repo parent. Uses the Riva Speech Skills v2.26.0 (RC3) L4T quickstart and the `nvstaging` org for 2.26.0 models:
+One-time Riva model setup, from the repo parent. Uses the Riva Speech Skills v2.26.0 L4T quickstart (NGC `nvidia/riva` org, 2.26.0 models by default):
 
 ```bash
 cd ..
-curl -o riva_quickstart_l4t_aarch64.54633105.tgz \
-  -H "PRIVATE-TOKEN:<YOUR_GITLAB_TOKEN>" \
-  https://gitlab-master.nvidia.com/api/v4/projects/45235/packages/generic/riva_quickstart/2.26.0/riva_quickstart_l4t_aarch64.54633105.tgz
-tar -xzf riva_quickstart_l4t_aarch64.54633105.tgz
-cd quickstart   # tarball extracts into ./quickstart
-sed -i 's/^riva_ngc_org=.*/riva_ngc_org="nvstaging"/' config.sh   # already the default in this RC3 build
+ngc registry resource download-version "nvidia/riva/riva_quickstart_arm64:2.26.0"
+cd riva_quickstart_arm64_v2.26.0   # resource extracts into this dir
 bash riva_init.sh && cd ../nemotron-voice-agent
 ```
 
