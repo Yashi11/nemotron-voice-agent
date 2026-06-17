@@ -82,6 +82,14 @@ RIVA_CPUSET=4-7
 PIPECAT_CPUSET=8-11
 ```
 
+If a service fails to start on low memory (e.g. `nvidia-llm-vllm` logs `Engine core initialization failed`), reclaim cached memory and retry:
+
+```bash
+free -h
+sudo sync && sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
+docker compose --profile generic-assistant/jetson-thor up -d
+```
+
 ## TURN
 
 Add `--profile turn` when clients connect from outside the host network.
