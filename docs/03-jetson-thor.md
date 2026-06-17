@@ -98,3 +98,35 @@ docker compose --profile generic-assistant/jetson-thor down
 # Rebuild after code changes
 docker compose --profile generic-assistant/jetson-thor up --build -d generic-assistant
 ```
+
+---
+
+## Troubleshooting
+
+### Freeing up memory on Jetson Thor
+
+Services can fail to start or behave unexpectedly when the system runs low on available memory — often because cached pages from a previous run are still held by the kernel. A common example is vLLM failing to come up, with the `nvidia-llm-vllm` container logs showing an engine core initialization failure:
+
+```text
+(APIServer pid=1) RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+```
+
+If you hit a low-memory situation, check and reclaim memory before retrying:
+
+1. Check available memory:
+
+    ```bash
+    free -h
+    ```
+
+2. Free cached memory (drop page cache, dentries, and inodes):
+
+    ```bash
+    sudo sync && sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
+    ```
+
+3. Re-run `free -h` to confirm available memory has increased, then restart the stack:
+
+    ```bash
+    docker compose --profile generic-assistant/jetson-thor up -d
+    ```
