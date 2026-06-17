@@ -18,6 +18,7 @@ import { DevicesSection } from "./status-panel/DevicesSection";
 type StartBotClient = {
   connect: (args: { wsUrl?: string; webrtcUrl?: string }) => Promise<void>;
   disconnect: () => Promise<void>;
+  initDevices: () => Promise<void>;
 };
 
 const WEBRTC_CONNECT_TIMEOUT_MS = 30_000;
@@ -205,6 +206,7 @@ export function Header() {
           setCurrentSessionId(sessionId);
           await client.connect({ wsUrl: `${wsProto}//${globalThis.location.host}/api/ws?${qs}` });
         } else {
+          await client.initDevices();
           const webrtcUrl = await createWebRTCSession(config);
           const sessionId = sessionIdFromWebRTCUrl(webrtcUrl);
           if (!sessionId) {
