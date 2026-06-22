@@ -101,6 +101,8 @@ Local NIM ASR/TTS/LLM sidecars run alongside the example container when you laun
 
 > **OOM troubleshooting:** If the LLM process is killed, the NIM/vLLM runtime reports model-load or OOM errors, or latency degrades under load, use separate GPUs when available. On a two-GPU host, place ASR/TTS on one GPU and the LLM on the other. Otherwise, reduce KV cache / context length (lower memory, less long-context capacity). Lowering batch size or precision can also help. Confirm `NVIDIA_API_KEY` and `HF_TOKEN` are set where required so auth failures are not mistaken for OOM.
 
+> **`No available memory for the cache blocks` at LLM startup:** The opposite of an OOM kill — the local LLM's `NIM_KVCACHE_PERCENT` (vLLM `gpu_memory_utilization`) is too *low*. It is a fraction of the GPU's **total** VRAM, and on the workstation profiles the LLM shares GPU 0 with ASR and TTS, so too small a value leaves no room for the KV cache after the model weights. The default `0.6` fits the full pipeline on an 80 GB GPU; if a specific card still hits this, **raise** `NIM_KVCACHE_PERCENT` in `.env` (do not lower it).
+
 Workstation profiles place ASR, TTS, and LLM on one GPU by default. Single-GPU deployments are supported only when at least 80 GB of VRAM is available.
 
 ```bash
