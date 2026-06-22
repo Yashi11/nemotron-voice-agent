@@ -145,3 +145,12 @@ Self-hosted Nemotron-3 only — cloud (NVCF) has the parsers enabled server-side
 - **`HTTP 400: "auto" tool choice requires --enable-auto-tool-choice and --tool-call-parser`** -> the 2.x builds don't auto-enable the parsers. Pass them on the LLM service — NIM: `NIM_PASSTHROUGH_ARGS=--enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser nemotron_v3`; raw vLLM (DGX-Spark/Jetson): the same flags on `vllm serve`.
 - **Reasoning is spoken by TTS / `<think>` leaks into the answer** -> the reasoning parser isn't set; add `--reasoning-parser nemotron_v3` (separates reasoning from `content` and keeps reasoning-OFF working).
 - **Raw vLLM: `nemotron_v3` not found, or Super won't load (`MIXED_PRECISION`)** -> the image's vLLM is too old. Use NGC `nvcr.io/nvidia/vllm:26.05.post1-py3` (vLLM ≥ 0.20 ships both); `nvcr.io/nvidia/vllm:25.12.post1-py3` (0.12.0) lacks them — upgrade or mount a plugin via `--reasoning-parser-plugin`.
+
+## Troubleshooting: cloud rate limits (HTTP 429)
+
+Cloud (NVCF) catalog entries call `https://integrate.api.nvidia.com/v1` and are subject to per-API-key rate limits enforced by [build.nvidia.com](https://build.nvidia.com/). The limit is tied to your `NVIDIA_API_KEY` / account, not to the machine, so the same key can succeed on one host and fail on another depending on recent usage.
+
+- **`Error code: 429 - {'status': 429, 'title': 'Too Many Requests'}`** -> the API key has exceeded its allowed request rate. The published limits for `nemotron-3-super-120b-a12b` are **5 requests/sec, 30/min, 1000/day**.
+- **What to do** -> request a higher rate limit for your API key, or self-host the model with a local NIM / vLLM sidecar (see [On-prem catalog](#on-prem-catalog)) to avoid cloud limits entirely.
+
+> Cloud responses for large models are also slower (Super 120B is noticeably higher latency than Nano, especially with reasoning on). High latency on its own is not a rate-limit error — only an explicit `429` indicates rate limiting.
