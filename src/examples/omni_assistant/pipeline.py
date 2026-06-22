@@ -298,6 +298,20 @@ async def bot(runner_args: RunnerArguments) -> None:
         enable_tracing=IS_TRACING_ENABLED,
     )
 
+    @user_aggregator.event_handler("on_user_turn_stopped")
+    async def on_user_turn_stopped(aggregator, strategy, message):
+        # Omni turn boundary is decided by smart-turn, not an ASR final frame.
+        await task.queue_frame(
+            RTVIServerMessageFrame(
+                data={
+                    "type": "user-turn-finalized",
+                    "timestamp": getattr(message, "timestamp", None),
+                    "transcript": getattr(message, "content", None),
+                    "user_id": getattr(message, "user_id", None),
+                }
+            )
+        )
+
     @task.rtvi.event_handler("on_client_ready")
     async def on_client_connected(rtvi):
         logger.info("Client connected")

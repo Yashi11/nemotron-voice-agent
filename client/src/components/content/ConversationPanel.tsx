@@ -84,9 +84,15 @@ const findLatestUserMessage = (messages: ConversationMessage[]) => {
   return undefined;
 };
 
-const findUserMessageByCreatedAt = (messages: ConversationMessage[], createdAt?: string | null) => {
-  if (!createdAt) return undefined;
-  return messages.find((message) => message.role === "user" && message.createdAt === createdAt);
+const findLatestUnanchoredUser = (
+  messages: ConversationMessage[],
+  anchors: { has: (key: string) => boolean }
+) => {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i].role !== "user") continue;
+    return anchors.has(messages[i].createdAt) ? undefined : messages[i];
+  }
+  return undefined;
 };
 
 const normalizeTranscript = (text?: string | null) => (text ?? "").trim().replace(/\s+/g, " ");
@@ -94,7 +100,7 @@ const normalizeTranscript = (text?: string | null) => (text ?? "").trim().replac
 const findUserMessageByTranscript = (
   messages: ConversationMessage[],
   transcript: string | null | undefined,
-  finalizedCreatedAts: Set<string>
+  finalizedCreatedAts: { has: (key: string) => boolean }
 ) => {
   const normalizedTranscript = normalizeTranscript(transcript);
   if (!normalizedTranscript) return undefined;
@@ -201,8 +207,24 @@ export function ConversationPanel() {
   const [assistantTurns, setAssistantTurns] = useState<AssistantTurn[]>([]);
   const canUploadAttachments = selectedExample?.capabilities?.includes("attachments") ?? false;
   const [currentUserTurnActive, setCurrentUserTurnActive] = useState(false);
-  const [serverFinalizedUserCreatedAts, setServerFinalizedUserCreatedAts] =
-    useState<Set<string>>(new Set());
+  const [userTurnAnchors, setUserTurnAnchors] =
+    useState<Map<string, string>>(new Map());
+  const userTurnAnchorsRef = useRef(userTurnAnchors);
+  useEffect(() => {
+    userTurnAnchorsRef.current = userTurnAnchors;
+  }, [userTurnAnchors]);
+  // Holds a finalize signal that arrived before its turn's user bubble exists
+  // (the Omni model emits the user transcript late). Applied to the bubble once
+  // it appears.
+  const pendingUserAnchorRef = useRef<string | null>(null);
+  const anchorUserTurn = useCallback((createdAt: string, anchorISO: string) => {
+    setUserTurnAnchors((prev) => {
+      if (prev.has(createdAt)) return prev;
+      const next = new Map(prev);
+      next.set(createdAt, anchorISO);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     attachmentsRef.current = attachments;
@@ -210,7 +232,8 @@ export function ConversationPanel() {
 
   const resetConversationExtras = useCallback(() => {
     setCurrentUserTurnActive(false);
-    setServerFinalizedUserCreatedAts(new Set());
+    setUserTurnAnchors(new Map());
+    pendingUserAnchorRef.current = null;
     setAttachments((prev) => {
       prev.forEach((attachment) => URL.revokeObjectURL(attachment.previewUrl));
       return [];
@@ -233,6 +256,7 @@ export function ConversationPanel() {
     RTVIEvent.UserStartedSpeaking,
     useCallback(() => {
       setCurrentUserTurnActive(true);
+      pendingUserAnchorRef.current = null;
     }, [])
   );
 
@@ -279,17 +303,14 @@ export function ConversationPanel() {
 
       if (type !== "user-turn-finalized") return;
       setCurrentUserTurnActive(false);
-      setServerFinalizedUserCreatedAts((prev) => {
-        const finalizedUser =
-          findUserMessageByCreatedAt(visibleMessagesRef.current, stringField(message, "timestamp")) ??
-          findUserMessageByTranscript(visibleMessagesRef.current, stringField(message, "transcript"), prev) ??
-          findLatestUserMessage(visibleMessagesRef.current);
-        if (!finalizedUser || prev.has(finalizedUser.createdAt)) return prev;
-        const next = new Set(prev);
-        next.add(finalizedUser.createdAt);
-        return next;
-      });
-    }, [])
+      const anchorISO = new Date().toISOString();
+      const anchors = userTurnAnchorsRef.current;
+      const target =
+        findUserMessageByTranscript(visibleMessagesRef.current, stringField(message, "transcript"), anchors) ??
+        findLatestUnanchoredUser(visibleMessagesRef.current, anchors);
+      if (target) anchorUserTurn(target.createdAt, anchorISO);
+      else pendingUserAnchorRef.current = anchorISO;
+    }, [anchorUserTurn])
   );
 
   useRTVIClientEvent(
@@ -304,6 +325,15 @@ export function ConversationPanel() {
     attachmentsRef.current.forEach((attachment) => URL.revokeObjectURL(attachment.previewUrl));
   }, []);
 
+  useEffect(() => {
+    if (!pendingUserAnchorRef.current) return;
+    const target = findLatestUnanchoredUser(visibleMessages, userTurnAnchors);
+    if (!target) return;
+    const anchorISO = pendingUserAnchorRef.current;
+    pendingUserAnchorRef.current = null;
+    anchorUserTurn(target.createdAt, anchorISO);
+  }, [visibleMessages, userTurnAnchors, anchorUserTurn]);
+
   const latestUserCreatedAt = useMemo(
     () => findLatestUserMessage(visibleMessages)?.createdAt,
     [visibleMessages]
@@ -312,7 +342,7 @@ export function ConversationPanel() {
   const computeStreaming = (message: ConversationMessage): boolean => {
     if (message.role !== "user") return !message.final;
     if (message.final) return false;
-    if (serverFinalizedUserCreatedAts.has(message.createdAt)) return false;
+    if (userTurnAnchors.has(message.createdAt)) return false;
     const isLatestUser = message.createdAt === latestUserCreatedAt;
     return isLatestUser && currentUserTurnActive;
   };
@@ -397,11 +427,16 @@ export function ConversationPanel() {
       attachment,
       index: 103,
     }));
+    const orderTimeMs = (createdAt: string) => {
+      const created = new Date(createdAt).getTime();
+      const anchor = userTurnAnchors.get(createdAt);
+      return anchor ? Math.min(created, new Date(anchor).getTime()) : created;
+    };
     return [...messageItems, ...taskItems, ...assistantTurnItems, ...attachmentItems].sort((a, b) => {
-      const timeDelta = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      const timeDelta = orderTimeMs(a.createdAt) - orderTimeMs(b.createdAt);
       return timeDelta || a.index - b.index;
     });
-  }, [agentTasks, assistantTurns, attachments, visibleMessages]);
+  }, [agentTasks, assistantTurns, attachments, visibleMessages, userTurnAnchors]);
 
   const showAttachmentControl = Boolean(currentSessionId) && canUploadAttachments && visibleMessages.length > 0;
 
