@@ -57,6 +57,7 @@ from utils import (
     is_nvcf,
     load_ipa_dictionary,
     load_service_entry,
+    normalize_lang_code,
     parse_env_bool,
     parse_env_float,
     parse_env_int,
@@ -330,14 +331,14 @@ async def bot(runner_args: RunnerArguments) -> None:
             return
         settings_kwargs: dict[str, Any] = {"voice": voice_id}
         if language:
-            settings_kwargs["language"] = language
+            settings_kwargs["language"] = normalize_lang_code(language)
         await task.queue_frame(
             TTSUpdateSettingsFrame(
                 delta=NvidiaTTSSettings(**settings_kwargs),
                 service=tts,
             )
         )
-        logger.info(f"Voice switched -> {voice_id}")
+        logger.info(f"Voice switched -> {voice_id}, language={settings_kwargs.get('language', '(unchanged)')}")
 
     @task.rtvi.event_handler("on_client_message")
     async def on_client_message(rtvi, message):

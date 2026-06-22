@@ -56,7 +56,7 @@ from examples.omni_assistant_subagents.subagents.transport.webcam_controller imp
 from examples.omni_assistant_subagents.subagents.webcam import WebcamAgent
 from examples.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 from tracing import IS_TRACING_ENABLED
-from utils import load_ipa_dictionary, parse_env_float, parse_env_int
+from utils import load_ipa_dictionary, normalize_lang_code, parse_env_float, parse_env_int
 from webcam_frame_store import clear_session_webcam_frames
 
 # Delay before emitting a follow-up assistant turn from a completed analyzer task.
@@ -424,11 +424,14 @@ class OmniTransportAgent(PipelineWorker):
             return
         settings_kwargs: dict[str, Any] = {"voice": voice_id}
         if language:
-            settings_kwargs["language"] = language
+            settings_kwargs["language"] = normalize_lang_code(language)
         await self.queue_frame(
             TTSUpdateSettingsFrame(
                 delta=NvidiaTTSSettings(**settings_kwargs),
                 service=self._tts,
             )
         )
-        logger.info(f"Nemotron Omni subagents voice switched -> {voice_id}")
+        logger.info(
+            f"Nemotron Omni subagents voice switched -> {voice_id}, "
+            f"language={settings_kwargs.get('language', '(unchanged)')}"
+        )
