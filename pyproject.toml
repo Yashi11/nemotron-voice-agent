@@ -18,6 +18,11 @@ dependencies = [
 [tool.uv]
 override-dependencies = [
     "cryptography>=46.0.5",
+    "idna>=3.15",
+    "starlette>=1.0.1",
+    "protobuf>=6.33.6",
+    "langchain-core>=1.4.1",
+    "uuid-utils>=0.16.0",
 ]
 
 [dependency-groups]
