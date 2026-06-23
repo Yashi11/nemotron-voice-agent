@@ -59,6 +59,14 @@ uv sync --group benchmark
 PIPELINE_TLS=false uv run python src/server.py
 ```
 
+`PIPELINE_TLS=false` is used here for headless benchmark traffic. Keep TLS
+enabled when testing the interactive browser UI. If you still need HTTP for
+temporary browser testing, open the browser flags page (for example,
+`chrome://flags/#unsafely-treat-insecure-origin-as-secure` in Chrome or
+`edge://flags/#unsafely-treat-insecure-origin-as-secure` in Edge), enable the
+`Insecure origins treated as secure` flag, add the exact HTTP origin, relaunch
+the browser, and remove the origin after testing.
+
 Then, from `benchmarking_tools/Full-Duplex-Bench-Eval/`, point the client at the running server:
 
 ```bash

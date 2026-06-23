@@ -26,6 +26,14 @@ Use [`benchmarking_tools/scaling-perf/`](../../benchmarking_tools/scaling-perf/)
       --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
     ```
 
+    `PIPELINE_TLS=false` is used here for headless benchmark traffic. Keep TLS
+    enabled when testing the interactive browser UI. If you still need HTTP for
+    temporary browser testing, open the browser flags page (for example,
+    `chrome://flags/#unsafely-treat-insecure-origin-as-secure` in Chrome or
+    `edge://flags/#unsafely-treat-insecure-origin-as-secure` in Edge), enable
+    the `Insecure origins treated as secure` flag, add the exact HTTP origin,
+    relaunch the browser, and remove the origin after testing.
+
     Or run it under Docker Compose with the matching example profile, for example `--profile generic-assistant`. See [Getting Started](../01-getting-started.md) for the full list of profile combinations.
 
 ## Run

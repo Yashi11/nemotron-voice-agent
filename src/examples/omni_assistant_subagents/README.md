@@ -73,8 +73,14 @@ Tear down with the same profile used at `up` time.
 
 > Jetson is not supported today: the 30B Omni NVFP4 model does not fit on Orin-class hardware. A jetson recipe will be added once a smaller Omni variant lands.
 
-The UI is served at `https://localhost:7860/` by default, or `http://localhost:7860/`
-when `PIPELINE_TLS=false`.
+The UI is served at `https://localhost:7860/` by default. Keep TLS enabled for
+browser UI testing; `PIPELINE_TLS=false` is intended for headless performance
+and API testing. If you still need HTTP for temporary browser testing, open the
+browser flags page (for example,
+`chrome://flags/#unsafely-treat-insecure-origin-as-secure` in Chrome or
+`edge://flags/#unsafely-treat-insecure-origin-as-secure` in Edge), enable the
+`Insecure origins treated as secure` flag, add `http://localhost:7860`,
+relaunch the browser, and remove the origin after testing.
 
 ## Capabilities exposed to the UI
 

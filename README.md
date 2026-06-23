@@ -94,8 +94,10 @@ Start the application following these steps.
 
     > **Note:** Deployment may take 30–60 minutes on first run. The example above runs the Generic Cascaded pipeline against NVIDIA cloud APIs. Swap the recipe profile (e.g. `multilingual-assistant`, `thinker-talker`, `generic-assistant/workstation`, `thinker-talker/workstation`) to deploy a different stack. Each compose deployment is locked to a single recipe.
 
-5. Access the application at `https://<machine-ip>:7860`. Set `PIPELINE_TLS=false` in `.env` to use `http://<machine-ip>:7860`.
+5. Access the application at `https://<machine-ip>:7860`. Keep TLS enabled when testing the browser UI.
 
+    > **Note:** `PIPELINE_TLS=false` is intended for headless performance and API testing, not interactive browser UI testing. Browser microphone access and WebRTC require a secure context; use the default HTTPS UI path for browser validation.
+    > If you still need HTTP for temporary browser testing, open the browser flags page (for example, `chrome://flags/#unsafely-treat-insecure-origin-as-secure` in Chrome or `edge://flags/#unsafely-treat-insecure-origin-as-secure` in Edge), enable the `Insecure origins treated as secure` flag, add `http://<machine-ip>:7860`, relaunch the browser, and remove the origin after testing.
     > **Note:** Remote clients may need a TURN server for microphone/WebRTC access. See [Optional: Deploy TURN Server for Remote Access](docs/01-getting-started.md#optional-deploy-turn-server-for-remote-access).
     > **Tip:** For the best experience, use a headset, preferably wired.
 

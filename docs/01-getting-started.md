@@ -84,8 +84,11 @@ Before you begin, ensure you have the following:
 
     > **Note:** Deployment may take 30–60 minutes on first run.
 
-6. Access the application at `https://<machine-ip>:7860`.
-   HTTPS is enabled by default. Set `PIPELINE_TLS=false` in `.env` to serve plain HTTP at `http://<machine-ip>:7860`.
+6. Access the application at `https://<machine-ip>:7860`. Keep TLS enabled when testing the browser UI.
+   HTTPS is enabled by default. Set `PIPELINE_TLS=false` in `.env` to serve plain HTTP at `http://<machine-ip>:7860` for headless performance or API testing.
+
+    > **Note:** `PIPELINE_TLS=false` is intended for headless performance and API testing, not interactive browser UI testing. Browser microphone access and WebRTC require a secure context.
+    > If you still need HTTP for temporary browser testing, open the browser flags page (for example, `chrome://flags/#unsafely-treat-insecure-origin-as-secure` in Chrome or `edge://flags/#unsafely-treat-insecure-origin-as-secure` in Edge), enable the `Insecure origins treated as secure` flag, add `http://<machine-ip>:7860`, relaunch the browser, and remove the origin after testing.
 
     > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
 
@@ -207,7 +210,8 @@ For development and debugging, you can run the server directly:
 
     > **Note:** Docker Compose deployments pin `EXAMPLE_SELECTION=<example>` to a single example. Set `EXAMPLE_SELECTION=all` to expose every example in the UI selector instead.
 
-6. Access the application at `https://localhost:7860`, or `http://localhost:7860` when `PIPELINE_TLS=false`.
+6. Access the application locally at `https://localhost:7860`, or from another machine at
+   `https://<machine-ip>:7860` (replace `<machine-ip>` with the host IP); see the earlier remote-browser access note for TLS guidance.
 
 ---
 
