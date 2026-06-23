@@ -57,7 +57,7 @@ from utils import (
 load_dotenv(override=True)
 
 CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 20)
-THINKER_PROMPT_KEY = "thinker_talker_thinker"
+THINKER_PROMPT_KEY = "thinker"
 THINKER_TOOL_DELAY_MIN_SECONDS = 0.1
 THINKER_TOOL_DELAY_MAX_SECONDS = 0.5
 THINKER_FILLER_THRESHOLD_SECONDS = parse_env_float("THINKER_FILLER_THRESHOLD_SECONDS", 0.3, min_value=0.0)
