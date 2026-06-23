@@ -42,8 +42,9 @@ straight from a fresh `uv sync --group benchmark`.
 
 ### Prompt override for perf runs
 
-If you want a benchmark-specific server prompt, point the registry at the
-Generic Cascaded example by setting `selection: generic-assistant` in
+If you want a benchmark-specific server prompt for a host-native `uv run`
+server, point the registry at the Generic Assistant example by setting
+`selection: generic-assistant` in
 [`examples_registry.yaml`](../../examples_registry.yaml), then start the
 server with the prompt catalog in this directory:
 
@@ -57,6 +58,44 @@ This catalog defaults to `prompt_1000_tokens`. Available prompt entries are
 
 This keeps the benchmark commands unchanged while the server uses the perf
 prompt catalog.
+
+## Reproducing the best scaling setup
+
+For the best scaling numbers, use a `4xH100` setup with `1 GPU` for ASR,
+`1 GPU` for TTS, and `2 GPUs` for the `Nemotron Nano 30B` LLM.
+
+Use these config changes for the published setup:
+
+- in [`examples_registry.yaml`](../../examples_registry.yaml), set the
+  `generic-assistant` default LLM to `nemotron-nano`
+- in [`docker/docker-compose.nemotron3-nano.yaml`](../../docker/docker-compose.nemotron3-nano.yaml),
+  set `NIM_TAGS_SELECTOR=precision=fp8,tp=2` and `device_ids: ['2', '3']` for
+  `nvidia-llm`
+- in [`docker/docker-compose.nemotron-asr.yaml`](../../docker/docker-compose.nemotron-asr.yaml),
+  keep `device_ids: ['0']` for `nemotron-asr-streaming-english`
+- in [`docker/docker-compose.magpie-tts.yaml`](../../docker/docker-compose.magpie-tts.yaml),
+  set `device_ids: ['1']` for `tts-service`
+
+Then deploy the local Generic Assistant workstation stack with:
+
+```bash
+docker compose --profile generic-assistant/workstation up -d
+```
+
+Recommended `.env` changes for these runs:
+
+```bash
+PROMPT_SELECTOR=generic_assistant
+USE_SILERO_VAD_TURN_DETECTION=true
+SILERO_VAD_STOP_SECS=0.5
+AUDIO_OUT_10MS_CHUNKS=40
+```
+
+After the stack is healthy, run the sweep from this directory:
+
+```bash
+./simulate_concurrency.sh --clients "1 2 4 8 16"
+```
 
 ## Run
 
@@ -79,7 +118,7 @@ The shell wrapper accepts `-h`/`--help`. Common flags:
 |------|---------|-------------|
 | `--clients "N1 N2 …"` | `1` | One run per concurrency level. Quote the list. |
 | `--host` / `--port` | `localhost` / `7860` | Server target. |
-| `--test-duration` | `150` | Seconds of metric collection per level. |
+| `--test-duration` | `300` | Seconds of metric collection per level. |
 | `--client-start-delay` | `1` | Stagger between clients connecting (s). With N clients and delay D, the metric window opens at ``now + (N-1)*D`` so every worker is connected before measurement starts. |
 | `--cooldown` | `10` | Pause between sweep levels (s) — lets the server settle between bursts. |
 | `--reverse-barge-in-threshold` | `0.4` | Bot audio arriving within this many seconds of the user finishing speaking is discarded as a *reverse* barge-in (the server racing the end of the user's utterance) instead of being timed as the real response. Used internally; not surfaced in summaries. |
@@ -97,16 +136,6 @@ See `uv run python3 benchmark.py --help` for the full per-client surface
 (`--stream-id`, `--metrics-start-time`, `--session-end-time`,
 `--result-path`, `--logger-path`, `--audio-output-path`, …). Without those
 flags the script computes sane defaults.
-
-### Re-aggregating an existing run
-
-If you already have `result_*.json` files (e.g. you killed the orchestrator
-mid-sweep) you can rebuild the summaries with the same script:
-
-```bash
-uv run python3 benchmark.py --aggregate-run-dir   path/to/run_4_clients --num-clients 4
-uv run python3 benchmark.py --aggregate-suite-dir path/to/perf_suite_<ts>
-```
 
 ## Output layout
 
