@@ -10,7 +10,7 @@ from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
 
 _TTS_RESERVED_CHARACTERS = re.compile(
     r"<(?=[A-Za-z/!])"  # < that starts a tag: <b>, </em>, <!--
-    r"|[{}]"  # ARPAbet phoneme delimiters: {, }
+    r"|[*{}]"  # Markdown asterisks and ARPAbet phoneme delimiters: *, {, }
 )
 
 
@@ -20,10 +20,12 @@ class NemotronSpeechTextFilter(BaseTextFilter):
     ``{...}``  ARPAbet phoneme notation.
 
     ``<tag>``  SSML tags.
+
+    ``*``  Markdown emphasis markers.
     """
 
     async def filter(self, text: str) -> str:
-        """Strip SSML tag openers and ARPAbet phoneme delimiters from TTS input."""
+        """Strip markdown asterisks, SSML tag openers, and ARPAbet delimiters from TTS input."""
         return _TTS_RESERVED_CHARACTERS.sub("", text)
 
 

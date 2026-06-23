@@ -9,7 +9,6 @@ import re
 
 from pipecat.utils.text.base_text_filter import BaseTextFilter
 
-from examples.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 from examples.thinker_talker.airline.airports import AIRPORT_SPOKEN_NAMES, airport_spoken_name
 
 _PNR_ACRONYM_RE = re.compile(r"\bPNR(?:(['’])s)?\b")
@@ -19,14 +18,6 @@ _AIRPORT_RE = re.compile(r"\b(" + "|".join(re.escape(code) for code in sorted(AI
 _LIST_PREFIX_RE = re.compile(r"(?m)^\s*(?:-\s+|\d+\.\s+)")
 _WHITESPACE_RE = re.compile(r"[ \t]+")
 _BLANK_LINE_RE = re.compile(r"\n{3,}")
-
-
-class ThinkerTalkerSpeechTextFilter(NemotronSpeechTextFilter):
-    """Strip markdown asterisks before text reaches NVIDIA TTS."""
-
-    async def filter(self, text: str) -> str:
-        """Remove asterisks, then apply generic Nemotron speech cleanup."""
-        return await super().filter(text.replace("*", ""))
 
 
 class ThinkerTalkerPronunciationTextFilter(BaseTextFilter):

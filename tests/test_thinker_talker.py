@@ -13,6 +13,7 @@ from typing import Any
 from pipecat.frames.frames import LLMFullResponseEndFrame, LLMFullResponseStartFrame, LLMTextFrame
 from pipecat.services.llm_service import FunctionCallParams
 
+from examples.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 from examples.thinker_talker.airline.airports import spoken_time
 from examples.thinker_talker.airline.database.api import BookingAPI
 from examples.thinker_talker.airline.database.db import apply_schema
@@ -26,10 +27,7 @@ from examples.thinker_talker.src.tool_handlers import (
     _normalize_arguments,
     build_handlers,
 )
-from examples.thinker_talker.src.tts_filter import (
-    ThinkerTalkerPronunciationTextFilter,
-    ThinkerTalkerSpeechTextFilter,
-)
+from examples.thinker_talker.src.tts_filter import ThinkerTalkerPronunciationTextFilter
 
 
 def _today() -> date:
@@ -367,12 +365,12 @@ class ThinkerTalkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(epoch["duration_minutes"], 90)
 
     async def test_tts_filter_strips_asterisks_and_keeps_base_cleanup(self) -> None:
-        filtered = await ThinkerTalkerSpeechTextFilter().filter("PNR **ABC123** <break> {AA123}")
+        filtered = await NemotronSpeechTextFilter().filter("PNR **ABC123** <break> {AA123}")
 
         self.assertEqual(filtered, "PNR ABC123 break> AA123")
 
     async def test_tts_filter_expands_airline_codes_after_base_cleanup(self) -> None:
-        base_filtered = await ThinkerTalkerSpeechTextFilter().filter(
+        base_filtered = await NemotronSpeechTextFilter().filter(
             "- Your PNR's status for **ABC123** on flight AA2072 from JFK to SFO."
         )
         filtered = await ThinkerTalkerPronunciationTextFilter().filter(base_filtered)
