@@ -26,7 +26,7 @@ examples:
     slots: [llm, asr, tts]
     defaults:
       prompt: [generic_assistant]
-      llm: [nemotron-super]
+      llm: [nemotron-nano]
       asr: [nemotron-asr-streaming-english]
       tts: [magpie-tts]
     bot: examples.generic.pipeline:bot
