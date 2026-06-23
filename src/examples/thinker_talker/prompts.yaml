@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-thinker_talker_talker:
+talker:
   default: true
   description: "Talker prompt for the Thinker/Talker cascaded flight-booking example."
   content: |
@@ -270,7 +270,7 @@ thinker_talker_talker:
     wording sounds helpful. filler_text is optional and may be omitted; query is required for call_thinker
     and must be the complete self-contained current request, never a delta or a "previous booking" reference.
 
-thinker_talker_thinker:
+thinker:
   internal: true
   description: "Internal Thinker planner prompt for the Thinker/Talker cascaded flight-booking example."
   content: |
