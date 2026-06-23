@@ -19,6 +19,7 @@ metadata:
 - Recipe profile names are `<example>` for cloud-only deployments and `<example>/<hardware>` for on-prem deployments (for example `generic-assistant` and `generic-assistant/workstation`). The profile is a complete, self-contained recipe — never combine two recipes.
 - Selector modes (`all`, or a single `<example>` such as `generic-assistant`) remain host-native only (`uv run`) and have no compose profile.
 - Observability profiles (`tracing`, `turn`) compose orthogonally with any recipe.
+- When adding the `turn` profile, complete the TURN preflight before `docker compose up`: confirm bundled coturn is supported on the host architecture, ensure `.env` has `TURN_USERNAME` and `TURN_PASSWORD`, set `TURN_URL` when TURN is hosted separately or the request host is not client-reachable, and remind the user to open UDP `3478` and `49160-49200`.
 
 ## Deploy
 
@@ -43,7 +44,7 @@ free -h
 test -f .env || cp .env.example .env
 ```
 
-Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that ends in `/dgxspark` or `/jetson`.
+Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that ends in `/dgx-spark` or `/jetson-thor`, plus `omni-assistant/workstation` and `omni-assistant-subagents/workstation`. `TURN_USERNAME` and `TURN_PASSWORD` are required when adding `--profile turn`.
 
 4. Pick the recipe profile:
 
@@ -61,6 +62,7 @@ Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that 
 | Multilingual Cascaded on DGX Spark | `multilingual-assistant/dgx-spark` |
 | Omni Assistant on a workstation | `omni-assistant/workstation` |
 | Omni Assistant on DGX Spark | `omni-assistant/dgx-spark` |
+| Omni Assistant on Jetson Thor | `omni-assistant/jetson-thor` |
 | Omni Assistant Subagents on DGX Spark | `omni-assistant-subagents/dgx-spark` |
 | Thinker/Talker Airline Assistant on a workstation | `thinker-talker/workstation` |
 
@@ -73,13 +75,22 @@ For any on-prem recipe, log in to `nvcr.io` first.
 docker compose --profile <recipe> up -d
 ```
 
-Add observability profiles freely: `--profile tracing` (Phoenix), `--profile turn` (coturn). Use `--build` only after source or `Dockerfile` changes.
+Add observability profiles freely: `--profile tracing` (Phoenix), `--profile turn` (coturn). Before adding `--profile turn`, follow `references/platform-deployment.md#turn` to populate TURN credentials and any required `TURN_URL`. Use `--build` only after source or `Dockerfile` changes.
 
 6. Verify:
 
 ```bash
 docker compose ps
 docker compose logs --tail 200 <service-name>
+```
+
+For TURN deployments, also verify `coturn` is running and the app publishes ICE config:
+
+```bash
+docker compose ps coturn
+# HTTPS by default; if PIPELINE_TLS=false the HTTPS call fails and the HTTP one returns the config
+curl -k https://localhost:${PIPELINE_APP_PORT:-7860}/api/ice-servers \
+  || curl http://localhost:${PIPELINE_APP_PORT:-7860}/api/ice-servers
 ```
 
 App service names follow the active example: `generic-assistant`, `multilingual-assistant`, `omni-assistant`, `omni-assistant-subagents`, or `thinker-talker`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `nemotron-asr-streaming-english`, `nemotron-asr-streaming-multilingual`, `parakeet-ctc-asr`, `parakeet-rnnt-asr`, `tts-service`, `nemotron-speech`, `booking-server`).

@@ -82,8 +82,26 @@ This guide covers deploying the Nemotron Voice Agent on Jetson Thor using Docker
     > If you still need HTTP for temporary browser testing, open the browser flags page (for example, `chrome://flags/#unsafely-treat-insecure-origin-as-secure` in Chrome or `edge://flags/#unsafely-treat-insecure-origin-as-secure` in Edge), enable the `Insecure origins treated as secure` flag, add `http://<jetson-ip>:7860`, relaunch the browser, and remove the origin after testing.
 
     > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
-
     > **Note:** If you need to access the application from remote locations, configure a TURN server. Refer to [Optional: Deploy TURN Server for Remote Access](01-getting-started.md#optional-deploy-turn-server-for-remote-access).
+
+---
+
+## Omni Assistant on Jetson Thor
+
+The Omni Assistant runs **Nemotron 3 Nano Omni** — a single multimodal model that performs ASR and LLM together — locally via vLLM, with Riva serving **TTS only** (Omni handles ASR itself). Thor's 128 GB unified memory fits the 30B NVFP4 model; Orin-class Jetsons are not supported.
+
+Follow **Prerequisites** and **Deployment Steps 1–3** above unchanged — the one-time Riva model build is still required because Riva serves TTS. Then start the Omni recipe instead of the generic one:
+
+```bash
+docker compose --profile omni-assistant/jetson-thor up -d
+```
+
+This recipe runs three services: `omni-assistant` (app), `nvidia-llm-vllm-omni` (local Omni vLLM), and `nemotron-speech-tts` (Riva TTS).
+
+> **Note:** On first start, the Omni vLLM sidecar downloads `nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4` from Hugging Face, so `HF_TOKEN` must be set in `.env`. Allow up to 30 minutes.
+> **Production tuning (recommended on Thor):** The same CUDA MPS + CPU pinning settings from step 4 apply. Set the `*_MPS_THREAD_PCT` / `*_CPUSET` values in `.env`, run `sudo bash scripts/start-mps.sh`, then bring up the `omni-assistant/jetson-thor` profile.
+
+The **Common Commands** and **Troubleshooting** sections below also apply — substitute `omni-assistant/jetson-thor` for the recipe profile.
 
 ---
 

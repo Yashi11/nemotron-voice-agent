@@ -31,13 +31,14 @@ Before you begin, ensure you have the following:
 | `multilingual-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM |
 | `omni-assistant/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
 | `omni-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
+| `omni-assistant/jetson-thor` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + on-device Riva TTS |
 | `omni-assistant-subagents/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
 | `omni-assistant-subagents/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
 | `thinker-talker/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + Talker/Thinker NIM LLM, plus local booking-server sidecar |
 | `tracing` | Optional overlay | Phoenix OTel collector |
 | `turn` | Optional overlay | coturn TURN server |
 
-> Every deployment specifies exactly one recipe profile. Observability profiles (`tracing`, `turn`) can be added alongside any recipe. Omni examples support DGX Spark today.
+> Every deployment specifies exactly one recipe profile. Observability profiles (`tracing`, `turn`) can be added alongside any recipe.
 
 ---
 
@@ -129,6 +130,9 @@ docker compose --profile omni-assistant/workstation up -d
 
 # Omni Assistant — local Omni vLLM + NIM TTS on DGX Spark
 docker compose --profile omni-assistant/dgx-spark up -d
+
+# Omni Assistant — local Omni vLLM + on-device Riva TTS on Jetson Thor (set HF_TOKEN; see 03-jetson-thor.md)
+docker compose --profile omni-assistant/jetson-thor up -d
 
 # Thinker/Talker Airline Assistant — workstation (local NIM ASR / TTS / LLM + booking server)
 docker compose --profile thinker-talker/workstation up -d
@@ -230,10 +234,10 @@ docker compose --profile generic-assistant/workstation --profile turn up -d  # l
 
 - Coturn binds host ports UDP `3478` and UDP `49160-49200`. These must be reachable from clients (open them on your cloud firewall / security group).
 - The client auto-fetches ICE config from `GET /api/ice-servers` — no client-side setup needed.
-- Default credentials are `admin:admin`. For production, override in `.env`:
+- Set TURN credentials explicitly in `.env` (required whenever TURN is enabled):
 
     ```env
-    # Required when TURN is deployed on a different host than all-examples.
+    # Required when TURN is enabled. Also set when TURN is deployed on a different host.
     TURN_URL=turn:<turn-host-or-ip>:3478
     TURN_USERNAME=<user>
     TURN_PASSWORD=<pass>

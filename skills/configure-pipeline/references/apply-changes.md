@@ -64,7 +64,7 @@ Add when:
 
 ### Remote WebRTC (`--profile turn`)
 
-Add when clients connect from outside the host's network. Credentials come from `TURN_USERNAME` / `TURN_PASSWORD` in `.env` (defaults are `admin:admin`). Set `TURN_URL=turn:<host>:3478` if TURN runs on a different host. The client auto-fetches ICE config from `/api/ice-servers`.
+Add when clients connect from outside the host's network. Set `TURN_USERNAME` and `TURN_PASSWORD` in `.env`; the app only publishes ICE config when both values are present. Set `TURN_URL=turn:<host>:3478` if TURN runs on a different host or the request host is not client-reachable. The client auto-fetches ICE config from `/api/ice-servers`.
 
 ```bash
 docker compose --profile generic-assistant --profile tracing up -d

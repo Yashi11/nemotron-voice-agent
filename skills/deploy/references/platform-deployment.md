@@ -52,9 +52,11 @@ docker compose --profile generic-assistant/dgx-spark up -d
 
 ## Jetson Thor
 
-Recipes: `generic-assistant/jetson-thor` only. Omni and Multilingual examples are not supported on Jetson today.
+Recipes: `generic-assistant/jetson-thor` and `omni-assistant/jetson-thor`. Multilingual and Omni Assistant Subagents examples are not supported on Jetson today.
 
-Services: `generic-assistant`, `nvidia-llm-vllm`, `nemotron-speech`.
+Services depend on the recipe:
+- `generic-assistant/jetson-thor`: `generic-assistant`, `nvidia-llm-vllm`, `nemotron-speech` (Riva ASR + TTS).
+- `omni-assistant/jetson-thor`: `omni-assistant`, `nvidia-llm-vllm-omni`, `nemotron-speech-tts` (Riva TTS only; Omni does its own ASR).
 
 One-time Riva model setup, from the repo parent. Uses the Riva Speech Skills v2.26.0 L4T quickstart (NGC `nvidia/riva` org, 2.26.0 models by default):
 
@@ -70,6 +72,8 @@ Deploy:
 ```bash
 sudo bash scripts/start-mps.sh
 docker compose --profile generic-assistant/jetson-thor up -d
+# Omni Assistant (local Omni vLLM + Riva TTS; requires HF_TOKEN):
+docker compose --profile omni-assistant/jetson-thor up -d
 ```
 
 Thor tuning `.env`:
@@ -93,10 +97,37 @@ docker compose --profile generic-assistant/jetson-thor up -d
 ## TURN
 
 Add `--profile turn` when clients connect from outside the host network.
+The bundled coturn profile uses the `instrumentisto/coturn` image, which is
+supported on x86_64 (`linux/amd64`) only. On arm64 hosts, such as Jetson Thor,
+do not enable the bundled `turn` profile; set `TURN_URL`, `TURN_USERNAME`, and
+`TURN_PASSWORD` for an externally hosted TURN server instead.
+
+Before starting TURN, ensure `.env` contains TURN credentials. Coturn has
+compose defaults, but the app only publishes ICE servers to clients when
+`TURN_USERNAME` and `TURN_PASSWORD` are present in `.env`.
+
+```bash
+test -f .env || cp .env.example .env
+grep -Eq '^TURN_USERNAME=.+$' .env || printf '\nTURN_USERNAME=turn-%s\n' "$(openssl rand -hex 4)" >> .env
+grep -Eq '^TURN_PASSWORD=.+$' .env || printf 'TURN_PASSWORD=%s\n' "$(openssl rand -hex 24)" >> .env
+```
+
+Set `TURN_URL=turn:<turn-host-or-ip>:3478` when TURN runs on a different host,
+or when the host derived from the incoming request is not reachable by clients.
+Open UDP `3478` and UDP `49160-49200` from client networks.
 
 ```bash
 docker compose --profile generic-assistant --profile turn up -d
 docker compose --profile generic-assistant/workstation --profile turn up -d
+```
+
+Verify TURN with:
+
+```bash
+docker compose ps coturn
+# HTTPS by default; if PIPELINE_TLS=false the HTTPS call fails and the HTTP one returns the config
+curl -k https://localhost:${PIPELINE_APP_PORT:-7860}/api/ice-servers \
+  || curl http://localhost:${PIPELINE_APP_PORT:-7860}/api/ice-servers
 ```
 
 ## Verify / Stop
