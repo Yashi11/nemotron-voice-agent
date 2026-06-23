@@ -32,15 +32,13 @@ from pipecat.turns.user_mute import MuteUntilFirstBotCompleteUserMuteStrategy
 from pipecat.workers.runner import WorkerRunner
 
 from examples.shared.audio_recorder import create_audio_recorder
+from examples.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 from examples.thinker_talker.airline.backend import HTTPBookingBackend
 from examples.thinker_talker.airline.thinker import ThinkerBackend
 from examples.thinker_talker.airline.tools import TOOLS_SCHEMA
 from examples.thinker_talker.src.planner import NvidiaThinkerPlanner
 from examples.thinker_talker.src.tool_handlers import build_handlers
-from examples.thinker_talker.src.tts_filter import (
-    ThinkerTalkerSpeechTextFilter,
-    apply_thinker_talker_pronunciation_for_tts,
-)
+from examples.thinker_talker.src.tts_filter import apply_thinker_talker_pronunciation_for_tts
 from tracing import IS_TRACING_ENABLED
 from utils import (
     is_nvcf,
@@ -225,7 +223,7 @@ async def bot(runner_args: RunnerArguments) -> None:
         server=tts_server,
         settings=NvidiaTTSSettings(voice=tts_voice),
         use_ssl=tts_ssl,
-        text_filters=[ThinkerTalkerSpeechTextFilter()],
+        text_filters=[NemotronSpeechTextFilter()],
         text_transforms=[("*", apply_thinker_talker_pronunciation_for_tts)],
         custom_dictionary=custom_dictionary,
     )
