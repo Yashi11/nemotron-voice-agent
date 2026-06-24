@@ -20,10 +20,13 @@ entry point, service catalogs, and prompts. Shared pipeline helpers live in
 | Best fit | Teams building voice experiences for users who switch languages, operate in multilingual regions, or need one deployment to cover multiple customer-language journeys. |
 | Extend into | Multilingual contact-center agents, hospitality and travel assistants, global employee support, language-practice companions, translated kiosk flows, or localized field-service copilots. |
 
-Cloud deployments use the existing Parakeet RNNT multilingual ASR endpoint. Local
-workstation and DGX Spark deployments default to `nemotron-asr-streaming-multilingual`,
-which runs the cache-aware RC1 streaming ASR NIM in multilingual mode with automatic
-language detection.
+Cloud and on-prem defaults use **Parakeet 1.1B RNNT Multilingual** (`parakeet-rnnt`) via
+`examples_registry.yaml` and `services.local.yaml`. The `multilingual-assistant/workstation`
+and `/dgx-spark` recipe profiles start `parakeet-rnnt-asr` locally.
+
+For Nemotron ASR Streaming Multilingual, use the `nemotron-asr-streaming-multilingual/workstation` or
+`nemotron-asr-streaming-multilingual/dgx-spark` Compose profile — see
+[Enable Multilingual Voice Agent](../../../docs/how-to/enable-multilingual.md#choosing-a-multilingual-asr-model).
 
 ## Layout
 
@@ -31,12 +34,12 @@ language detection.
 | --- | --- |
 | `pipeline.py` | pipecat entry point — multilingual mode always on |
 | `prompts.yaml` | multilingual prompt catalog |
-| `services.cloud.yaml`, `services.local.yaml` | service catalogs; local ASR defaults to `nemotron-asr-streaming-multilingual` |
+| `services.cloud.yaml`, `services.local.yaml` | service catalogs; registry default `parakeet-rnnt` |
 
 ## How it works
 
 1. The LLM returns each response in this format:
-   ```
+   ```text
    Language: <LangCode> Text: <DirectResponse> MetaData: <AdditionalInfo>
    ```
 2. `MultilingualTextAggregator` parses the structured output and fires a language-switch
@@ -61,13 +64,13 @@ Docker — cloud-only:
 docker compose --profile multilingual-assistant up -d
 ```
 
-On-prem recipes with local ASR / TTS / LLM sidecars:
+On-prem recipes (Parakeet RNNT ASR sidecar):
 
 ```bash
-# Workstation (`nemotron-asr-streaming-multilingual` + Magpie TTS + NIM LLM)
+# Workstation
 docker compose --profile multilingual-assistant/workstation up -d
 
-# DGX Spark (`nemotron-asr-streaming-multilingual` + Magpie TTS + vLLM LLM)
+# DGX Spark
 docker compose --profile multilingual-assistant/dgx-spark up -d
 ```
 
@@ -80,8 +83,8 @@ docker compose --profile multilingual-assistant/workstation down
 | Recipe profile | App service | Sidecars |
 | --- | --- | --- |
 | `multilingual-assistant` | `multilingual-assistant` | none (cloud NVCF) |
-| `multilingual-assistant/workstation` | `multilingual-assistant` | `nvidia-llm`, `nemotron-asr-streaming-multilingual`, `tts-service` |
-| `multilingual-assistant/dgx-spark` | `multilingual-assistant` | `nvidia-llm-vllm`, `nemotron-asr-streaming-multilingual`, `tts-service` |
+| `multilingual-assistant/workstation` | `multilingual-assistant` | `nvidia-llm`, `parakeet-rnnt-asr`, `tts-service` |
+| `multilingual-assistant/dgx-spark` | `multilingual-assistant` | `nvidia-llm-vllm`, `parakeet-rnnt-asr`, `tts-service` |
 
 The UI is served at `https://localhost:7860/` by default. Keep TLS enabled for
 browser UI testing; `PIPELINE_TLS=false` is intended for headless performance

@@ -17,16 +17,16 @@ workstation:
       voice_id: "Magpie-Multilingual.EN-US.Aria"
       function_id: ""
   asr:
+    parakeet-rnnt:
+      name: "Parakeet 1.1B RNNT Multilingual ASR"
+      server: "parakeet-rnnt-asr:50052"
+      model: "parakeet-1.1b-rnnt-multilingual-asr"
+      function_id: ""
     nemotron-asr-streaming-multilingual:
       name: "Nemotron ASR Streaming Multilingual"
       server: "nemotron-asr-streaming-multilingual:50052"
       model: "cache-aware-parakeet-rnnt-multi-asr-streaming-sortformer"
       language_code: "auto"
-      function_id: ""
-    parakeet-rnnt:
-      name: "Parakeet 1.1B RNNT Multilingual ASR"
-      server: "parakeet-rnnt-asr:50052"
-      model: "parakeet-1.1b-rnnt-multilingual-asr"
       function_id: ""
 
 dgxspark:
@@ -44,14 +44,14 @@ dgxspark:
       voice_id: "Magpie-Multilingual.EN-US.Aria"
       function_id: ""
   asr:
+    parakeet-rnnt:
+      name: "Parakeet 1.1B RNNT Multilingual ASR"
+      server: "parakeet-rnnt-asr:50052"
+      model: "parakeet-1.1b-rnnt-multilingual-asr"
+      function_id: ""
     nemotron-asr-streaming-multilingual:
       name: "Nemotron ASR Streaming Multilingual"
       server: "nemotron-asr-streaming-multilingual:50052"
       model: "cache-aware-parakeet-rnnt-multi-asr-streaming-sortformer"
       language_code: "auto"
-      function_id: ""
-    parakeet-rnnt:
-      name: "Parakeet 1.1B RNNT Multilingual ASR"
-      server: "parakeet-rnnt-asr:50052"
-      model: "parakeet-1.1b-rnnt-multilingual-asr"
       function_id: ""

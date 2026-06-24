@@ -160,8 +160,8 @@ llm:
         with patch("examples_registry.is_endpoint_reachable", return_value=True):
             defaults = examples_registry.metadata(example)["defaults"]
 
-        self.assertEqual(defaults["asr"][0]["id"], "self-hosted:nemotron-asr-streaming-multilingual")
-        self.assertEqual(defaults["asr"][0]["language_code"], "auto")
+        self.assertEqual(defaults["asr"][0]["id"], "self-hosted:parakeet-rnnt")
+        self.assertEqual(defaults["asr"][0]["model"], "parakeet-1.1b-rnnt-multilingual-asr")
 
     def test_jetson_default_uses_reachable_nemotron_speech_asr(self) -> None:
         example = examples_registry._lookup_by_key("generic-assistant")
