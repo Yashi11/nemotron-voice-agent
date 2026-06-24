@@ -133,7 +133,7 @@ docker compose --profile omni-assistant/workstation up -d
 docker compose --profile omni-assistant/dgx-spark up -d
 docker compose --profile omni-assistant-subagents/workstation up -d
 docker compose --profile omni-assistant-subagents/dgx-spark up -d
-docker compose --profile thinker-talker/workstation up -d
+docker compose --profile frontend-backend-agent/workstation up -d
 ```
 
 Running a cloud-only profile (e.g. `--profile generic-assistant`) stays cloud-only and uses just `services.cloud.yaml`.

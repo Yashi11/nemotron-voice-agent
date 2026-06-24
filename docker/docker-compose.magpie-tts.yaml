@@ -9,7 +9,7 @@ services:
       - omni-assistant-subagents/workstation
       - omni-assistant/dgx-spark
       - omni-assistant-subagents/dgx-spark
-      - thinker-talker/workstation
+      - frontend-backend-agent/workstation
     image: nvcr.io/nim/nvidia/magpie-tts-multilingual:1.8.0
     user: "0:0"
     environment:

@@ -66,7 +66,7 @@ Apply only what step 1 indicates; never silently change values. See `docs/how-to
 | Cloud-only Multilingual Cascaded | `multilingual-assistant` |
 | Cloud-only Omni Assistant | `omni-assistant` |
 | Cloud-only Omni Assistant Subagents | `omni-assistant-subagents` |
-| Cloud-only Thinker/Talker Airline Assistant | `thinker-talker` |
+| Cloud-only Frontend/Backend Agent Airline Assistant | `frontend-backend-agent` |
 | Generic Cascaded on a workstation | `generic-assistant/workstation` |
 | Generic Cascaded on DGX Spark | `generic-assistant/dgx-spark` |
 | Generic Cascaded on Jetson Thor | `generic-assistant/jetson-thor` |
@@ -77,7 +77,7 @@ Apply only what step 1 indicates; never silently change values. See `docs/how-to
 | Omni Assistant on Jetson Thor | `omni-assistant/jetson-thor` |
 | Omni Assistant Subagents on a workstation | `omni-assistant-subagents/workstation` |
 | Omni Assistant Subagents on DGX Spark | `omni-assistant-subagents/dgx-spark` |
-| Thinker/Talker Airline Assistant on a workstation | `thinker-talker/workstation` |
+| Frontend/Backend Agent Airline Assistant on a workstation | `frontend-backend-agent/workstation` |
 
 
 For any on-prem recipe, log in to `nvcr.io` first.
@@ -106,7 +106,7 @@ curl -k https://localhost:${PIPELINE_APP_PORT:-7860}/api/ice-servers \
   || curl http://localhost:${PIPELINE_APP_PORT:-7860}/api/ice-servers
 ```
 
-App service names follow the active example: `generic-assistant`, `multilingual-assistant`, `omni-assistant`, `omni-assistant-subagents`, or `thinker-talker`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `nemotron-asr-streaming-english`, `nemotron-asr-streaming-multilingual`, `parakeet-ctc-asr`, `parakeet-rnnt-asr`, `tts-service`, `nemotron-speech`, `booking-server`).
+App service names follow the active example: `generic-assistant`, `multilingual-assistant`, `omni-assistant`, `omni-assistant-subagents`, or `frontend-backend-agent`. Sidecars keep their own names (`nvidia-llm`, `nvidia-llm-vllm`, `nvidia-llm-vllm-omni`, `nemotron-asr-streaming-english`, `nemotron-asr-streaming-multilingual`, `parakeet-ctc-asr`, `parakeet-rnnt-asr`, `tts-service`, `nemotron-speech`, `booking-server`).
 
 ## References
 
@@ -114,4 +114,4 @@ App service names follow the active example: `generic-assistant`, `multilingual-
 - Generic-only deploy: `references/generic-deploy.md`
 - Omni Assistant deploy: `references/omni-assistant-deploy.md`
 - Omni Assistant Subagents deploy: `references/omni-assistant-subagents-deploy.md`
-- Thinker/Talker deploy: `references/thinker-talker-deploy.md`
+- Frontend/Backend Agent deploy: `references/frontend-backend-agent-deploy.md`

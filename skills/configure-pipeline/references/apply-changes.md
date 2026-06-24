@@ -33,13 +33,13 @@ Pick a single recipe profile (`<example>` for cloud or `<example>/<hardware>` fo
 docker compose --profile generic-assistant up -d
 docker compose --profile multilingual-assistant up -d
 docker compose --profile omni-assistant up -d
-docker compose --profile thinker-talker up -d
+docker compose --profile frontend-backend-agent up -d
 
 # Workstation (local NIM ASR/TTS/LLM)
 docker compose --profile generic-assistant/workstation up -d
 docker compose --profile multilingual-assistant/workstation up -d
 docker compose --profile omni-assistant/workstation up -d
-docker compose --profile thinker-talker/workstation up -d
+docker compose --profile frontend-backend-agent/workstation up -d
 
 # DGX Spark
 docker compose --profile generic-assistant/dgx-spark up -d

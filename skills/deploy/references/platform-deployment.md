@@ -16,13 +16,13 @@ Required `.env` keys:
 
 ## Workstation
 
-Recipes: `generic-assistant/workstation`, `multilingual-assistant/workstation`, `omni-assistant/workstation`, `thinker-talker/workstation`.
+Recipes: `generic-assistant/workstation`, `multilingual-assistant/workstation`, `omni-assistant/workstation`, `frontend-backend-agent/workstation`.
 
 Services depend on the recipe:
 - `generic-assistant/workstation`: `generic-assistant`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
 - `multilingual-assistant/workstation`: `multilingual-assistant`, `nvidia-llm`, `nemotron-asr-streaming-multilingual`, `tts-service`
 - `omni-assistant/workstation`: `omni-assistant`, `nvidia-llm-vllm-omni`, `tts-service`
-- `thinker-talker/workstation`: `thinker-talker`, `booking-server`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
+- `frontend-backend-agent/workstation`: `frontend-backend-agent`, `booking-server`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
 
 Requires enough GPU VRAM for the selected local NIM services. Single-GPU hosts are valid when capacity is sufficient. Multi-GPU hosts may split speech sidecars and LLM across devices. For the user-facing VRAM, memory-knob, and device-placement matrix, see [Workstation GPU Memory and Device Placement](../../../docs/01-getting-started.md#workstation-gpu-memory-and-device-placement).
 
@@ -31,7 +31,7 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
 docker compose --profile generic-assistant/workstation up -d
 # or: docker compose --profile multilingual-assistant/workstation up -d
 # or: docker compose --profile omni-assistant/workstation up -d
-# or: docker compose --profile thinker-talker/workstation up -d
+# or: docker compose --profile frontend-backend-agent/workstation up -d
 ```
 
 ## DGX Spark

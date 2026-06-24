@@ -92,14 +92,14 @@ messages loaded at session start. The handling of older turns differs by example
   grows past the recent window, the older turns are condensed into a single pinned summary message
   (an additional LLM call after the turn), and the most recent `CHAT_HISTORY_RECENT_TURNS` turns are
   kept verbatim.
-- **Thinker/Talker** uses a plain **sliding window**: older non-prompt messages are dropped, keeping
+- **Frontend/Backend Agent** uses a plain **sliding window**: older non-prompt messages are dropped, keeping
   only the most recent `CHAT_HISTORY_RECENT_TURNS` messages.
 
 ### Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CHAT_HISTORY_RECENT_TURNS` | `10` (Generic / Multilingual), `20` (Thinker/Talker) | Most recent non-prompt turns kept before older history is summarized (Generic/Multilingual) or dropped (Thinker/Talker) |
+| `CHAT_HISTORY_RECENT_TURNS` | `10` (Generic / Multilingual), `20` (Frontend/Backend Agent) | Most recent non-prompt turns kept before older history is summarized (Generic/Multilingual) or dropped (Frontend/Backend Agent) |
 
 ```bash
 # Override the per-example default (applies to whichever example is running)
@@ -113,7 +113,7 @@ When the message count exceeds `CHAT_HISTORY_RECENT_TURNS`:
 1. Initial prompt messages loaded at session start are always preserved.
 2. The most recent `CHAT_HISTORY_RECENT_TURNS` turns are kept verbatim.
 3. Older non-prompt turns are **summarized into one pinned summary message** (Generic / Multilingual)
-   or **removed** (Thinker/Talker).
+   or **removed** (Frontend/Backend Agent).
 
 ### Recommendations
 

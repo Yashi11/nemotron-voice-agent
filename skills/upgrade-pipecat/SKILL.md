@@ -63,7 +63,7 @@ signatures, trust the actual installed/new source; use the MCP for intent and mi
   the installed package and new source. Pipecat reorganizes its module tree between versions.
 - **Generic**: works for any transition; discover changes, hardcode nothing.
 - **Examples are the unit of work**: 5 examples (`generic`, `multilingual`, `omni_assistant`,
-  `omni_assistant_subagents`, `thinker_talker`), each with its own `pipeline.py`. One agent per example + one
+  `omni_assistant_subagents`, `frontend_backend_agent`), each with its own `pipeline.py`. One agent per example + one
   cross-cutting agent for `src/examples/shared/` and `src/server.py`.
 - **Server + client move together (RTVI contract)**: the RTVI wire protocol couples the Python server to the
   `@pipecat-ai/*` client packages, so they must be upgraded in lockstep. Bump `client/package.json` to versions

@@ -130,11 +130,14 @@ llm:
 
     def test_cloud_nemotron_asr_uses_current_english_model_name(self) -> None:
         generic_catalog = utils.load_yaml_file(Path("src/examples/generic/services.cloud.yaml"))
-        thinker_catalog = utils.load_yaml_file(Path("src/examples/thinker_talker/services.cloud.yaml"))
+        frontend_backend_catalog = utils.load_yaml_file(Path("src/examples/frontend_backend_agent/services.cloud.yaml"))
         multilingual_catalog = utils.load_yaml_file(Path("src/examples/multilingual/services.cloud.yaml"))
 
         self.assertEqual(generic_catalog["asr"]["nemotron-asr-streaming-english"]["model"], "nemotron-asr-streaming")
-        self.assertEqual(thinker_catalog["asr"]["nemotron-asr-streaming-english"]["model"], "nemotron-asr-streaming")
+        self.assertEqual(
+            frontend_backend_catalog["asr"]["nemotron-asr-streaming-english"]["model"],
+            "nemotron-asr-streaming",
+        )
         self.assertNotIn("nemotron-asr-streaming-multilingual", multilingual_catalog["asr"])
 
     def test_multilingual_agent_prompt_keys_are_registry_declared(self) -> None:
