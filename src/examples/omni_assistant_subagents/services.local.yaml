@@ -15,7 +15,7 @@ workstation:
       model_id: "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4"
       base_url: "http://nvidia-llm-vllm-omni:8002/v1"
       system_prompt: ""
-      extra_params: '{"extra_body":{"top_k":1,"chat_template_kwargs":{"enable_thinking":false}}}'
+      extra_params: '{"extra_body":{"top_k":1,"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
   tts:
     magpie-tts:
       name: "Magpie TTS"
@@ -30,7 +30,7 @@ dgxspark:
       model_id: "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4"
       base_url: "http://nvidia-llm-vllm-omni:8002/v1"
       system_prompt: ""
-      extra_params: '{"extra_body":{"top_k":1,"chat_template_kwargs":{"enable_thinking":false}}}'
+      extra_params: '{"extra_body":{"top_k":1,"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
   tts:
     magpie-tts:
       name: "Magpie TTS"
