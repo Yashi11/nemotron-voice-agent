@@ -51,6 +51,7 @@ from examples.omni_assistant.nvidia_omni_multimodal_service import (
     NvidiaOmniService,
     NvidiaOmniSettings,
 )
+from examples.shared.audio_recorder import create_audio_recorder
 from examples.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 from tracing import IS_TRACING_ENABLED
 from utils import (
@@ -163,6 +164,8 @@ async def bot(runner_args: RunnerArguments) -> None:
         ),
     )
 
+    audio_recorder = create_audio_recorder()
+
     pipeline = Pipeline(
         [
             transport.input(),
@@ -170,6 +173,7 @@ async def bot(runner_args: RunnerArguments) -> None:
             omni,
             tts,
             transport.output(),
+            *([audio_recorder] if audio_recorder else []),
             assistant_aggregator,
         ]
     )
@@ -316,6 +320,8 @@ async def bot(runner_args: RunnerArguments) -> None:
     @task.rtvi.event_handler("on_client_ready")
     async def on_client_connected(rtvi):
         logger.info("Client connected")
+        if audio_recorder:
+            await audio_recorder.start_recording()
         context.add_message({"role": "user", "content": "Please introduce yourself to the user."})
         await task.queue_frames([LLMRunFrame()])
 
