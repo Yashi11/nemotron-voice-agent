@@ -85,6 +85,8 @@ Before you begin, ensure you have the following:
 
     > **Note:** Deployment may take 30–60 minutes on first run.
 
+    > **Note:** After containers are healthy, the **first voice interaction** on local recipes (workstation, DGX Spark, Jetson) may take longer than later turns while on GPU LLM sidecars finish loading or warm up. This is more common right after a fresh deploy. Later turns should be much faster. If they are, the deploy is fine.
+
 6. Access the application at `https://<machine-ip>:7860`. Keep TLS enabled when testing the browser UI.
    HTTPS is enabled by default. Set `PIPELINE_TLS=false` in `.env` to serve plain HTTP at `http://<machine-ip>:7860` for headless performance or API testing.
 

@@ -90,6 +90,8 @@ docker compose --profile <recipe> up -d
 
 Add observability profiles freely: `--profile tracing` (Phoenix), `--profile turn` (coturn). Before adding `--profile turn`, follow `references/platform-deployment.md#turn` to populate TURN credentials and any required `TURN_URL`. Use `--build` only after source or `Dockerfile` changes.
 
+After containers are healthy, remind the user that on local recipes (`*/workstation`, `*/dgx-spark`, `*/jetson-thor`) the first voice turn may take longer than later turns while on GPU LLM sidecars finish loading or warm up. This is more common right after a fresh deploy. If later turns are fast, the deploy is fine.
+
 6. Verify:
 
 ```bash
