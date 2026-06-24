@@ -9,25 +9,25 @@ workstation:
       model_id: "nvidia/nemotron-3-nano"
       base_url: "http://nvidia-llm:8000/v1"
       system_prompt: ""
-      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
     nemotron-nano-reasoning:
       name: "Nemotron 3 Nano 30B A3B (Reasoning)"
       model_id: "nvidia/nemotron-3-nano"
       base_url: "http://nvidia-llm:8000/v1"
       system_prompt: ""
-      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true}}}'
+      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true},"repetition_penalty":1.05}}'
     nemotron-super:
       name: "Nemotron 3 Super 120B A12B"
       model_id: "nvidia/nemotron-3-super-120b-a12b"
       base_url: "http://nemotron-3-super:8000/v1"
       system_prompt: ""
-      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
     nemotron-super-reasoning:
       name: "Nemotron 3 Super 120B A12B (Reasoning)"
       model_id: "nvidia/nemotron-3-super-120b-a12b"
       base_url: "http://nemotron-3-super:8000/v1"
       system_prompt: ""
-      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true}}}'
+      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true},"repetition_penalty":1.05}}'
   tts:
     magpie-tts:
       name: "Magpie TTS"
@@ -58,13 +58,13 @@ dgxspark:
       model_id: "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4"
       base_url: "http://nvidia-llm-vllm:8000/v1"
       system_prompt: ""
-      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
     nemotron-nano-reasoning:
       name: "Nemotron 3 Nano NVFP4 (Reasoning)"
       model_id: "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4"
       base_url: "http://nvidia-llm-vllm:8000/v1"
       system_prompt: ""
-      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true}}}'
+      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true},"repetition_penalty":1.05}}'
   tts:
     magpie-tts:
       name: "Magpie TTS"
@@ -90,7 +90,7 @@ jetson:
       model_id: "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4"
       base_url: "http://nvidia-llm-vllm:8000/v1"
       system_prompt: ""
-      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
+      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
   tts:
     magpie-tts:
       name: "Magpie TTS"
