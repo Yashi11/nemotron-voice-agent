@@ -54,6 +54,7 @@ from examples.omni_assistant_subagents.subagents.transport.webcam_controller imp
     WebcamController,
 )
 from examples.omni_assistant_subagents.subagents.webcam import WebcamAgent
+from examples.shared.audio_recorder import create_audio_recorder
 from examples.shared.nemotron_speech_text_filter import NemotronSpeechTextFilter
 from tracing import IS_TRACING_ENABLED
 from utils import load_ipa_dictionary, normalize_lang_code, parse_env_float, parse_env_int
@@ -121,6 +122,8 @@ class OmniTransportAgent(PipelineWorker):
             stop_frame_timeout_s=parse_env_float("TTS_STOP_FRAME_TIMEOUT_S", 30.0, min_value=5.0),
         )
         logger.info(f"Nemotron Omni subagents TTS: server={tts_server}, ssl={tts_ssl}, voice={tts_voice}")
+
+        self._audio_recorder = create_audio_recorder()
 
         self._speaker_context = SpeakerContextManager(
             context=self._context,
@@ -190,6 +193,7 @@ class OmniTransportAgent(PipelineWorker):
                 PostAckMediaDispatchProcessor(handler=self),
                 self._tts,
                 self._transport.output(),
+                *([self._audio_recorder] if self._audio_recorder else []),
                 assistant_aggregator,
             ]
         )
@@ -280,6 +284,8 @@ class OmniTransportAgent(PipelineWorker):
         @self.rtvi.event_handler("on_client_ready")
         async def on_client_connected(rtvi):
             logger.info("Nemotron Omni subagents client connected")
+            if self._audio_recorder:
+                await self._audio_recorder.start_recording()
             self._start_attachment_state_listener()
             self._webcam_controller.refresh_input_state_context()
             self._context.add_message({"role": "user", "content": "Please introduce yourself to the user."})
