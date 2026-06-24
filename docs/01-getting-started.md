@@ -27,8 +27,8 @@ Before you begin, ensure you have the following:
 | `generic-assistant/workstation` | 1 GPU (>=80 GB VRAM) | Nemotron ASR Streaming English + Magpie TTS + NIM LLM |
 | `generic-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Nemotron ASR Streaming English + Magpie TTS + vLLM LLM |
 | `generic-assistant/jetson-thor` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
-| `multilingual-assistant/workstation` | 1 GPU (>=80 GB VRAM) | Nemotron ASR Streaming Multilingual + Magpie TTS + NIM LLM |
-| `multilingual-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM |
+| `multilingual-assistant/workstation` | 1 GPU (>=80 GB VRAM) | Parakeet RNNT Multilingual + Magpie TTS + NIM LLM |
+| `multilingual-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Parakeet RNNT Multilingual + Magpie TTS + vLLM LLM |
 | `omni-assistant/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
 | `omni-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
 | `omni-assistant/jetson-thor` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + on-device Riva TTS |

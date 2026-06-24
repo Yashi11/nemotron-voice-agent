@@ -43,8 +43,8 @@ Pick one **recipe** profile. Cloud recipes use `<example>`. On-prem recipes use 
 | `generic-assistant/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming English + Magpie TTS + LLM |
 | `generic-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron ASR Streaming English + Magpie TTS + vLLM LLM |
 | `generic-assistant/jetson-thor` | 1 GPU, 128 GB unified memory | Local Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
-| `multilingual-assistant/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming Multilingual + Magpie TTS + LLM |
-| `multilingual-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron ASR Streaming Multilingual + Magpie TTS + vLLM LLM |
+| `multilingual-assistant/workstation` | 1 GPU (~80 GB VRAM) | Local Parakeet RNNT Multilingual + Magpie TTS + LLM |
+| `multilingual-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Parakeet RNNT Multilingual + Magpie TTS + vLLM LLM |
 | `omni-assistant/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS |
 | `omni-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
 | `omni-assistant-subagents/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |

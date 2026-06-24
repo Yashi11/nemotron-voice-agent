@@ -20,7 +20,7 @@ Recipes: `generic-assistant/workstation`, `multilingual-assistant/workstation`, 
 
 Services depend on the recipe:
 - `generic-assistant/workstation`: `generic-assistant`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
-- `multilingual-assistant/workstation`: `multilingual-assistant`, `nvidia-llm`, `nemotron-asr-streaming-multilingual`, `tts-service`
+- `multilingual-assistant/workstation`: `multilingual-assistant`, `nvidia-llm`, `parakeet-rnnt-asr`, `tts-service`
 - `omni-assistant/workstation`: `omni-assistant`, `nvidia-llm-vllm-omni`, `tts-service`
 - `frontend-backend-agent/workstation`: `frontend-backend-agent`, `booking-server`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
 
@@ -40,7 +40,7 @@ Recipes: `generic-assistant/dgx-spark`, `multilingual-assistant/dgx-spark`, `omn
 
 Services depend on the recipe:
 - `generic-assistant/dgx-spark`: `generic-assistant`, `nvidia-llm-vllm`, `nemotron-asr-streaming-english`, `tts-service`
-- `multilingual-assistant/dgx-spark`: `multilingual-assistant`, `nvidia-llm-vllm`, `nemotron-asr-streaming-multilingual`, `tts-service`
+- `multilingual-assistant/dgx-spark`: `multilingual-assistant`, `nvidia-llm-vllm`, `parakeet-rnnt-asr`, `tts-service`
 - `omni-assistant/dgx-spark`: `omni-assistant`, `nvidia-llm-vllm-omni`, `tts-service`
 
 ```bash

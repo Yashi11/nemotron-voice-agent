@@ -41,7 +41,7 @@ examples:
     defaults:
       prompt: [multilingual_voice_assistant]
       llm: [nemotron-super]
-      asr: [nemotron-asr-streaming-multilingual]
+      asr: [parakeet-rnnt]
       tts: [magpie-tts]
     bot: examples.multilingual.pipeline:bot
 
