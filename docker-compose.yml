@@ -12,7 +12,7 @@ name: nemotron-voice-agent
 #   multilingual-assistant       Cascaded Multilingual ASR + LLM + TTS Pipeline (Multilingual Assistant)
 #   omni-assistant               Cascaded Omni LLM + TTS Pipeline (Omni Assistant)
 #   omni-assistant-subagents     Cascaded Omni LLM + TTS Pipeline (Omni Assistant Subagents)
-#   thinker-talker               Cascaded Thinker/Talker Pipeline (Airline Assistant)
+#   frontend-backend-agent               Cascaded Frontend/Backend Agent Pipeline (Airline Assistant)
 #
 # Hardware targets:
 #   workstation               Single GPU with 80+ GB VRAM or modify to support multiple GPUs
@@ -24,7 +24,7 @@ name: nemotron-voice-agent
 #   docker compose --profile multilingual-assistant up
 #   docker compose --profile omni-assistant up
 #   docker compose --profile omni-assistant-subagents up
-#   docker compose --profile thinker-talker up
+#   docker compose --profile frontend-backend-agent up
 #
 # On-prem recipes:
 #   docker compose --profile generic-assistant/workstation up
@@ -37,7 +37,7 @@ name: nemotron-voice-agent
 #   docker compose --profile omni-assistant/jetson-thor up
 #   docker compose --profile omni-assistant-subagents/workstation up
 #   docker compose --profile omni-assistant-subagents/dgx-spark up
-#   docker compose --profile thinker-talker/workstation up
+#   docker compose --profile frontend-backend-agent/workstation up
 #
 # Observability profiles compose orthogonally with any recipe:
 #   docker compose --profile <recipe> --profile tracing up   # Phoenix OTel
@@ -54,7 +54,7 @@ include:
   - path: docker/docker-compose.speech-jetson.yaml
   - path: docker/docker-compose.coturn.yaml
   - path: docker/docker-compose.phoenix.yaml
-  - path: src/examples/thinker_talker/airline/database/docker-compose.yml
+  - path: src/examples/frontend_backend_agent/airline/database/docker-compose.yml
 
 x-app: &app-base
   build:
@@ -132,12 +132,12 @@ services:
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant-subagents}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
-  thinker-talker:
+  frontend-backend-agent:
     <<: *app-base
     profiles:
-      - thinker-talker
-      - thinker-talker/workstation
+      - frontend-backend-agent
+      - frontend-backend-agent/workstation
     environment:
       APP_RUNTIME: container
-      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-thinker-talker}
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-frontend-backend-agent}
       TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}

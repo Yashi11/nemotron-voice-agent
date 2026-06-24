@@ -11,7 +11,7 @@ spawn agents (1/example + cross-cut) → collect/triage → gaps>0 ? fix & loop 
 Each agent: resolve uncertainty via the `pipecat-docs` MCP (`search_daily_knowledge_sources`) before reporting,
 and cite the `source_url`.
 
-**Per-example** (`generic`, `multilingual`, `omni_assistant`, `omni_assistant_subagents`, `thinker_talker`):
+**Per-example** (`generic`, `multilingual`, `omni_assistant`, `omni_assistant_subagents`, `frontend_backend_agent`):
 
 > Validate the **{example}** pipeline against the new Pipecat API.
 > A. Trace `pipeline.py`: services → VAD/turn → context aggregator → custom processors → `Pipeline` →
@@ -23,7 +23,7 @@ and cite the `source_url`.
 > C. Frame & RTVI consumption chains: producer/consumer agree on new shape; RTVI matches `client/`.
 > D. Example-specific: `omni_assistant` (smart-turn, user-mute, multimodal); `omni_assistant_subagents` (its
 > companion-package symbols resolve to their new home per the change inventory — companion API or in-core
-> `pipecat.*` if folded in); `thinker_talker` (planner, TTS filter, tool handlers, tools schema);
+> `pipecat.*` if folded in); `frontend_backend_agent` (planner, TTS filter, tool handlers, tools schema);
 > `multilingual` (processor + ASR/TTS settings); dead code.
 > E. Report `✅ PASS: {what}` or `❌ GAP: {what} — repo has X, new uses Y — File:Symbol`.
 
@@ -52,7 +52,7 @@ Deduplicate; classify BREAKING (import/runtime error, wrong behavior) vs NON-BRE
 # Import smoke (real paths)
 uv run python -c "import src.server"
 uv run python -c "from src.examples.generic import pipeline; from src.examples.multilingual import pipeline"
-uv run python -c "from src.examples.omni_assistant import pipeline; from src.examples.thinker_talker import pipeline"
+uv run python -c "from src.examples.omni_assistant import pipeline; from src.examples.frontend_backend_agent import pipeline"
 uv run python -c "from src.examples.omni_assistant_subagents import pipeline"
 # Lint (CI parity)
 uv run ruff format --check . && uv run ruff check .

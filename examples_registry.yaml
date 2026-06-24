@@ -64,8 +64,8 @@ examples:
       tts: [magpie-tts]
     bot: examples.omni_assistant_subagents.pipeline:bot
 
-  thinker-talker:
-    label: Thinker Talker
+  frontend-backend-agent:
+    label: Frontend Backend Agent
     slots: [llm, thinker-llm, booking-server, asr, tts]
     defaults:
       prompt: [talker]
@@ -74,4 +74,4 @@ examples:
       booking-server: [default]
       asr: [nemotron-asr-streaming-english]
       tts: [magpie-tts]
-    bot: examples.thinker_talker.pipeline:bot
+    bot: examples.frontend_backend_agent.pipeline:bot

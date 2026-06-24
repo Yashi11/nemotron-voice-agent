@@ -23,7 +23,7 @@ Before you begin, ensure you have the following:
 | `multilingual-assistant` | None (cloud) | Multilingual Cascaded pipeline |
 | `omni-assistant` | None (cloud) | Nemotron Omni (single-model ASR + LLM) + Magpie TTS |
 | `omni-assistant-subagents` | None (cloud) | Nemotron Omni multi-agent variant with attachments + webcam |
-| `thinker-talker` | None (cloud) | Thinker/Talker airline pipeline with local booking-server sidecar |
+| `frontend-backend-agent` | None (cloud) | Frontend/Backend Agent airline pipeline with local booking-server sidecar |
 | `generic-assistant/workstation` | 1 GPU (>=80 GB VRAM) | Nemotron ASR Streaming English + Magpie TTS + NIM LLM |
 | `generic-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Nemotron ASR Streaming English + Magpie TTS + vLLM LLM |
 | `generic-assistant/jetson-thor` | 1 GPU, 128 GB unified memory | Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
@@ -34,7 +34,7 @@ Before you begin, ensure you have the following:
 | `omni-assistant/jetson-thor` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + on-device Riva TTS |
 | `omni-assistant-subagents/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
 | `omni-assistant-subagents/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
-| `thinker-talker/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + Talker/Thinker NIM LLM, plus local booking-server sidecar |
+| `frontend-backend-agent/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + Talker/Thinker NIM LLM, plus local booking-server sidecar |
 | `tracing` | Optional overlay | Phoenix OTel collector |
 | `turn` | Optional overlay | coturn TURN server |
 
@@ -76,7 +76,7 @@ Before you begin, ensure you have the following:
     docker compose --profile multilingual-assistant up -d       # Multilingual Cascaded
     docker compose --profile omni-assistant up -d               # Nemotron Omni Assistant
     docker compose --profile omni-assistant-subagents up -d     # Nemotron Omni Assistant Subagents
-    docker compose --profile thinker-talker up -d               # Thinker/Talker Airline Assistant
+    docker compose --profile frontend-backend-agent up -d               # Frontend/Backend Agent Airline Assistant
     ```
 
     Pick the profile that matches the example you want to run. `docker compose up` with no profile is intentionally a no-op so the deployment is always explicit.
@@ -146,8 +146,8 @@ docker compose --profile omni-assistant/dgx-spark up -d
 # Omni Assistant — local Omni vLLM + on-device Riva TTS on Jetson Thor (set HF_TOKEN; see 03-jetson-thor.md)
 docker compose --profile omni-assistant/jetson-thor up -d
 
-# Thinker/Talker Airline Assistant — workstation (local NIM ASR / TTS / LLM + booking server)
-docker compose --profile thinker-talker/workstation up -d
+# Frontend/Backend Agent Airline Assistant — workstation (local NIM ASR / TTS / LLM + booking server)
+docker compose --profile frontend-backend-agent/workstation up -d
 ```
 
 List compatible LLM NIM profiles for your hardware:
@@ -216,7 +216,7 @@ For development and debugging, you can run the server directly:
     | `multilingual-assistant` | Lock to Multilingual Assistant |
     | `omni-assistant` | Lock to Nemotron Omni Assistant |
     | `omni-assistant-subagents` | Lock to Nemotron Omni Assistant Subagents |
-    | `thinker-talker` | Lock to Thinker Talker |
+    | `frontend-backend-agent` | Lock to Frontend Backend Agent |
 
     After editing, run:
 
