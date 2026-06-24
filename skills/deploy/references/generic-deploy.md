@@ -47,8 +47,7 @@ docker run --rm --gpus all \
 
 - For one GPU, use `tp=1`. Higher `tp` values require that many GPUs.
 - Prefer readable tag selection over profile hashes: `NIM_TAGS_SELECTOR=precision=fp8,tp=1`.
-- If using NIM defaults, omit `NIM_KVCACHE_PERCENT` and `NIM_MAX_MODEL_LEN`, but expect high memory use.
-- If the local LLM hits OOM, lower `NIM_KVCACHE_PERCENT` or `NIM_MAX_MODEL_LEN`. When lowering `NIM_KVCACHE_PERCENT` on hybrid Mamba models (e.g. nemotron-3-nano/super), also cap `--max-num-seqs` via `NIM_PASSTHROUGH_ARGS` (one Mamba cache block per sequence) or the engine fails CUDA-graph capture at startup. On multi-GPU hosts, choose a NIM profile with matching `tp` and expose that many GPUs.
+- Match the local LLM to the GPU via `.env`: `NIM_KVCACHE_PERCENT` (VRAM budget — **raise** it on `No available memory for the cache blocks`, lower it on an OOM kill), `NIM_TAGS_SELECTOR` (weight precision and tensor-parallel size), and `LLM_MAX_NUM_SEQS` (lower it if startup fails CUDA-graph capture). On multi-GPU hosts, choose a NIM profile with matching `tp` and expose that many GPUs. See the "Local LLM GPU sizing & precision" section in `docs/how-to/configure-services.md`.
 - More details: https://docs.nvidia.com/nim/large-language-models/latest/deployment/model-profiles-and-selection.html
 
 ## Common failures

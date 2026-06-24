@@ -138,6 +138,41 @@ docker compose --profile thinker-talker/workstation up -d
 
 Running a cloud-only profile (e.g. `--profile generic-assistant`) stays cloud-only and uses just `services.cloud.yaml`.
 
+## Local LLM GPU sizing & precision
+
+The self-hosted LLM is the largest sidecar, and its memory and precision must match your GPU. The two local LLM surfaces are sized differently: the cascaded **workstation NIM** (`nvidia-llm`), tuned from `.env`, and the **Omni Assistant**'s raw vLLM (`nvidia-llm-vllm-omni`), tuned in its compose file.
+
+### Cascaded workstation NIM (`nvidia-llm`)
+
+The cascaded `*-workstation` profiles run Nemotron-3 Nano as a NIM. Three `.env` knobs match it to your GPU — no compose edit needed. The defaults suit one ~80 GB Ada/Hopper GPU running ASR, TTS, and the LLM together:
+
+| `.env` variable | Default | Controls |
+|---|---|---|
+| `NIM_KVCACHE_PERCENT` | `0.6` | vLLM `gpu_memory_utilization` — the fraction of **total** GPU VRAM for weights + KV cache |
+| `NIM_TAGS_SELECTOR` | `precision=fp8,tp=1` | The NIM profile: weight precision and tensor-parallel size |
+| `LLM_MAX_NUM_SEQS` | `256` | Max concurrent sequences; each draws one Mamba state block from the cache budget |
+
+**Fitting VRAM (`NIM_KVCACHE_PERCENT`).** The FP8 weights are ~30 GB, so `NIM_KVCACHE_PERCENT × (GPU VRAM)` must stay above roughly 40 GB (weights plus a usable KV cache). The default `0.6` is sized for ~80 GB shared with ASR (~15 GB) and TTS (~14 GB) — about 68/80 GB in use. A single GPU below ~72 GB cannot hold all three models at once: put ASR and TTS on a second GPU (their `device_ids` in `docker/docker-compose.nemotron-asr.yaml` and `docker/docker-compose.magpie-tts.yaml`) and raise `NIM_KVCACHE_PERCENT` so the LLM alone still gets ~30 GB plus KV — e.g. `0.9` on a 48 GB L40. Too low a value aborts startup with `No available memory for the cache blocks`; **raise** it, do not lower it.
+
+**Concurrency (`LLM_MAX_NUM_SEQS`).** `nemotron-3-nano` is a hybrid Mamba model, so each concurrent sequence also draws one Mamba state block from the same budget. If startup fails **CUDA-graph capture** (a different error from the one above), the cache holds fewer Mamba blocks than `LLM_MAX_NUM_SEQS` sequences — lower it (e.g. `64`–`128`).
+
+**Choosing precision (`NIM_TAGS_SELECTOR`).** FP8 (the default) requires **compute capability ≥ 8.9** — Ada, Hopper, or Blackwell (H100, L40/L40S, RTX Ada/Blackwell). On **Ampere (A100, capability 8.0)** FP8 is unsupported and the NIM aborts at startup:
+
+> `The quantization method modelopt is not supported for the current GPU. Minimum capability: 89. Current capability: 80.`
+
+For A100/Ampere, switch to BF16. Its weights are roughly twice as large (~60 GB), so the default `NIM_KVCACHE_PERCENT=0.6` budgets too little to hold them (`0.6 × 80 GB = 48 GB`) and the NIM aborts with `No available memory for the cache blocks`. Raise it to `0.9`, and give the LLM an 80 GB GPU to itself — BF16 weights plus KV leave no room for ASR/TTS on the same card, so move them to a second GPU or the cloud:
+
+```bash
+NIM_TAGS_SELECTOR=precision=bf16,tp=1
+NIM_KVCACHE_PERCENT=0.9
+```
+
+On GPUs too small to hold the weights, split the LLM across GPUs with `precision=bf16,tp=N`, giving it `N` `device_ids` (e.g. `['0','1']` for `tp=2`) with ASR/TTS in the cloud, or run the LLM from the cloud.
+
+### Omni Assistant vLLM (`nvidia-llm-vllm-omni`)
+
+The Omni Assistant runs its LLM as raw vLLM, sized by `--gpu-memory-utilization` in `docker/docker-compose.nemotron3-omni.yaml` — the vLLM equivalent of `NIM_KVCACHE_PERCENT` (raise it on `No available memory for the cache blocks`, lower it on a true CUDA OOM). Omni handles ASR in-process and its NVFP4 weights are smaller (~15 GB), so it ships a lower default: `0.3` when sharing an 80 GB GPU with TTS, up to `0.9` on a dedicated GPU. NVFP4 requires a **Blackwell** GPU (DGX Spark, Jetson Thor, or a Blackwell workstation GPU) — it does not run on Ampere (A100) or earlier.
+
 ## Troubleshooting: tool calling & reasoning
 
 Self-hosted Nemotron-3 only — cloud (NVCF) has the parsers enabled server-side. The repo's `docker/docker-compose.nemotron3-*.yaml` already set these.

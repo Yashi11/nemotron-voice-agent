@@ -40,9 +40,16 @@ Tear down with the same recipe used at `up` time.
 - Omni vLLM logs (local recipes only): `docker compose logs --tail 200 nvidia-llm-vllm-omni`.
 - Omni vLLM health: `curl -f http://localhost:8002/health` from the host or `curl -f http://nvidia-llm-vllm-omni:8002/health` from inside the compose network.
 
+## GPU memory & device placement
+
+Omni runs the LLM in `nvidia-llm-vllm-omni`; ASR is handled inside the Omni model, so there is no separate ASR NIM. Workstation and DGX Spark recipes use `tts-service` for TTS, while Jetson Thor uses `nemotron-speech-tts`.
+
+For the VRAM, `--gpu-memory-utilization`, and device-placement matrix, see [Workstation GPU Memory and Device Placement](../../../docs/01-getting-started.md#workstation-gpu-memory-and-device-placement).
+
 ## Common failures
 
 - **`pull access denied` / `unauthorized`** -> NGC login was not done or expired. See the root `deploy` skill.
 - **Omni vLLM stuck on first-run model download** -> initial download of `nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4` from Hugging Face requires `HF_TOKEN` in `.env`. Allow up to 30 minutes on first start.
-- **Out-of-memory on local Omni recipes** -> lower `--gpu-memory-utilization` or `--max-model-len` in `docker/docker-compose.nemotron3-omni.yaml` under the `nvidia-llm-vllm-omni` command.
+- **`No available memory for the cache blocks` on startup** -> `--gpu-memory-utilization` is too **low** for this GPU, leaving no room for the KV cache after the weights. Raise it and give the LLM a dedicated GPU. Do not lower it.
+- **True out-of-memory (CUDA OOM) during model load** -> the fraction collides with another process on the same GPU. Lower `--gpu-memory-utilization` or `--max-model-len`, or move `tts-service` to a separate GPU.
 - **Tear-down leaves orphan services after a service rename** -> rerun `up` or `down` with `--remove-orphans`.

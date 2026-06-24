@@ -28,7 +28,7 @@ metadata:
 ```bash
 cat /sys/class/dmi/id/product_name 2>/dev/null || true
 cat /proc/device-tree/model 2>/dev/null || true
-nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
+nvidia-smi --query-gpu=index,name,memory.total,memory.free,compute_cap --format=csv,noheader
 free -h
 ```
 
@@ -45,6 +45,18 @@ test -f .env || cp .env.example .env
 ```
 
 Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that ends in `/dgx-spark` or `/jetson-thor`, plus `omni-assistant/workstation` and `omni-assistant-subagents/workstation`. `TURN_USERNAME` and `TURN_PASSWORD` are required when adding `--profile turn`.
+
+For on-prem (`workstation`) recipes, set GPU-aware overrides for the local LLM (`nvidia-llm`) in `.env` from the step 1 readout, and say what you changed and why. The defaults (`NIM_KVCACHE_PERCENT=0.6`, `NIM_TAGS_SELECTOR=precision=fp8,tp=1`) suit one ~80 GB Ada/Hopper GPU running ASR + TTS + LLM together.
+
+- `compute_cap` < 8.9 (e.g. A100/Ampere): FP8 is unsupported (`modelopt ... Minimum capability: 89`) — set `NIM_TAGS_SELECTOR=precision=bf16,tp=1`. BF16 weights are ~60 GB and need an 80 GB GPU dedicated to the LLM (move ASR/TTS to a second GPU) with `NIM_KVCACHE_PERCENT=0.9`. On GPUs too small for the BF16 weights, set `precision=bf16,tp=N` and give the LLM `N` GPUs (`device_ids: ['0','1']` for `tp=2`, ASR/TTS in the cloud), or use a cloud LLM.
+- LLM alone on a GPU below ~72 GB (ASR/TTS on a second GPU): raise `NIM_KVCACHE_PERCENT` so `value × VRAM` stays above ~40 GB (≈ `0.9` on a 48 GB L40), else it aborts with `No available memory for the cache blocks`.
+- A single GPU below ~72 GB cannot host all three models at once — split ASR/TTS onto a second GPU.
+- Startup fails CUDA-graph capture (not the memory error): the cache holds fewer Mamba blocks than sequences — lower `LLM_MAX_NUM_SEQS` (e.g. 64-128).
+- Omni Assistant (`nvidia-llm-vllm-omni`) and the DGX Spark / Jetson cascaded vLLM are NVFP4 and need a Blackwell GPU (DGX Spark, Jetson Thor, or a Blackwell workstation); on Ampere (A100) only the cascaded NIM (BF16) or a cloud LLM is viable.
+
+Device placement (which GPU each sidecar uses) is **not** an `.env` knob — `device_ids` are hardcoded to `['0']`. To move a service to GPU `N`, edit `device_ids: ['N']` under `deploy.resources.reservations.devices` in that service's compose file: `docker/docker-compose.nemotron-asr.yaml` (ASR), `docker/docker-compose.magpie-tts.yaml` (TTS), `docker/docker-compose.nemotron3-nano.yaml` (NIM LLM), `docker/docker-compose.nemotron3-omni.yaml` (Omni LLM). A tensor-parallel LLM (`tp=N`) needs `N` GPUs — list every index it uses (e.g. `device_ids: ['0','1']` for `tp=2`) and keep those GPUs free of ASR/TTS. Each target index must appear in the step 1 readout. With only one GPU you cannot split — keep everything on GPU 0, or run the cloud-only profile (no `/workstation`) so ASR/TTS/LLM use NVCF instead.
+
+Apply only what step 1 indicates; never silently change values. See `docs/how-to/configure-services.md` (Local LLM GPU sizing & precision) for the full reasoning.
 
 4. Pick the recipe profile:
 
@@ -63,6 +75,7 @@ Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that 
 | Omni Assistant on a workstation | `omni-assistant/workstation` |
 | Omni Assistant on DGX Spark | `omni-assistant/dgx-spark` |
 | Omni Assistant on Jetson Thor | `omni-assistant/jetson-thor` |
+| Omni Assistant Subagents on a workstation | `omni-assistant-subagents/workstation` |
 | Omni Assistant Subagents on DGX Spark | `omni-assistant-subagents/dgx-spark` |
 | Thinker/Talker Airline Assistant on a workstation | `thinker-talker/workstation` |
 

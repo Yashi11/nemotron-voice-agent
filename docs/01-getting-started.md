@@ -101,13 +101,25 @@ DGX Spark and Jetson additionally need `HF_TOKEN` for the vLLM model download.
 
 ## Optional: Deploy with Local NIM Profiles
 
-Local NIM ASR/TTS/LLM sidecars run alongside the example container when you launch a local profile. The backend exposes them automatically once the containers are reachable. No extra `.env` flag is required.
+Local model sidecars run alongside the example container when you launch a local profile. The backend exposes them automatically once the containers are reachable. No extra `.env` flag is required.
 
-> **OOM troubleshooting:** If the LLM process is killed, the NIM/vLLM runtime reports model-load or OOM errors, or latency degrades under load, use separate GPUs when available. On a two-GPU host, place ASR/TTS on one GPU and the LLM on the other. Otherwise, reduce KV cache / context length (lower memory, less long-context capacity). Lowering batch size or precision can also help. Confirm `NVIDIA_API_KEY` and `HF_TOKEN` are set where required so auth failures are not mistaken for OOM.
+> **OOM troubleshooting:** If the LLM process is killed, the NIM/vLLM runtime reports model-load or OOM errors, or latency degrades under load, use separate GPUs when available. On a two-GPU host, place speech sidecars on one GPU and the LLM on the other. Otherwise, reduce KV cache / context length (lower memory, less long-context capacity). Lowering batch size or precision can also help. Confirm `NVIDIA_API_KEY` and `HF_TOKEN` are set where required so auth failures are not mistaken for OOM.
+>
+> **`No available memory for the cache blocks` at LLM startup:** The opposite of an OOM kill — the LLM's VRAM fraction is too *low*, leaving no room for the KV cache after the weights. **Raise** `NIM_KVCACHE_PERCENT` (NIM) or `--gpu-memory-utilization` (Omni); do not lower it. See [Local LLM GPU sizing & precision](how-to/configure-services.md#local-llm-gpu-sizing--precision).
 
-> **`No available memory for the cache blocks` at LLM startup:** The opposite of an OOM kill — the local LLM's `NIM_KVCACHE_PERCENT` (vLLM `gpu_memory_utilization`) is too *low*. It is a fraction of the GPU's **total** VRAM, and on the workstation profiles the LLM shares GPU 0 with ASR and TTS, so too small a value leaves no room for the KV cache after the model weights. The default `0.6` fits the full pipeline on an 80 GB GPU; if a specific card still hits this, **raise** `NIM_KVCACHE_PERCENT` in `.env` (do not lower it).
+### Workstation GPU Memory and Device Placement
 
-Workstation profiles place ASR, TTS, and LLM on one GPU by default. Single-GPU deployments are supported only when at least 80 GB of VRAM is available.
+Workstation profiles place local model sidecars on GPU `0` by default. Single-GPU deployments need ≥ 80 GB VRAM; on a dual-GPU host you can use a 40 GB minimum per GPU by placing the LLM on one GPU and speech sidecars on the other. Precision must match the GPU: FP8 needs compute capability ≥ 8.9, A100/Ampere needs BF16, and Omni's NVFP4 needs Blackwell.
+
+| Model / layout | Min VRAM | Memory knob | Device IDs |
+| --- | --- | --- | --- |
+| Nemotron 3 Nano — Single GPU | 80 GB | `NIM_KVCACHE_PERCENT=0.6` (default) | LLM + ASR + TTS -> `0` |
+| Nemotron 3 Nano — Dual GPU | 40 GB/GPU | `NIM_KVCACHE_PERCENT=0.9` | LLM (`nvidia-llm`) -> `0`; ASR + TTS -> `1` |
+| Omni — Single GPU | 80 GB | `--gpu-memory-utilization 0.3` | LLM (`nvidia-llm-vllm-omni`) + TTS -> `0`; ASR runs inside Omni |
+| Omni — Dual GPU | 40 GB/GPU | `--gpu-memory-utilization 0.9` | LLM (`nvidia-llm-vllm-omni`) -> `0`; TTS -> `1` |
+| Nemotron 3 Super | 2 × 80 GB (`tp=2`) | NIM defaults (no `NIM_KVCACHE_PERCENT`) | LLM split across two GPUs |
+
+Update each service's `device_ids` under `deploy.resources.reservations.devices` when splitting services across GPUs. See [Local LLM GPU sizing & precision](how-to/configure-services.md#local-llm-gpu-sizing--precision) to set these knobs and for the reasoning.
 
 ```bash
 # Generic Cascaded — full local NIM stack on a workstation
