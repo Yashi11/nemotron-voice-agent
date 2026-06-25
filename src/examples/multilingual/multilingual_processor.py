@@ -12,6 +12,7 @@ Designed to be plugged into a Pipecat ``LLMTextProcessor`` together with a
 TTS service configured with ``skip_aggregator_types=SKIP_TTS_AGGREGATIONS``.
 """
 
+import re
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 from loguru import logger
@@ -40,8 +41,10 @@ META_TYPE = "meta"
 SKIP_TTS_AGGREGATIONS: list[str] = [LANG_TYPE, META_TYPE]
 
 _LANG_PREFIX = "Language:"
-_TEXT_MARKER = " Text:"
-_META_MARKER = " MetaData:"
+_TEXT_MARKER = "Text:"
+_META_MARKER = "MetaData:"
+_TEXT_MARKER_RE = re.compile(rf"\s*{re.escape(_TEXT_MARKER)}\s*", re.IGNORECASE)
+_META_MARKER_RE = re.compile(rf"\s*{re.escape(_META_MARKER)}\s*", re.IGNORECASE)
 
 _STATE_HEADER = 0
 _STATE_TEXT = 1
@@ -72,6 +75,7 @@ class MultilingualTextAggregator(BaseTextAggregator):
         self._buf = ""
         self._sentence_aggregator = SimpleTextAggregator()
         self._lang_handler_fired = False
+        self._pending_meta = ""
 
     @property
     def text(self) -> Aggregation:
@@ -85,32 +89,22 @@ class MultilingualTextAggregator(BaseTextAggregator):
 
         while True:
             if self._state == _STATE_HEADER:
-                text_idx = self._buf.find(_TEXT_MARKER)
-                if text_idx >= 0:
-                    header = self._buf[:text_idx].strip()
-                    self._buf = self._buf[text_idx + len(_TEXT_MARKER) :].lstrip()
+                text_match = _TEXT_MARKER_RE.search(self._buf)
+                if text_match:
+                    header = self._buf[: text_match.start()].strip()
+                    self._buf = self._buf[text_match.end() :]
                     self._state = _STATE_TEXT
                     if header:
                         yield Aggregation(text=f"{header} Text:", type=LANG_TYPE)
                     continue
 
-                code_split = self._split_language_header(self._buf)
-                if code_split is None:
-                    return
-                header, remainder = code_split
-                if _could_be_text_marker_prefix(remainder):
-                    return
-                self._buf = remainder
-                self._state = _STATE_TEXT
-                if header:
-                    yield Aggregation(text=header, type=LANG_TYPE)
-                continue
+                return
 
             if self._state == _STATE_TEXT:
-                meta_idx = self._buf.find(_META_MARKER)
-                if meta_idx >= 0:
-                    pending = self._buf[:meta_idx]
-                    self._buf = self._buf[meta_idx + len(_META_MARKER) :].lstrip()
+                meta_match = _META_MARKER_RE.search(self._buf)
+                if meta_match:
+                    pending = self._buf[: meta_match.start()]
+                    self._buf = self._buf[meta_match.end() :]
                     if pending:
                         async for agg in self._sentence_aggregator.aggregate(pending):
                             yield agg
@@ -120,7 +114,7 @@ class MultilingualTextAggregator(BaseTextAggregator):
                     self._state = _STATE_META
                     continue
 
-                holdback = _partial_marker_suffix_len(self._buf, _META_MARKER)
+                holdback = _partial_field_marker_suffix_len(self._buf, _META_MARKER)
                 pending, self._buf = (self._buf[:-holdback], self._buf[-holdback:]) if holdback else (self._buf, "")
                 if pending:
                     async for agg in self._sentence_aggregator.aggregate(pending):
@@ -131,12 +125,30 @@ class MultilingualTextAggregator(BaseTextAggregator):
 
     async def flush(self) -> Aggregation | None:
         """Yield any pending text once the LLM response ends."""
+        if self._pending_meta:
+            text = self._pending_meta
+            self._pending_meta = ""
+            return Aggregation(text=f"MetaData: {text}", type=META_TYPE)
+
         if self._state == _STATE_META:
             text = self._buf.strip()
             self._buf = ""
             return Aggregation(text=f"MetaData: {text}", type=META_TYPE) if text else None
 
         if self._state == _STATE_TEXT:
+            meta_match = _META_MARKER_RE.search(self._buf)
+            if meta_match:
+                pending = self._buf[: meta_match.start()]
+                self._buf = self._buf[meta_match.end() :]
+                spoken_text = pending.strip()
+                meta_text = self._buf.strip()
+                self._buf = ""
+                self._state = _STATE_META
+                if spoken_text:
+                    self._pending_meta = meta_text
+                    return Aggregation(text=spoken_text, type=AggregationType.SENTENCE.value)
+                return Aggregation(text=f"MetaData: {meta_text}", type=META_TYPE) if meta_text else None
+
             pending, self._buf = self._buf, ""
             if pending:
                 async for _ in self._sentence_aggregator.aggregate(pending):
@@ -148,8 +160,8 @@ class MultilingualTextAggregator(BaseTextAggregator):
         self._buf = ""
         if not text:
             return None
-        logger.warning("Multilingual: LLM response missing 'Text:' marker; speaking raw output")
-        return Aggregation(text=text, type=AggregationType.SENTENCE.value)
+        logger.warning("Multilingual: LLM response missing 'Text:' marker; dropping raw output")
+        return None
 
     def set_on_language(self, handler: _LanguageHandler | None) -> None:
         """Wire (or rewire) the language-switch handler post-construction."""
@@ -164,6 +176,7 @@ class MultilingualTextAggregator(BaseTextAggregator):
         self._state = _STATE_HEADER
         self._buf = ""
         self._lang_handler_fired = False
+        self._pending_meta = ""
         await self._sentence_aggregator.reset()
 
     async def _maybe_fire_language_handler(self) -> None:
@@ -178,18 +191,6 @@ class MultilingualTextAggregator(BaseTextAggregator):
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"Multilingual: language handler failed: {exc}")
 
-    @staticmethod
-    def _split_language_header(buf: str) -> tuple[str, str] | None:
-        """Return ``("Language: <code>", remainder)`` once the code is complete."""
-        code = _detect_language_code(buf)
-        if not code:
-            return None
-        stripped = buf.lstrip()
-        leading = len(buf) - len(stripped)
-        prefix_end = leading + len(_LANG_PREFIX)
-        rest_pos = prefix_end + (len(buf[prefix_end:]) - len(buf[prefix_end:].lstrip()))
-        return f"{_LANG_PREFIX} {code}", buf[rest_pos + len(code) :].lstrip()
-
 
 def _detect_language_code(buf: str) -> str:
     """Return ``<code>`` once ``Language: <code>`` is fully buffered (code + ws)."""
@@ -203,19 +204,16 @@ def _detect_language_code(buf: str) -> str:
     return ""
 
 
-def _could_be_text_marker_prefix(remainder: str) -> bool:
-    """True if ``remainder`` could still be the start of ``Text:`` (chunk boundary)."""
-    stripped = remainder.lstrip()
-    target = "text:"
-    if len(stripped) >= len(target):
-        return False
-    return not stripped or stripped.lower() == target[: len(stripped)].lower()
+def _partial_field_marker_suffix_len(buf: str, marker: str) -> int:
+    """Length of trailing text that may become a field marker on the next chunk."""
+    trailing_whitespace = len(buf) - len(buf.rstrip())
+    if trailing_whitespace:
+        return trailing_whitespace
 
-
-def _partial_marker_suffix_len(buf: str, marker: str) -> int:
-    """Length of the longest suffix of ``buf`` that prefixes ``marker``."""
+    lower_buf = buf.lower()
+    lower_marker = marker.lower()
     for k in range(min(len(buf), len(marker) - 1), 0, -1):
-        if buf[-k:] == marker[:k]:
+        if lower_buf[-k:] == lower_marker[:k]:
             return k
     return 0
 
