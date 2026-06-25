@@ -28,6 +28,7 @@ name: nemotron-voice-agent
 #
 # On-prem recipes:
 #   docker compose --profile generic-assistant/workstation up
+#   docker compose --profile generic-assistant/workstation-perf up
 #   docker compose --profile generic-assistant/dgx-spark up
 #   docker compose --profile generic-assistant/jetson-thor up
 #   docker compose --profile multilingual-assistant/workstation up
@@ -135,6 +136,25 @@ services:
     environment:
       <<: [*app-env, *platform-jetson-thor]
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-generic-assistant}
+
+  generic-assistant-workstation-perf:
+    <<: *app-base
+    profiles:
+      - generic-assistant/workstation-perf
+    environment:
+      APP_RUNTIME: container
+      EXAMPLE_SELECTION: generic-assistant
+      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
+      UVICORN_WORKERS: "200"
+      PROMPT_FILE_PATH: ${PROMPT_FILE_PATH:-}
+      PROMPT_SELECTOR: ${PROMPT_SELECTOR:-}
+      USE_SILERO_VAD_TURN_DETECTION: "true"
+      SILERO_VAD_STOP_SECS: "0.5"
+      AUDIO_OUT_10MS_CHUNKS: "40"
+    volumes:
+      - ./src:/app/src:ro
+      - ./examples_registry.yaml:/app/examples_registry.yaml:ro
+      - ./benchmarking_tools/scaling-perf:/app/benchmarking_tools/scaling-perf:ro
 
   multilingual-assistant:
     <<: *app-base

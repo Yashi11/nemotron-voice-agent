@@ -32,6 +32,10 @@ root `benchmark` dependency group (shared by every tool under
    uv sync --group benchmark
    ```
 
+   This host-side sync is still required even when the server runs under
+   Docker Compose, because `benchmark.py` and `simulate_concurrency.sh` run
+   on the host, not inside the app container.
+
 2. Start the voice-agent server (Docker compose or `uv run python src/server.py`).
 3. Drop **16 kHz, mono, 16-bit PCM** WAV files into `dataset/`. The benchmark
    cycles through them as the simulated user's utterances each turn.
@@ -42,53 +46,47 @@ straight from a fresh `uv sync --group benchmark`.
 
 ### Prompt override for perf runs
 
-If you want a benchmark-specific server prompt for a host-native `uv run`
-server, point the registry at the Generic Assistant example by setting
-`selection: generic-assistant` in
-[`examples_registry.yaml`](../../examples_registry.yaml), then start the
-server with the prompt catalog in this directory:
+By default, `generic-assistant/workstation-perf` uses the same default prompt
+as the normal Generic Assistant workstation profile.
+
+If you want to experiment with custom prompts with different input-token sizes,
+point the server at the prompt catalog in this directory and select the prompt
+key you want:
 
 ```bash
-uv run python src/server.py \
-  --prompt-file benchmarking_tools/scaling-perf/perf_prompts.yaml
+PROMPT_FILE_PATH=/app/benchmarking_tools/scaling-perf/perf_prompts.yaml \
+PROMPT_SELECTOR=prompt_200_tokens \
+docker compose --profile generic-assistant/workstation-perf up -d
 ```
 
 This catalog defaults to `prompt_1000_tokens`. Available prompt entries are
 `prompt_200_tokens`, `prompt_1000_tokens`, and `prompt_5000_tokens`.
-
-This keeps the benchmark commands unchanged while the server uses the perf
-prompt catalog.
 
 ## Reproducing the best scaling setup
 
 For the best scaling numbers, use a `4xH100` setup with `1 GPU` for ASR,
 `1 GPU` for TTS, and `2 GPUs` for the `Nemotron Nano 30B` LLM.
 
-Use these config changes for the published setup:
+This setup is available as the dedicated Compose recipe
+`generic-assistant/workstation-perf`. It automatically applies the published
+scaling configuration:
 
-- in [`examples_registry.yaml`](../../examples_registry.yaml), set the
-  `generic-assistant` default LLM to `nemotron-nano`
-- in [`docker/docker-compose.nemotron3-nano.yaml`](../../docker/docker-compose.nemotron3-nano.yaml),
-  set `NIM_TAGS_SELECTOR=precision=fp8,tp=2` and `device_ids: ['2', '3']` for
+- Generic Assistant inherits the existing `nemotron-nano` default from
+  [`examples_registry.yaml`](../../examples_registry.yaml)
+- `nvidia-llm`: `NIM_TAGS_SELECTOR=precision=fp8,tp=2`, GPUs `2,3`, alias
   `nvidia-llm`
-- in [`docker/docker-compose.nemotron-asr.yaml`](../../docker/docker-compose.nemotron-asr.yaml),
-  keep `device_ids: ['0']` for `nemotron-asr-streaming-english`
-- in [`docker/docker-compose.magpie-tts.yaml`](../../docker/docker-compose.magpie-tts.yaml),
-  set `device_ids: ['1']` for `tts-service`
+- `nemotron-asr-streaming-english`: GPU `0`, alias
+  `nemotron-asr-streaming-english`
+- `tts-service`: `NIM_TAGS_SELECTOR=name=magpie-tts-multilingual,batch_size=64`,
+  GPU `1`, alias `tts-service`
+- app env: `UVICORN_WORKERS=200`,
+  `USE_SILERO_VAD_TURN_DETECTION=true`, `SILERO_VAD_STOP_SECS=0.5`,
+  `AUDIO_OUT_10MS_CHUNKS=40`
 
-Then deploy the local Generic Assistant workstation stack with:
-
-```bash
-docker compose --profile generic-assistant/workstation up -d
-```
-
-Recommended `.env` changes for these runs:
+Deploy it with:
 
 ```bash
-PROMPT_SELECTOR=generic_assistant
-USE_SILERO_VAD_TURN_DETECTION=true
-SILERO_VAD_STOP_SECS=0.5
-AUDIO_OUT_10MS_CHUNKS=40
+docker compose --profile generic-assistant/workstation-perf up -d
 ```
 
 After the stack is healthy, run the sweep from this directory:
