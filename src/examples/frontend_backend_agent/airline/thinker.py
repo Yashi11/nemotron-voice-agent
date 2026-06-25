@@ -9,7 +9,6 @@ import asyncio
 import random
 import uuid
 from collections.abc import Awaitable, Callable
-from datetime import date
 from typing import Any
 
 from loguru import logger
@@ -49,7 +48,6 @@ class ThinkerBackend:
         state: ThinkerSessionState | None = None,
         backend: BookingBackend | None = None,
         planner: ThinkerPlanner | None = None,
-        today_provider: Any | None = None,
         tool_delay_seconds: float = 0.0,
         tool_delay_min_seconds: float | None = None,
     ) -> None:
@@ -59,7 +57,6 @@ class ThinkerBackend:
         if backend is None:
             raise ValueError("ThinkerBackend requires a BookingBackend")
         self.state = state or ThinkerSessionState()
-        self._today_provider = today_provider or date.today
         self._backend = backend
         self._planner = planner
         self._tool_delay_seconds = tool_delay_seconds

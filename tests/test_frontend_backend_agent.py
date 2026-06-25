@@ -4,10 +4,11 @@
 # ruff: noqa: D100, D101, D102
 
 import asyncio
+import json
 import sqlite3
 import unittest
 from contextlib import suppress
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from pipecat.frames.frames import LLMFullResponseEndFrame, LLMFullResponseStartFrame, LLMTextFrame
@@ -20,6 +21,7 @@ from examples.frontend_backend_agent.airline.state import MAX_LIFECYCLE_EVENTS, 
 from examples.frontend_backend_agent.airline.thinker import ThinkerBackend
 from examples.frontend_backend_agent.airline.tools import CALL_THINKER_TOOL, CANCEL_THINKER_TOOL
 from examples.frontend_backend_agent.airline.transform import _server_booking_to_record, _server_flight_to_option
+from examples.frontend_backend_agent.src.planner import NvidiaThinkerPlanner
 from examples.frontend_backend_agent.src.protocol import ThinkerLifecycleEvent, is_speakable_payload
 from examples.frontend_backend_agent.src.tool_handlers import (
     _emit_talker_response,
@@ -257,6 +259,23 @@ class _FrameCapturingLLM:
         self.frames.append(frame)
 
 
+class _InferenceCapturingLLM:
+    def __init__(self) -> None:
+        self.messages: list[dict[str, Any]] = []
+
+    async def run_inference(self, context, max_tokens=None) -> str:
+        self.messages = list(context.get_messages())
+        return json.dumps(
+            {
+                "tool": "response_hint",
+                "reason": "unsupported_request",
+                "action": "answer_directly",
+                "context": "general",
+                "response_text": "I can help with flights.",
+            }
+        )
+
+
 class _CancellingAfterStartLLM(_FrameCapturingLLM):
     async def push_frame(self, frame, direction=None) -> None:
         self.frames.append(frame)
@@ -304,7 +323,6 @@ def _materialize_test_flight(template: dict[str, Any], travel_date: str) -> dict
 
 
 def _make_thinker(**kwargs) -> ThinkerBackend:
-    kwargs.setdefault("today_provider", _today)
     kwargs.setdefault("planner", _StructuredTestPlanner())
     kwargs.setdefault("backend", _TestBookingBackend())
     return ThinkerBackend(**kwargs)
@@ -378,6 +396,25 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             filtered,
             "Your P N R code status for A B C 1 2 3 on flight A A 2 0 7 2 from John F Kennedy to San Francisco.",
+        )
+
+    async def test_thinker_planner_uses_direct_today_for_runtime_context(self) -> None:
+        llm = _InferenceCapturingLLM()
+        planner = NvidiaThinkerPlanner(
+            llm=llm,
+            system_prompt="You are a planner.",
+        )
+        today = date.today()
+        tomorrow = today + timedelta(days=1)
+
+        await planner.plan(query="Search flights tomorrow", slots={}, state={})
+
+        self.assertIn(f"Today is {today.isoformat()}.", llm.messages[0]["content"])
+        self.assertIn(f"Tomorrow is {tomorrow.isoformat()}.", llm.messages[0]["content"])
+        user_payload = json.loads(llm.messages[1]["content"])
+        self.assertEqual(
+            user_payload["runtime_context"],
+            {"today": today.isoformat(), "tomorrow": tomorrow.isoformat()},
         )
 
     async def test_thinker_started_is_internal_only_while_response_hint_is_speakable(self) -> None:
@@ -1197,7 +1234,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
                 ]
             }
         )
-        thinker = ThinkerBackend(backend=backend, planner=planner, today_provider=_today)
+        thinker = ThinkerBackend(backend=backend, planner=planner)
 
         payload = await asyncio.wait_for(
             thinker.call("Search New York to Seattle and check PNR ABC123"),
@@ -1230,7 +1267,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
                 ]
             }
         )
-        thinker = ThinkerBackend(backend=_PartiallyFailingBackend(), planner=planner, today_provider=_today)
+        thinker = ThinkerBackend(backend=_PartiallyFailingBackend(), planner=planner)
 
         payload = await thinker.call("Search New York to Seattle and check PNR ABC123")
 
