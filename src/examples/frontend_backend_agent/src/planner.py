@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date, timedelta
 from typing import Any, Protocol
 
 from loguru import logger
@@ -23,7 +24,13 @@ class ThinkerPlanner(Protocol):
 class NvidiaThinkerPlanner:
     """Thinker planner backed by Nemotron reasoning."""
 
-    def __init__(self, *, llm: NvidiaLLMService, system_prompt: str, max_tokens: int = 4096) -> None:
+    def __init__(
+        self,
+        *,
+        llm: NvidiaLLMService,
+        system_prompt: str,
+        max_tokens: int = 4096,
+    ) -> None:
         """Create an NVIDIA-backed Thinker planner."""
         if not system_prompt.strip():
             raise ValueError("Thinker planner requires a non-empty system prompt")
@@ -33,14 +40,20 @@ class NvidiaThinkerPlanner:
 
     async def plan(self, *, query: str, slots: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
         """Ask the Thinker LLM for internal tool plan JSON."""
+        today = date.today()
+        tomorrow = today + timedelta(days=1)
         user_payload = {
             "query": query,
             "structured_fields": slots,
             "session_state": state,
+            "runtime_context": {
+                "today": today.isoformat(),
+                "tomorrow": tomorrow.isoformat(),
+            },
         }
         context = LLMContext(
             [
-                {"role": "system", "content": self._system_prompt},
+                {"role": "system", "content": f"{self._system_prompt}{_runtime_date_context(today)}"},
                 {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)},
             ]
         )
@@ -69,6 +82,17 @@ def parse_plan_json(raw: str) -> dict[str, Any]:
     if not isinstance(decoded, dict):
         raise ValueError("Thinker LLM plan must be a JSON object")
     return decoded
+
+
+def _runtime_date_context(today: date) -> str:
+    tomorrow = today + timedelta(days=1)
+    return (
+        "\n\nRuntime context:\n"
+        f"- Today is {today.isoformat()}.\n"
+        f"- Tomorrow is {tomorrow.isoformat()}.\n"
+        "- Treat travel dates before today as past dates and ask for a future travel date.\n"
+        "- For travel dates without a year, choose the next upcoming occurrence relative to today."
+    )
 
 
 def _strip_thinking(text: str) -> str:
