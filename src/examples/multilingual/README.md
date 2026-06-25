@@ -28,6 +28,19 @@ For Nemotron ASR Streaming Multilingual, use the `nemotron-asr-streaming-multili
 `nemotron-asr-streaming-multilingual/dgx-spark` Compose profile — see
 [Enable Multilingual Voice Agent](../../../docs/how-to/enable-multilingual.md#choosing-a-multilingual-asr-model).
 
+## Model Selection Notes
+
+Multilingual behavior depends on the ASR model, the LLM, and the selected TTS voice.
+Use the notes below when choosing a deployment profile or setting expectations for
+demo and validation runs.
+
+| Component | Recommendation and trade-offs |
+| --- | --- |
+| Nemotron ASR Streaming Multilingual | Prefer this model when latency and throughput are the main constraints. It is faster in this pipeline, but Chinese and Hindi recognition quality is currently weaker, and language auto-detection is less reliable. For best results, preselect the session language instead of relying on auto-detection. |
+| Parakeet 1.1B RNNT Multilingual | Prefer this model when multilingual recognition quality matters more than raw latency. Language auto-detection is relatively stronger, and Hindi and Chinese recognition are generally better than Nemotron ASR in this setup. The trade-off is slower latency and throughput. It can also miss the first word of an utterance in some cases and may produce occasional false transcripts when the microphone is muted or no user speech is intended, so validate turn-start and silence handling for production-like demos. |
+| Nemotron 3 Super LLM | Recommended over Nemotron 3 Nano when response-format reliability is important. The multilingual pipeline depends on the LLM following the `Language: / Text: / MetaData:` contract, and the larger model is generally more reliable at staying within that format. |
+| Nemotron 3 Nano LLM | Useful for lower latency, lower resource usage, and faster local experiments, but it may be less consistent about strict structured output under ambiguous or noisy ASR transcripts. |
+
 ## Layout
 
 | Path | Role |
