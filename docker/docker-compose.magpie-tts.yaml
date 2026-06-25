@@ -1,22 +1,6 @@
-services:
-  tts-service:
-    profiles:
-      - generic-assistant/workstation
-      - generic-assistant/dgx-spark
-      - multilingual-assistant/workstation
-      - multilingual-assistant/dgx-spark
-      - omni-assistant/workstation
-      - omni-assistant-subagents/workstation
-      - omni-assistant/dgx-spark
-      - omni-assistant-subagents/dgx-spark
-      - frontend-backend-agent/workstation
+x-tts-service: &tts-service-base
     image: nvcr.io/nim/nvidia/magpie-tts-multilingual:1.8.0
     user: "0:0"
-    environment:
-      - NGC_API_KEY=${NVIDIA_API_KEY}
-      - NIM_HTTP_API_PORT=9000
-      - NIM_GRPC_API_PORT=50051
-      - NIM_TAGS_SELECTOR=name=magpie-tts-multilingual,batch_size=8
     ports:
       - "50151:50051"
       - "9000:9000"
@@ -44,6 +28,54 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
+
+x-tts-service-env: &tts-service-env
+  NGC_API_KEY: ${NVIDIA_API_KEY}
+  NIM_HTTP_API_PORT: "9000"
+  NIM_GRPC_API_PORT: "50051"
+
+services:
+  tts-service:
+    <<: *tts-service-base
+    profiles:
+      - generic-assistant/workstation
+      - generic-assistant/dgx-spark
+      - multilingual-assistant/workstation
+      - multilingual-assistant/dgx-spark
+      - omni-assistant/workstation
+      - omni-assistant-subagents/workstation
+      - omni-assistant/dgx-spark
+      - omni-assistant-subagents/dgx-spark
+      - frontend-backend-agent/workstation
+    environment:
+      <<: *tts-service-env
+      NIM_TAGS_SELECTOR: name=magpie-tts-multilingual,batch_size=8
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+
+  tts-service-perf:
+    <<: *tts-service-base
+    profiles:
+      - generic-assistant/workstation-perf
+    environment:
+      <<: *tts-service-env
+      NIM_TAGS_SELECTOR: name=magpie-tts-multilingual,batch_size=64
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['1']
+              capabilities: [gpu]
+    networks:
+      default:
+        aliases:
+          - tts-service
 
 volumes:
   tts_cache:
