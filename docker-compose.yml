@@ -142,9 +142,8 @@ services:
     profiles:
       - generic-assistant/workstation-perf
     environment:
-      APP_RUNTIME: container
+      <<: [*app-env, *platform-workstation]
       EXAMPLE_SELECTION: generic-assistant
-      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
       UVICORN_WORKERS: "200"
       PROMPT_FILE_PATH: ${PROMPT_FILE_PATH:-}
       PROMPT_SELECTOR: ${PROMPT_SELECTOR:-}
