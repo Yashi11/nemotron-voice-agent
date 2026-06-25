@@ -16,6 +16,8 @@ from urllib.parse import urlparse, urlunparse
 import yaml
 from loguru import logger
 
+from runtime_platform import select_runtime_platform_catalog
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_FILENAME = "prompts.yaml"
 TOOLS_FILENAME = "tools.yaml"
@@ -368,18 +370,17 @@ def _load_cloud_services_catalog() -> dict:
 
 
 def _load_local_services_catalog() -> dict:
-    """Load all platform sections from ``services.local.yaml`` into one catalog.
-
-    Identical entries across platforms are deduplicated. For conflicting
-    platform variants, the reachable variant keeps the base key so it shadows
-    cloud defaults; non-active variants remain addressable with platform suffixes.
-    """
+    """Load local service entries for the configured platform."""
     local_path = _services_local_path()
     if not local_path.is_file():
         return _normalize_services_catalog({})
     data = load_yaml_file(local_path)
     if not isinstance(data, dict):
         return _normalize_services_catalog({})
+    platform_data = select_runtime_platform_catalog(data)
+    if platform_data is not None:
+        return _rewrite_local_runtime_endpoints(_normalize_services_catalog(platform_data))
+
     variants: dict[str, dict[str, list[tuple[str, dict]]]] = {}
     for platform_name, platform_data in data.items():
         if not isinstance(platform_data, dict):

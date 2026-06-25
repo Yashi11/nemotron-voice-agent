@@ -7,6 +7,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from textwrap import dedent
 from unittest.mock import patch
 
 import examples_registry
@@ -210,6 +211,56 @@ llm:
         self.assertEqual(len(self_hosted), 1)
         self.assertEqual(self_hosted[0]["id"], "self-hosted:magpie-tts")
         self.assertEqual(self_hosted[0]["server"], "localhost:50151")
+
+    def test_runtime_platform_filters_local_services(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cloud_path = Path(tmpdir) / "services.cloud.yaml"
+            cloud_path.write_text(
+                dedent(
+                    """\
+                    asr:
+                      cloud-asr:
+                        name: Cloud ASR
+                        server: cloud-asr:443
+                    """
+                ),
+                encoding="utf-8",
+            )
+            local_path = Path(tmpdir) / "services.local.yaml"
+            local_path.write_text(
+                dedent(
+                    """\
+                    workstation:
+                      asr:
+                        workstation-asr:
+                          name: Workstation ASR
+                          server: workstation-asr:50052
+                    jetson:
+                      asr:
+                        jetson-asr:
+                          name: Jetson ASR
+                          server: jetson-asr:50051
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            with (
+                patch.dict(
+                    os.environ,
+                    {
+                        "SERVICES_CLOUD_PATH": str(cloud_path),
+                        "SERVICES_LOCAL_PATH": str(local_path),
+                        "PLATFORM": "jetsonthor",
+                    },
+                ),
+                patch("utils.is_endpoint_reachable", return_value=True),
+            ):
+                services = build_services_api_response()["asr"]
+
+        service_ids = {entry["id"] for entry in services}
+        self.assertIn("self-hosted:jetson-asr", service_ids)
+        self.assertNotIn("self-hosted:workstation-asr", service_ids)
 
 
 if __name__ == "__main__":

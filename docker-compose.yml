@@ -85,59 +85,149 @@ x-app: &app-base
       max-size: "50m"
       max-file: "5"
 
+x-app-env: &app-env
+  APP_RUNTIME: container
+  TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
+
+# Platform overrides keep recipe services small and make future hardware targets
+# a one-anchor addition.
+x-platform-cloud: &platform-cloud
+  PLATFORM: cloud
+
+x-platform-workstation: &platform-workstation
+  PLATFORM: workstation
+
+x-platform-dgx-spark: &platform-dgx-spark
+  PLATFORM: dgxspark
+
+x-platform-jetson-thor: &platform-jetson-thor
+  PLATFORM: jetsonthor
+
 services:
   generic-assistant:
     <<: *app-base
     profiles:
       - generic-assistant
+    environment:
+      <<: [*app-env, *platform-cloud]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-generic-assistant}
+
+  generic-assistant-workstation:
+    <<: *app-base
+    profiles:
       - generic-assistant/workstation
+    environment:
+      <<: [*app-env, *platform-workstation]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-generic-assistant}
+
+  generic-assistant-dgx-spark:
+    <<: *app-base
+    profiles:
       - generic-assistant/dgx-spark
+    environment:
+      <<: [*app-env, *platform-dgx-spark]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-generic-assistant}
+
+  generic-assistant-jetson-thor:
+    <<: *app-base
+    profiles:
       - generic-assistant/jetson-thor
     environment:
-      APP_RUNTIME: container
+      <<: [*app-env, *platform-jetson-thor]
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-generic-assistant}
-      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
   multilingual-assistant:
     <<: *app-base
     profiles:
       - multilingual-assistant
+    environment:
+      <<: [*app-env, *platform-cloud]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-multilingual-assistant}
+
+  multilingual-assistant-workstation:
+    <<: *app-base
+    profiles:
       - multilingual-assistant/workstation
+    environment:
+      <<: [*app-env, *platform-workstation]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-multilingual-assistant}
+
+  multilingual-assistant-dgx-spark:
+    <<: *app-base
+    profiles:
       - multilingual-assistant/dgx-spark
     environment:
-      APP_RUNTIME: container
+      <<: [*app-env, *platform-dgx-spark]
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-multilingual-assistant}
-      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
   omni-assistant:
     <<: *app-base
     profiles:
       - omni-assistant
+    environment:
+      <<: [*app-env, *platform-cloud]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant}
+
+  omni-assistant-workstation:
+    <<: *app-base
+    profiles:
       - omni-assistant/workstation
+    environment:
+      <<: [*app-env, *platform-workstation]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant}
+
+  omni-assistant-dgx-spark:
+    <<: *app-base
+    profiles:
       - omni-assistant/dgx-spark
+    environment:
+      <<: [*app-env, *platform-dgx-spark]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant}
+
+  omni-assistant-jetson-thor:
+    <<: *app-base
+    profiles:
       - omni-assistant/jetson-thor
     environment:
-      APP_RUNTIME: container
+      <<: [*app-env, *platform-jetson-thor]
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant}
-      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
   omni-assistant-subagents:
     <<: *app-base
     profiles:
       - omni-assistant-subagents
+    environment:
+      <<: [*app-env, *platform-cloud]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant-subagents}
+
+  omni-assistant-subagents-workstation:
+    <<: *app-base
+    profiles:
       - omni-assistant-subagents/workstation
+    environment:
+      <<: [*app-env, *platform-workstation]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant-subagents}
+
+  omni-assistant-subagents-dgx-spark:
+    <<: *app-base
+    profiles:
       - omni-assistant-subagents/dgx-spark
     environment:
-      APP_RUNTIME: container
+      <<: [*app-env, *platform-dgx-spark]
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant-subagents}
-      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
 
   frontend-backend-agent:
     <<: *app-base
     profiles:
       - frontend-backend-agent
+    environment:
+      <<: [*app-env, *platform-cloud]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-frontend-backend-agent}
+
+  frontend-backend-agent-workstation:
+    <<: *app-base
+    profiles:
       - frontend-backend-agent/workstation
     environment:
-      APP_RUNTIME: container
+      <<: [*app-env, *platform-workstation]
       EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-frontend-backend-agent}
-      TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
