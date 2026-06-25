@@ -12,6 +12,7 @@ from typing import Any, NamedTuple, TypedDict
 
 import yaml
 
+from runtime_platform import select_runtime_platform_catalog
 from utils import is_endpoint_reachable
 
 
@@ -180,6 +181,10 @@ def _first_reachable_variant(variants: list[tuple[str, dict]]) -> tuple[str, dic
 def _load_local_service_catalog(example_dir: Path) -> dict[str, dict]:
     """Load platform-scoped local service entries for one example."""
     data = _load_yaml_mapping(example_dir / "services.local.yaml")
+    platform_data = select_runtime_platform_catalog(data)
+    if platform_data is not None:
+        return _rewrite_catalog_for_host_runtime(_normalize_service_catalog(platform_data))
+
     variants: dict[str, dict[str, list[tuple[str, dict]]]] = {}
     for platform_name, platform_data in data.items():
         if not isinstance(platform_data, dict):

@@ -33,8 +33,8 @@ free -h
 ```
 
 2. Identify the hardware target:
-- `jetson`: `/proc/device-tree/model` identifies a Jetson platform, or the GPU name is `NVIDIA Thor`.
-- `dgxspark`: `/sys/class/dmi/id/product_name` contains `DGX Spark` or `DGX_Spark` case-insensitively.
+- `jetson-thor`: `/proc/device-tree/model` identifies a Jetson platform, or the GPU name is `NVIDIA Thor`.
+- `dgx-spark`: `/sys/class/dmi/id/product_name` contains `DGX Spark` or `DGX_Spark` case-insensitively.
 - `workstation`: non-DGX Spark, non-Jetson host with enough GPU VRAM for the selected local NIM services. Single-GPU hosts are valid when capacity is sufficient.
 - _(omit hardware)_: local platform requirements are not met, or remote/NVCF services are preferred (cloud-only).
 
@@ -45,6 +45,9 @@ test -f .env || cp .env.example .env
 ```
 
 Required keys: `NVIDIA_API_KEY` for all recipes. `HF_TOKEN` for any recipe that ends in `/dgx-spark` or `/jetson-thor`, plus `omni-assistant/workstation` and `omni-assistant-subagents/workstation`. `TURN_USERNAME` and `TURN_PASSWORD` are required when adding `--profile turn`.
+
+Compose recipe profiles set `PLATFORM` automatically for UI service filtering.
+For host-native `uv run` on-prem testing, set `PLATFORM` in `.env` manually.
 
 For on-prem (`workstation`) recipes, set GPU-aware overrides for the local LLM (`nvidia-llm`) in `.env` from the step 1 readout, and say what you changed and why. The defaults (`NIM_KVCACHE_PERCENT=0.6`, `NIM_TAGS_SELECTOR=precision=fp8,tp=1`) suit one ~80 GB Ada/Hopper GPU running ASR + TTS + LLM together.
 

@@ -163,6 +163,8 @@ docker run --rm --gpus all \
 
 Run with just an example profile (e.g., `--profile generic-assistant`) to stay cloud/NVCF only.
 
+Compose recipe profiles set `PLATFORM` automatically so the UI shows matching local services.
+
 For Jetson-specific setup, refer to [Jetson Thor Deployment](03-jetson-thor.md).
 
 ---
@@ -209,7 +211,7 @@ For development and debugging, you can run the server directly:
     PIPELINE_TLS=false uv run python src/server.py --host 0.0.0.0 --port 7860
     ```
 
-    Host-native runs read [`examples_registry.yaml`](../examples_registry.yaml) at the repository root. Edit the `selection` field to choose what the UI exposes, then start the server normally. The server has no example/pipeline CLI flags.
+    Host-native runs read [`examples_registry.yaml`](../examples_registry.yaml) at the repository root. Edit the `selection` field to choose what the UI exposes, then start the server normally. The server has no example/pipeline CLI flags. Set `PLATFORM` in `.env` for host-native on-prem testing.
 
     | `selection` in `examples_registry.yaml` | UI behavior |
     |-----------------------------------------|-------------|
