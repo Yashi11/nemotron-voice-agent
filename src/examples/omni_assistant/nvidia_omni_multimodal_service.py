@@ -216,6 +216,7 @@ class NvidiaOmniMultimodalService(LLMService):
         self._user_speaking = False
         self._bot_responding = False
         self._pending_request: asyncio.Task[None] | None = None
+        self._pending_request_is_audio = False
         self._last_user_eou_at: float | None = None
 
     def can_generate_metrics(self) -> bool:
@@ -230,6 +231,7 @@ class NvidiaOmniMultimodalService(LLMService):
         self._pending_content_parts = []
         self._user_speaking = False
         self._bot_responding = False
+        self._pending_request_is_audio = False
         self._last_user_eou_at = None
 
     async def stop(self, frame) -> None:
@@ -408,9 +410,6 @@ class NvidiaOmniMultimodalService(LLMService):
         if self._bot_responding:
             logger.debug("NVIDIA Omni: ignoring audio turn while bot is responding")
             return
-        if self._pending_request is not None and not self._pending_request.done():
-            logger.warning("NVIDIA Omni: previous turn still in flight, skipping")
-            return
 
         audio_chunks = list(self._audio_buffer)
         content_parts = list(self._pending_content_parts)
@@ -430,6 +429,11 @@ class NvidiaOmniMultimodalService(LLMService):
             )
             return
 
+        if self._pending_request is not None and not self._pending_request.done():
+            logger.debug("NVIDIA Omni: previous turn still in flight, cancelling it to run the newer turn")
+            await self.stop_all_metrics()
+            await self._cancel_pending_request()
+
         eou_at = self._last_user_eou_at
         self._last_user_eou_at = None
 
@@ -442,17 +446,23 @@ class NvidiaOmniMultimodalService(LLMService):
             )
 
         self._pending_request = self.create_task(_run(), name="nvidia-omni-audio-turn")
+        self._pending_request_is_audio = True
 
     async def _maybe_run_text_or_multimodal_turn(self, context: LLMContext | None) -> None:
         if self._bot_responding:
             logger.debug("NVIDIA Omni: ignoring text/multimodal trigger while bot is responding")
             return
-        if self._pending_request is not None and not self._pending_request.done():
-            logger.warning("NVIDIA Omni: previous turn still in flight, skipping")
-            return
         if not _context_has_pending_user_message(context) and not self._pending_content_parts:
             logger.debug("NVIDIA Omni: no pending user text or media, skipping text/multimodal turn")
             return
+
+        if self._pending_request is not None and not self._pending_request.done():
+            if self._pending_request_is_audio:
+                logger.debug("NVIDIA Omni: audio turn in flight, ignoring redundant context/run trigger")
+                return
+            logger.debug("NVIDIA Omni: previous turn still in flight, cancelling it to run the newer turn")
+            await self.stop_all_metrics()
+            await self._cancel_pending_request()
 
         content_parts = list(self._pending_content_parts)
         self._pending_content_parts = []
@@ -466,6 +476,7 @@ class NvidiaOmniMultimodalService(LLMService):
             )
 
         self._pending_request = self.create_task(_run(), name="nvidia-omni-text-turn")
+        self._pending_request_is_audio = False
 
     async def _run_omni_turn(
         self,
@@ -788,6 +799,7 @@ class NvidiaOmniMultimodalService(LLMService):
             with contextlib.suppress(asyncio.CancelledError):
                 await self._pending_request
         self._pending_request = None
+        self._pending_request_is_audio = False
 
     @staticmethod
     def _validate_settings(settings: Settings) -> None:
