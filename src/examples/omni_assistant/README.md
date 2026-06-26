@@ -21,6 +21,10 @@ defined in the root and `docker/` compose files.
 | Best fit | Teams evaluating whether an audio-input LLM can simplify a voice stack or improve handling of spoken context before adding heavier domain workflows. |
 | Extend into | General conversational assistants, voice-first copilots, meeting or note-taking helpers, hands-free product guides, training companions, or domain agents that benefit from direct acoustic context with conventional TTS output. |
 
+## Architecture
+
+![Nemotron Omni Assistant architecture](images/omni-assistant-architecture.png)
+
 ## Layout
 
 | Path | Role |

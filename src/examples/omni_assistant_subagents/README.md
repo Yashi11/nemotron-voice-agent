@@ -21,6 +21,10 @@ defined in the root and `docker/` compose files.
 | Best fit | Teams building assistants that need spoken interaction plus asynchronous visual or media understanding without blocking the user-facing voice loop. |
 | Extend into | Visual troubleshooting, field-service copilots, retail product assistance, inspection workflows, education and training tutors, accessibility helpers, or support agents that combine conversation with uploaded images, audio, video, or live camera context. |
 
+## Architecture
+
+![Omni Assistant Subagents architecture](images/omni-subagent-example.png)
+
 ## Layout
 
 | Path | Role |

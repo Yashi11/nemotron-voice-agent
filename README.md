@@ -39,7 +39,7 @@ Pick one **recipe** profile. Cloud recipes use `<example>`. On-prem recipes use 
 | `multilingual-assistant` | None | NVIDIA cloud multilingual ASR + LLM + TTS |
 | `omni-assistant` | None | NVIDIA cloud Nemotron Omni (ASR + LLM in one model) + Magpie TTS |
 | `omni-assistant-subagents` | None | NVIDIA cloud Nemotron Omni (ASR + LLM in one model) + Magpie TTS, multi-agent with attachments + webcam |
-| `frontend-backend-agent` | None | NVIDIA cloud ASR + Talker LLM + Thinker LLM + TTS, plus local booking-server sidecar |
+| `frontend-backend-agent` | None | NVIDIA cloud ASR + Frontend LLM + Backend Agent LLM + TTS, plus local booking-server sidecar |
 | `generic-assistant/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming English + Magpie TTS + LLM |
 | `generic-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron ASR Streaming English + Magpie TTS + vLLM LLM |
 | `generic-assistant/jetson-thor` | 1 GPU, 128 GB unified memory | Local Riva ASR + TTS + vLLM LLM (shared GPU via MPS) |
@@ -49,7 +49,7 @@ Pick one **recipe** profile. Cloud recipes use `<example>`. On-prem recipes use 
 | `omni-assistant/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS |
 | `omni-assistant-subagents/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
 | `omni-assistant-subagents/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
-| `frontend-backend-agent/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming English + TTS + Talker/Thinker LLM, plus local booking-server sidecar |
+| `frontend-backend-agent/workstation` | 1 GPU (~80 GB VRAM) | Local Nemotron ASR Streaming English + TTS + frontend/backend LLM, plus local booking-server sidecar |
 
 > Local-LLM (`/workstation`) profiles need compute capability ≥ 8.9 (Ada/Hopper/Blackwell) for the default FP8 weights; on Ampere (A100) set the BF16 profile. See [Local LLM GPU sizing & precision](docs/how-to/configure-services.md#local-llm-gpu-sizing--precision).
 >

@@ -34,7 +34,7 @@ Before you begin, ensure you have the following:
 | `omni-assistant/jetson-thor` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + on-device Riva TTS |
 | `omni-assistant-subagents/workstation` | 1 GPU (>=80 GB VRAM) | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
 | `omni-assistant-subagents/dgx-spark` | 1 GPU, 128 GB unified memory | Local Nemotron Omni vLLM + Magpie TTS, multi-agent with attachments + webcam |
-| `frontend-backend-agent/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + Talker/Thinker NIM LLM, plus local booking-server sidecar |
+| `frontend-backend-agent/workstation` | 1 GPU (>=80 GB VRAM) | NIM ASR + TTS + frontend/backend NIM LLM, plus local booking-server sidecar |
 | `tracing` | Optional overlay | Phoenix OTel collector |
 | `turn` | Optional overlay | coturn TURN server |
 

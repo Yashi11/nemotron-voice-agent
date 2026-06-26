@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-"""Pipecat function handlers for Talker's Thinker tools."""
+"""Pipecat function handlers for the frontend/backend-agent tools."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class ThinkerBackend(Protocol):
-    """Minimal runtime interface required by Talker's tool handlers."""
+    """Minimal runtime interface required by the frontend tool handlers."""
 
     async def call(
         self,
@@ -41,9 +41,9 @@ class ThinkerBackend(Protocol):
 
 
 def build_handlers(thinker: ThinkerBackend, *, filler_threshold_seconds: float = 0.8) -> dict[str, Callable]:
-    """Return tool handlers bound to one session-local Thinker."""
+    """Return tool handlers bound to one session-local backend agent."""
 
-    async def handle_call_thinker(params: FunctionCallParams) -> None:
+    async def handle_call_backend(params: FunctionCallParams) -> None:
         arguments = _normalize_arguments(params.arguments or {})
         query = str(arguments.get("query", "") or "").strip()
         if not query:
@@ -54,7 +54,7 @@ def build_handlers(thinker: ThinkerBackend, *, filler_threshold_seconds: float =
                     "action": "req_params",
                     "params_needed": ["query"],
                     "response_text": "What would you like me to check?",
-                    "context": "call_thinker",
+                    "context": "call_backend",
                 }
             )
             return
@@ -90,21 +90,21 @@ def build_handlers(thinker: ThinkerBackend, *, filler_threshold_seconds: float =
             finally:
                 await _cancel_pending_filler(filler_task)
         except asyncio.CancelledError:
-            logger.info("call_thinker result suppressed after Thinker abort")
+            logger.info("call_backend result suppressed after Thinker abort")
             await params.result_callback(
                 {
                     "type": "response_hint",
                     "reason": "aborted",
                     "action": "internal_abort",
                     "response_text": "",
-                    "context": "call_thinker",
+                    "context": "call_backend",
                     "speakable": False,
                 },
                 properties=FunctionCallResultProperties(run_llm=False),
             )
             return
         except Exception as exc:
-            logger.exception(f"call_thinker failed before producing a result: {exc}")
+            logger.exception(f"call_backend failed before producing a result: {exc}")
             await params.result_callback(
                 {
                     "type": "response_hint",
@@ -112,13 +112,13 @@ def build_handlers(thinker: ThinkerBackend, *, filler_threshold_seconds: float =
                     "action": "retry",
                     "error": str(exc),
                     "response_text": "I could not complete that request right now. Please try again.",
-                    "context": "call_thinker",
+                    "context": "call_backend",
                 }
             )
             return
         await params.result_callback(payload)
 
-    async def handle_cancel_thinker(params: FunctionCallParams) -> None:
+    async def handle_cancel_backend(params: FunctionCallParams) -> None:
         cancelled = thinker.cancel_active("user_cancelled")
         cleared_pending_booking = thinker.cancel_pending_booking()
         did_cancel = cancelled or cleared_pending_booking
@@ -128,11 +128,11 @@ def build_handlers(thinker: ThinkerBackend, *, filler_threshold_seconds: float =
                 "reason": "cancelled" if did_cancel else "nothing_to_cancel",
                 "action": "cancelled" if did_cancel else "nothing_to_cancel",
                 "response_text": "Okay, I stopped that." if did_cancel else "There is nothing pending right now.",
-                "context": "call_thinker",
+                "context": "cancel_backend",
             }
         )
 
-    return {"call_thinker": handle_call_thinker, "cancel_thinker": handle_cancel_thinker}
+    return {"call_backend": handle_call_backend, "cancel_backend": handle_cancel_backend}
 
 
 async def _emit_talker_response(llm, text: str) -> None:
