@@ -4,7 +4,7 @@ Use this reference from the `deploy` skill when deploying the cascaded Frontend/
 
 ## Profiles
 
-Pin Docker Compose to one Frontend/Backend Agent recipe. The cloud recipe uses NVIDIA cloud ASR, Talker LLM, Thinker LLM, and TTS, plus the local booking-server sidecar. The workstation recipe runs local NIM ASR, TTS, and a shared Talker/Thinker LLM, plus the local booking-server sidecar.
+Pin Docker Compose to one Frontend/Backend Agent recipe. The cloud recipe uses NVIDIA cloud ASR, a frontend LLM, a backend agent LLM, and TTS, plus the local booking-server sidecar. The workstation recipe runs local NIM ASR, TTS, and a shared frontend/backend LLM, plus the local booking-server sidecar.
 
 ```bash
 docker compose --profile frontend-backend-agent up -d

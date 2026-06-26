@@ -26,7 +26,7 @@ class BookingDraft:
 
 @dataclass(slots=True)
 class ThinkerSessionState:
-    """Mutable state scoped to one Talker/Thinker voice session."""
+    """Mutable state scoped to one frontend/backend voice session."""
 
     lifecycle_events: list[ThinkerLifecycleEvent] = field(default_factory=list)
     active_call_id: str | None = None

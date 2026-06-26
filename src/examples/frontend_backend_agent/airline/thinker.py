@@ -34,9 +34,9 @@ _READ_ONLY_TOOLS = frozenset({"pnr_status", "response_hint"})
 
 
 class ThinkerBackend:
-    """Pluggable Thinker boundary behind Talker's ``call_thinker`` tool.
+    """Pluggable backend boundary behind the frontend LLM's ``call_backend`` tool.
 
-    Talker provides a detailed natural-language query with conversation context.
+    The frontend LLM provides a detailed natural-language query with conversation context.
     The Thinker planner LLM owns intent detection and parameter extraction from
     that query plus session state. This class validates the plan and executes
     the internal Python tools/backends.

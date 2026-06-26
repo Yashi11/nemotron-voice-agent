@@ -70,7 +70,7 @@ def _build_context_messages(base_prompt: str, system_prompt: str = "") -> list[d
         f"- Today is {today.isoformat()}.\n"
         f"- Tomorrow is {(today + timedelta(days=1)).isoformat()}.\n"
         "- For travel dates without a year, choose the next upcoming occurrence relative to today.\n"
-        "- Always pass travel dates to call_thinker as ISO YYYY-MM-DD when the date is known."
+        "- Always pass travel dates to call_backend as ISO YYYY-MM-DD when the date is known."
     )
     base_prompt = f"{base_prompt}{runtime_context}"
     if system_prompt:
@@ -204,7 +204,7 @@ async def bot(runner_args: RunnerArguments) -> None:
         thinker,
         filler_threshold_seconds=THINKER_FILLER_THRESHOLD_SECONDS,
     ).items():
-        cancel_on_interruption = name != "call_thinker"
+        cancel_on_interruption = name != "call_backend"
         talker_llm.register_function(
             name,
             handler,

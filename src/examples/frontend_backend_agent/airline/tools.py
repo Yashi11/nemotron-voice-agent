@@ -1,19 +1,19 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-"""Talker-visible tool schema for the Frontend/Backend Agent example."""
+"""Frontend-visible tool schema for the Frontend/Backend Agent example."""
 
 from __future__ import annotations
 
 from pipecat.adapters.schemas.tools_schema import AdapterType, ToolsSchema
 
-CALL_THINKER_TOOL: dict = {
+CALL_BACKEND_TOOL: dict = {
     "type": "function",
     "function": {
-        "name": "call_thinker",
+        "name": "call_backend",
         "description": (
-            "Send a single detailed, context-enriched query to the internal Thinker. "
-            "The Thinker infers whether to search flights, continue booking, or check PNR status. "
+            "Send a single detailed, context-enriched query to the backend agent. "
+            "The backend agent infers whether to search flights, continue booking, or check PNR status. "
             "Do not speak in the same turn as this tool call."
         ),
         "parameters": {
@@ -41,12 +41,12 @@ CALL_THINKER_TOOL: dict = {
     },
 }
 
-CANCEL_THINKER_TOOL: dict = {
+CANCEL_BACKEND_TOOL: dict = {
     "type": "function",
     "function": {
-        "name": "cancel_thinker",
+        "name": "cancel_backend",
         "description": (
-            "Cancel any in-progress internal Thinker work when the user says to stop, cancel, "
+            "Cancel any in-progress backend-agent work when the user says to stop, cancel, "
             "ignore, abandon, or never mind a pending flight task, or when they interrupt pending "
             "flight work by switching to unrelated small talk or a non-flight topic. Do not speak "
             "in the same turn as this tool call."
@@ -61,5 +61,5 @@ CANCEL_THINKER_TOOL: dict = {
 }
 
 TOOLS_SCHEMA = ToolsSchema(
-    standard_tools=[], custom_tools={AdapterType.OPENAI: [CALL_THINKER_TOOL, CANCEL_THINKER_TOOL]}
+    standard_tools=[], custom_tools={AdapterType.OPENAI: [CALL_BACKEND_TOOL, CANCEL_BACKEND_TOOL]}
 )

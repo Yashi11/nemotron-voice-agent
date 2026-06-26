@@ -19,7 +19,7 @@ from examples.frontend_backend_agent.airline.database.api import BookingAPI
 from examples.frontend_backend_agent.airline.database.db import apply_schema
 from examples.frontend_backend_agent.airline.state import MAX_LIFECYCLE_EVENTS, ThinkerSessionState
 from examples.frontend_backend_agent.airline.thinker import ThinkerBackend
-from examples.frontend_backend_agent.airline.tools import CALL_THINKER_TOOL, CANCEL_THINKER_TOOL
+from examples.frontend_backend_agent.airline.tools import CALL_BACKEND_TOOL, CANCEL_BACKEND_TOOL
 from examples.frontend_backend_agent.airline.transform import _server_booking_to_record, _server_flight_to_option
 from examples.frontend_backend_agent.src.planner import NvidiaThinkerPlanner
 from examples.frontend_backend_agent.src.protocol import ThinkerLifecycleEvent, is_speakable_payload
@@ -673,7 +673,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(replacement_confirm["reason"], "confirm_required")
         self.assertEqual(replacement_confirm["summary"]["flight_id"], "AA315")
 
-    async def test_cancel_thinker_clears_pending_search_and_booking_context(self) -> None:
+    async def test_cancel_backend_clears_pending_search_and_booking_context(self) -> None:
         thinker = _make_thinker()
         llm = _FrameCapturingLLM()
         results = []
@@ -692,7 +692,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             results.append((result, properties))
 
         params = FunctionCallParams(
-            function_name="cancel_thinker",
+            function_name="cancel_backend",
             tool_call_id="cancel_test",
             arguments={},
             llm=llm,
@@ -701,9 +701,10 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             result_callback=result_callback,
         )
 
-        await build_handlers(thinker)["cancel_thinker"](params)
+        await build_handlers(thinker)["cancel_backend"](params)
 
         self.assertEqual(results[-1][0]["reason"], "cancelled")
+        self.assertEqual(results[-1][0]["context"], "cancel_backend")
         self.assertEqual(thinker.state.search_results, [])
         self.assertEqual(thinker.state.search_context, {})
         self.assertIsNone(thinker.state.booking_draft)
@@ -748,7 +749,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(thinker.state.booking_draft)
         self.assertFalse(thinker.state.waiting_for_confirmation)
 
-    def test_call_thinker_normalizes_wrapped_original_args(self) -> None:
+    def test_call_backend_normalizes_wrapped_original_args(self) -> None:
         payload = {"original_args": ('{"query": "search flights", "origin_airport": "JFK", "dest_airport": "SEA"}')}
 
         normalized = _normalize_arguments(payload)
@@ -757,9 +758,10 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(normalized["origin_airport"], "JFK")
         self.assertEqual(normalized["dest_airport"], "SEA")
 
-    def test_call_thinker_schema_only_requires_query_and_omits_intent(self) -> None:
-        parameters = CALL_THINKER_TOOL["function"]["parameters"]
+    def test_call_backend_schema_only_requires_query_and_omits_intent(self) -> None:
+        parameters = CALL_BACKEND_TOOL["function"]["parameters"]
 
+        self.assertEqual(CALL_BACKEND_TOOL["function"]["name"], "call_backend")
         self.assertEqual(parameters["required"], ["query"])
         self.assertFalse(parameters["additionalProperties"])
         self.assertEqual(set(parameters["properties"]), {"query", "filler_text"})
@@ -768,15 +770,15 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("origin_airport", parameters["properties"])
         self.assertNotIn("pnr_code", parameters["properties"])
 
-    def test_cancel_thinker_schema_accepts_no_arguments(self) -> None:
-        parameters = CANCEL_THINKER_TOOL["function"]["parameters"]
+    def test_cancel_backend_schema_accepts_no_arguments(self) -> None:
+        parameters = CANCEL_BACKEND_TOOL["function"]["parameters"]
 
-        self.assertEqual(CANCEL_THINKER_TOOL["function"]["name"], "cancel_thinker")
+        self.assertEqual(CANCEL_BACKEND_TOOL["function"]["name"], "cancel_backend")
         self.assertEqual(parameters["required"], [])
         self.assertEqual(parameters["properties"], {})
         self.assertFalse(parameters["additionalProperties"])
 
-    async def test_call_thinker_emits_started_filler_as_talker_text_when_threshold_is_met(self) -> None:
+    async def test_call_backend_emits_started_filler_as_talker_text_when_threshold_is_met(self) -> None:
         thinker = _make_thinker()
         llm = _FrameCapturingLLM()
         results = []
@@ -785,7 +787,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             results.append((result, properties))
 
         params = FunctionCallParams(
-            function_name="call_thinker",
+            function_name="call_backend",
             tool_call_id="call_test",
             arguments={
                 "query": "Search flights from New York to Seattle tomorrow",
@@ -800,7 +802,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             result_callback=result_callback,
         )
 
-        await build_handlers(thinker, filler_threshold_seconds=0)["call_thinker"](params)
+        await build_handlers(thinker, filler_threshold_seconds=0)["call_backend"](params)
 
         self.assertEqual(len(llm.frames), 3)
         self.assertIsInstance(llm.frames[0], LLMFullResponseStartFrame)
@@ -813,7 +815,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
         markers = [event.marker for event in thinker.state.lifecycle_events]
         self.assertEqual(markers, ["ThinkerStarted", "IntermediateResponse", "ThinkerCompleted"])
 
-    async def test_call_thinker_ignores_duplicate_started_events_for_filler(self) -> None:
+    async def test_call_backend_ignores_duplicate_started_events_for_filler(self) -> None:
         llm = _FrameCapturingLLM()
         results = []
 
@@ -821,7 +823,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             results.append((result, properties))
 
         params = FunctionCallParams(
-            function_name="call_thinker",
+            function_name="call_backend",
             tool_call_id="call_test",
             arguments={
                 "query": "Search flights from New York to Seattle tomorrow",
@@ -833,7 +835,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             result_callback=result_callback,
         )
 
-        await build_handlers(_DoubleStartedThinker(), filler_threshold_seconds=0.01)["call_thinker"](params)
+        await build_handlers(_DoubleStartedThinker(), filler_threshold_seconds=0.01)["call_backend"](params)
 
         self.assertEqual(len(llm.frames), 3)
         self.assertIsInstance(llm.frames[0], LLMFullResponseStartFrame)
@@ -842,7 +844,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(llm.frames[2], LLMFullResponseEndFrame)
         self.assertEqual(results[-1][0]["type"], "tool_result")
 
-    async def test_call_thinker_suppresses_started_filler_when_thinker_finishes_before_threshold(self) -> None:
+    async def test_call_backend_suppresses_started_filler_when_thinker_finishes_before_threshold(self) -> None:
         thinker = _make_thinker()
         llm = _FrameCapturingLLM()
         results = []
@@ -851,7 +853,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             results.append((result, properties))
 
         params = FunctionCallParams(
-            function_name="call_thinker",
+            function_name="call_backend",
             tool_call_id="call_test",
             arguments={
                 "query": "Search flights from New York to Seattle tomorrow",
@@ -866,12 +868,12 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             result_callback=result_callback,
         )
 
-        await build_handlers(thinker, filler_threshold_seconds=1.0)["call_thinker"](params)
+        await build_handlers(thinker, filler_threshold_seconds=1.0)["call_backend"](params)
 
         self.assertEqual(llm.frames, [])
         self.assertEqual(results[-1][0]["type"], "tool_result")
 
-    async def test_call_thinker_omits_started_filler_when_talker_does_not_provide_one(self) -> None:
+    async def test_call_backend_omits_started_filler_when_talker_does_not_provide_one(self) -> None:
         thinker = _make_thinker()
         llm = _FrameCapturingLLM()
         results = []
@@ -880,7 +882,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             results.append((result, properties))
 
         params = FunctionCallParams(
-            function_name="call_thinker",
+            function_name="call_backend",
             tool_call_id="call_test",
             arguments={
                 "query": "Search flights from New York to Seattle tomorrow",
@@ -894,12 +896,12 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             result_callback=result_callback,
         )
 
-        await build_handlers(thinker)["call_thinker"](params)
+        await build_handlers(thinker)["call_backend"](params)
 
         self.assertEqual(llm.frames, [])
         self.assertEqual(results[-1][0]["type"], "tool_result")
 
-    async def test_call_thinker_returns_result_callback_on_backend_exception(self) -> None:
+    async def test_call_backend_returns_result_callback_on_backend_exception(self) -> None:
         llm = _FrameCapturingLLM()
         results = []
 
@@ -907,7 +909,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             results.append((result, properties))
 
         params = FunctionCallParams(
-            function_name="call_thinker",
+            function_name="call_backend",
             tool_call_id="call_test",
             arguments={"query": "Search flights from New York to Seattle tomorrow"},
             llm=llm,
@@ -916,13 +918,13 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             result_callback=result_callback,
         )
 
-        await build_handlers(_RaisingThinker())["call_thinker"](params)
+        await build_handlers(_RaisingThinker())["call_backend"](params)
 
         self.assertEqual(results[-1][0]["type"], "response_hint")
         self.assertEqual(results[-1][0]["reason"], "tool_error")
         self.assertIn("try again", results[-1][0]["response_text"].lower())
 
-    async def test_cancel_thinker_cancels_active_call_and_suppresses_stale_result(self) -> None:
+    async def test_cancel_backend_cancels_active_call_and_suppresses_stale_result(self) -> None:
         thinker = _make_thinker(tool_delay_seconds=1.0)
         llm = _FrameCapturingLLM()
         call_results = []
@@ -936,7 +938,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
 
         handlers = build_handlers(thinker, filler_threshold_seconds=10.0)
         call_params = FunctionCallParams(
-            function_name="call_thinker",
+            function_name="call_backend",
             tool_call_id="call_test",
             arguments={
                 "query": "Search flights from New York to Seattle tomorrow",
@@ -950,7 +952,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             result_callback=call_result_callback,
         )
         cancel_params = FunctionCallParams(
-            function_name="cancel_thinker",
+            function_name="cancel_backend",
             tool_call_id="cancel_test",
             arguments={},
             llm=llm,
@@ -959,11 +961,11 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             result_callback=cancel_result_callback,
         )
 
-        running_call = asyncio.create_task(handlers["call_thinker"](call_params))
+        running_call = asyncio.create_task(handlers["call_backend"](call_params))
         await asyncio.sleep(0)
         self.assertIsNotNone(thinker.state.active_task)
 
-        await handlers["cancel_thinker"](cancel_params)
+        await handlers["cancel_backend"](cancel_params)
         await running_call
 
         self.assertEqual(cancel_results[-1][0]["reason"], "cancelled")
@@ -976,7 +978,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
         aborted = [event for event in thinker.state.lifecycle_events if event.marker == "ThinkerAborted"]
         self.assertEqual(len(aborted), 1)
 
-    async def test_cancel_thinker_reports_nothing_pending_without_starting_thinker(self) -> None:
+    async def test_cancel_backend_reports_nothing_pending_without_starting_thinker(self) -> None:
         thinker = _make_thinker()
         llm = _FrameCapturingLLM()
         results = []
@@ -985,7 +987,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             results.append((result, properties))
 
         params = FunctionCallParams(
-            function_name="cancel_thinker",
+            function_name="cancel_backend",
             tool_call_id="cancel_test",
             arguments={},
             llm=llm,
@@ -994,13 +996,14 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             result_callback=result_callback,
         )
 
-        await build_handlers(thinker)["cancel_thinker"](params)
+        await build_handlers(thinker)["cancel_backend"](params)
 
         self.assertEqual(results[-1][0]["reason"], "nothing_to_cancel")
+        self.assertEqual(results[-1][0]["context"], "cancel_backend")
         self.assertEqual(results[-1][0]["response_text"], "There is nothing pending right now.")
         self.assertEqual(thinker.state.lifecycle_events, [])
 
-    async def test_cancel_thinker_clears_pending_booking_confirmation(self) -> None:
+    async def test_cancel_backend_clears_pending_booking_confirmation(self) -> None:
         thinker = _make_thinker()
         llm = _FrameCapturingLLM()
         results = []
@@ -1022,7 +1025,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             results.append((result, properties))
 
         params = FunctionCallParams(
-            function_name="cancel_thinker",
+            function_name="cancel_backend",
             tool_call_id="cancel_test",
             arguments={},
             llm=llm,
@@ -1031,7 +1034,7 @@ class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
             result_callback=result_callback,
         )
 
-        await build_handlers(thinker)["cancel_thinker"](params)
+        await build_handlers(thinker)["cancel_backend"](params)
 
         self.assertEqual(results[-1][0]["reason"], "cancelled")
         self.assertEqual(results[-1][0]["response_text"], "Okay, I stopped that.")
