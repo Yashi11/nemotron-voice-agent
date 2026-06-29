@@ -44,7 +44,7 @@ Tear down with the same recipe used at `up` time.
 
 Omni runs the LLM in `nvidia-llm-vllm-omni`; ASR is handled inside the Omni model, so there is no separate ASR NIM. Workstation and DGX Spark recipes use `tts-service` for TTS, while Jetson Thor uses `nemotron-speech-tts`.
 
-For the VRAM, `--gpu-memory-utilization`, and device-placement matrix, see [Workstation GPU Memory and Device Placement](../../../docs/01-getting-started.md#workstation-gpu-memory-and-device-placement).
+For the VRAM, `--gpu-memory-utilization`, and device-placement matrix, see [VRAM & hardware support](../../../docs/how-to/configure-llm.md#vram--hardware-support).
 
 ## Common failures
 

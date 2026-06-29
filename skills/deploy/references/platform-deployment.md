@@ -24,7 +24,7 @@ Services depend on the recipe:
 - `omni-assistant/workstation`: `omni-assistant`, `nvidia-llm-vllm-omni`, `tts-service`
 - `frontend-backend-agent/workstation`: `frontend-backend-agent`, `booking-server`, `nvidia-llm`, `nemotron-asr-streaming-english`, `tts-service`
 
-Requires enough GPU VRAM for the selected local NIM services. Single-GPU hosts are valid when capacity is sufficient. Multi-GPU hosts may split speech sidecars and LLM across devices. For the user-facing VRAM, memory-knob, and device-placement matrix, see [Workstation GPU Memory and Device Placement](../../../docs/01-getting-started.md#workstation-gpu-memory-and-device-placement).
+Requires enough GPU VRAM for the selected local NIM services. Single-GPU hosts are valid when capacity is sufficient. Multi-GPU hosts may split speech sidecars and LLM across devices. For the user-facing VRAM, memory-knob, and device-placement matrix, see [VRAM & hardware support](../../../docs/how-to/configure-llm.md#vram--hardware-support).
 
 ```bash
 nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader

@@ -22,7 +22,7 @@ The benchmark parses those frames alongside the audio stream.
 ## Setup
 
 These scripts reuse the repo's root environment — no separate venv required.
-Pipecat is already a project dependency, and `websockets` is pulled in via the
+Dependencies are managed via the
 root `benchmark` dependency group (shared by every tool under
 `benchmarking_tools/`).
 
@@ -36,9 +36,15 @@ root `benchmark` dependency group (shared by every tool under
    Docker Compose, because `benchmark.py` and `simulate_concurrency.sh` run
    on the host, not inside the app container.
 
-2. Start the voice-agent server (Docker compose or `uv run python src/server.py`).
-3. Drop **16 kHz, mono, 16-bit PCM** WAV files into `dataset/`. The benchmark
-   cycles through them as the simulated user's utterances each turn.
+2. Start the voice-agent server ([Docker compose](../../docs/01-getting-started.md) or `uv run python src/server.py`).
+3. Add WAV files into `dataset/`. The benchmark cycles through them as the simulated user's utterances each turn. Prepare each file so the benchmark can time turns correctly:
+
+   - **Record the query or reuse existing audio**, using generic queries or ones that match your specific use case.
+   - **Use one continuous utterance per file, with no long internal pauses.** The server runs voice-activity detection and turn endpointing on the incoming audio, so a long silence in the middle of a file looks exactly like the end of a turn. The server then endpoints early and the bot starts answering a partial query, which is a false early response. That premature reply races the real end of your utterance, so the benchmark flags it as a *reverse barge-in* (see the [`--reverse-barge-in-threshold`](#run) flag) and discards it. The turn is mis-segmented and its latency becomes meaningless. Keeping each query a single clean utterance is what lets the benchmark produce correct, comparable numbers.
+   - **Trim all trailing silence from the end** (for example in Audacity). This is critical for the client-side latency measurement. The benchmark times from the end of the WAV to when the bot's response arrives, so the end of the file must coincide with the end of the spoken query. The scripts insert silence *between* files automatically, so do not pad the files yourself.
+   - **Save as 16 kHz, mono, linear PCM (`int16`) WAV.** This matches the pipeline's input format.
+
+   If you do not trim the trailing silence, the client-side end-to-end latency is lower, because the clients keeps waiting through that silence before it start measuring. The client-side E2E numbers are then wrong, but the **RTVI-based, server-reported metrics stay reliable** (`server_e2e`, `asr_ttfb`, `tts_ttfb`, and `llm_processing_time`), because they are measured at the server from the actual end-of-speech and turn events rather than from the end of the file. See [What it measures](#what-it-measures).
 
 `simulate_concurrency.sh` auto-dispatches `benchmark.py` through `uv run`
 when the root `pyproject.toml` is detected, so the commands below work
@@ -125,15 +131,6 @@ The shell wrapper accepts `-h`/`--help`. Common flags:
 | `--output-dir DIR` | this folder | Override result destination. |
 
 `Ctrl-C` is graceful — workers stop, partial results stay on disk.
-
-### Calling `benchmark.py` directly
-
-The shell script orchestrates concurrency for you, but `benchmark.py` is
-runnable on its own when you only need one client (smoke tests, debugging).
-See `uv run python3 benchmark.py --help` for the full per-client surface
-(`--stream-id`, `--metrics-start-time`, `--session-end-time`,
-`--result-path`, `--logger-path`, `--audio-output-path`, …). Without those
-flags the script computes sane defaults.
 
 ## Output layout
 

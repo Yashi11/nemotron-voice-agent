@@ -7,7 +7,7 @@ Captures user (ASR input) and bot (TTS output) audio to separate WAV files.
 Controlled via environment variables:
   - ENABLE_ASR_AUDIO_DUMP  (default: false)
   - ENABLE_TTS_AUDIO_DUMP  (default: false)
-  - AUDIO_DUMP_PATH        (default: <project_root>/audio_dumps/cascaded)
+  - AUDIO_DUMP_PATH        (default: <project_root>/audio_dumps)
 """
 
 import os
@@ -27,7 +27,7 @@ def _env_bool(key: str, default: str = "false") -> bool:
 
 ENABLE_ASR_DUMP = _env_bool("ENABLE_ASR_AUDIO_DUMP")
 ENABLE_TTS_DUMP = _env_bool("ENABLE_TTS_AUDIO_DUMP")
-_raw_dump_path = Path(os.getenv("AUDIO_DUMP_PATH", "audio_dumps/cascaded"))
+_raw_dump_path = Path(os.getenv("AUDIO_DUMP_PATH", "audio_dumps"))
 AUDIO_DUMP_PATH = _raw_dump_path if _raw_dump_path.is_absolute() else PROJECT_ROOT / _raw_dump_path
 
 

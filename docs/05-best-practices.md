@@ -9,7 +9,7 @@ Building production-grade voice agents requires careful consideration of multipl
 The following metrics are key to the success of a voice agent.
 
 - **Latency**: Time from user speech end to bot response start (target: 600-1500ms).
-- **Accuracy**: ASR word error rate (WER), factual correctness, LLM generation quality, and so on.
+- **Accuracy**: ASR word error rate (WER), factual correctness, LLM generation quality, task completion and so on.
 - **Scalability**: Concurrent streams supported without audio glitches or performance degradation, all models scale independently.
 - **Availability**: System uptime and fault tolerance (target: 99.9%+).
 - **User Satisfaction**: Task completion rate and user feedback scores.
@@ -57,7 +57,7 @@ To optimize latency, first measure end-to-end and per-component latency. Voice a
   - Minimize audio buffer sizes while maintaining quality.
   - Implement jitter buffers for network variations.
 - **Scaling Audio Output for Concurrency:**
-  When scaling to multiple concurrent audio streams in the cascaded pipeline using either WebRTC or FastAPI WebSocket transport, consider increasing the output audio chunk size using the `AUDIO_OUT_10MS_CHUNKS` parameter up to 400ms to reduce audio glitches and enable smoother playback.
+  When scaling to multiple concurrent audio streams in the cascaded pipeline using FastAPI WebSocket transport, consider increasing the output audio chunk size using the `AUDIO_OUT_10MS_CHUNKS` parameter up to 400ms to reduce audio glitches and enable smoother playback.
 
   **Configuration in `.env`:**
   ```bash
@@ -80,15 +80,15 @@ To optimize latency, first measure end-to-end and per-component latency. Voice a
 **Model Inference:**
 - **Contribution**: 200-800ms depending on model size and complexity
 - **Optimization**:
-  - **Model Selection**: Use smaller, faster models (8B compared to 70B parameters).
+  - **Model Selection**: Use smaller, faster models (Nemotron 3 Nano 30B).
   - **TRT LLM Optimized**: Use TRT LLM optimized NIM deployments.
-  - **Quantization**: Apply INT8/FP16 models for 2-3x speedup.
+  - **Quantization**: Use NVFP4/FP8 models for 2-3x speedup.
   - **KV-Cache Optimization**: Enable KV caching for lower TTFB and optimize based on use case.
 
 **Context Management:**
 - **Contribution**: 50-200ms for large contexts
 - **Optimization**:
-  - Implement context truncation strategies.
+  - Implement context truncation strategies such as summarization.
   - Enable KV caching with adequate cache size.
 
 ### TTS (Text-to-Speech) Latency
@@ -97,7 +97,7 @@ To optimize latency, first measure end-to-end and per-component latency. Voice a
 - **Contribution**: 150-300ms for first audio chunk
 - **Optimization**:
   - **Streaming TTS**: Start playback before full synthesis.
-  - **Local Nemotron Speech TTS**: Achieve 150-200ms with TRT optimized Magpie model.
+  - **Local Magpie TTS**: Achieve 150-200ms with TRT optimized Magpie model.
   - **Chunked Generation**: Process sentences as they are generated.
   - **Batch Size**: Tune the Magpie model batch size for the deployment shape. In single-GPU local profiles, ASR, TTS, and LLM may contend for the same GPU memory budget. Keep the default `batch_size=8` for baseline stability, then benchmark before increasing it.
 
@@ -124,6 +124,11 @@ To optimize latency, first measure end-to-end and per-component latency. Voice a
 **Filler Words or Intermediate Responses:**
 - Generate or use random filler words to reduce perceived latency.
 - Generate intermediate responses based on function calls or thinking tokens for high latency agents or reasoning models.
+
+**Design Agents for Voice use case:**
+- When the real work is slow (reasoning models, multi-step tool use, or an agentic backend), split the assistant into a fast front-channel LLM that owns the live conversation and a deliberative backend agent that does the work.
+- The frontend LLM keeps the voice loop responsive by acknowledging the request, asking clarifying questions, and speaking filler while the backend runs, so perceived latency stays low even when end-to-end task latency is high.
+- See the [Frontend/Backend Agent example](../src/examples/frontend_backend_agent/README.md) for the reference pattern, including `call_backend` / `cancel_backend` delegation and filler speech during longer backend work.
 
 ---
 
@@ -244,7 +249,7 @@ ERROR_MESSAGES = {
 ### Resource Optimization
 
 **Model Optimization:**
-- Apply quantization (FP16, INT8) and TRT optimization for inference.
+- Apply quantization (NVFP4, FP8) and TRT optimization for inference.
 - Select smaller models for lower footprint.
 - Use batch inference where possible.
 - Enable GPU sharing and multiplexing.

@@ -43,6 +43,6 @@ Optional: `--retry_samples 1 5 10`.
 
 Numeric subfolders under `--input_dir`: `input.wav` → `output.wav`, `clean_input.wav` → `clean_output.wav` when present.
 
-## Credits
+## Reference
 
 [Full-Duplex-Bench](https://github.com/DanielLin94144/Full-Duplex-Bench) · [Nemotron Voice Agent](../../README.md)

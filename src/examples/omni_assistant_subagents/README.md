@@ -1,125 +1,77 @@
 # Nemotron Omni Assistant Subagents - cascaded pipeline example
 
-Multi-agent variant of [`omni-assistant`](../omni_assistant/README.md)
-built on Pipecat's built-in multi-agent framework (`pipecat.workers`).
-A transport agent owns I/O and TTS, a speaker agent owns spoken output,
-and two worker agents handle uploaded media and live webcam vision.
+Multi-agent variant of [`omni-assistant`](../omni_assistant/README.md) built on Pipecat's built-in multi-agent framework (`pipecat.workers`). A transport agent owns I/O and TTS, a speaker agent owns spoken output, and two worker agents handle uploaded media and live webcam vision. It keeps the voice conversation responsive while specialized agents analyze uploaded media and live webcam frames.
 
-Everything specific to this example lives under
-`src/examples/omni_assistant_subagents/`: pipeline entry point,
-per-agent modules, service catalogs, and prompts. There is no
-per-example compose file. The app container and shared sidecars are
-defined in the root and `docker/` compose files.
-
-## Overview and Use Cases
-
-| Area | Details |
-| --- | --- |
-| Example intent | A multimodal, multi-agent Omni assistant that keeps the voice conversation responsive while specialized agents analyze uploaded media and live webcam frames. |
-| Architecture pattern | Split responsibility across a transport agent, speaker agent, media analyzer, and webcam agent using `pipecat.workers`, with explicit dispatch and acknowledgement points. |
-| What to study | Agent boundaries, prompt separation, visual barge-in, deferred media dispatch, webcam scene summaries, and how UI capabilities are declared for attachments and webcam support. |
-| Best fit | Teams building assistants that need spoken interaction plus asynchronous visual or media understanding without blocking the user-facing voice loop. |
-| Extend into | Visual troubleshooting, field-service copilots, retail product assistance, inspection workflows, education and training tutors, accessibility helpers, or support agents that combine conversation with uploaded images, audio, video, or live camera context. |
-
-## Architecture
+The pattern splits responsibility across a transport agent, speaker agent, media analyzer, and webcam agent using `pipecat.workers`, with explicit dispatch and acknowledgement points. It showcases agent boundaries and prompt separation, visual barge-in, deferred media dispatch, rolling webcam scene summaries, and UI capability declarations for attachments and webcam support.
 
 ![Omni Assistant Subagents architecture](images/omni-subagent-example.png)
 
-## Layout
+## Running the example
+
+This example runs on the **Cloud** (no local GPU, NVCF endpoints), **Workstation** (single GPU), and **DGX Spark** (Blackwell, 128 GB unified memory) profiles. See the [Getting Started guide](../../../docs/01-getting-started.md) for prerequisites and hardware detail. Run every command from the repository root.
+
+1. Create your `.env` from the template and set your NVIDIA API key:
+
+   ```bash
+   cp .env.example .env
+   export NVIDIA_API_KEY=<your-nvidia-api-key>
+   ```
+
+   > **Local profiles (Workstation, DGX Spark):** also set `HF_TOKEN` in `.env`. Omni is served with vLLM, which downloads the model weights from Hugging Face.
+
+2. Log in to the NVIDIA NGC container registry:
+
+   ```bash
+   printf '%s' "$NVIDIA_API_KEY" | docker login nvcr.io -u '$oauthtoken' --password-stdin
+   ```
+
+3. Deploy the profile that matches your hardware:
+
+   ```bash
+   docker compose --profile omni-assistant-subagents up -d              # Cloud (no local GPU)
+   docker compose --profile omni-assistant-subagents/workstation up -d  # Workstation
+   docker compose --profile omni-assistant-subagents/dgx-spark up -d    # DGX Spark
+   ```
+
+   | Recipe profile | App service | Shared sidecars pulled from `docker/` |
+   | --- | --- | --- |
+   | `omni-assistant-subagents` | `omni-assistant-subagents` | none (cloud NVCF) |
+   | `omni-assistant-subagents/workstation` | `omni-assistant-subagents` | `nvidia-llm-vllm-omni`, `tts-service` |
+   | `omni-assistant-subagents/dgx-spark` | `omni-assistant-subagents` | `nvidia-llm-vllm-omni`, `tts-service` |
+
+4. Open the UI at `https://localhost:7860/`. Keep TLS enabled for browser UI testing. `PIPELINE_TLS=false` serves plain HTTP for headless performance and API testing. For plain-HTTP browser testing, see [browser access](../../../docs/06-troubleshooting.md#browser-access).
+
+5. Clean up when you are done by tearing down with the same profile you started with:
+
+   ```bash
+   docker compose --profile omni-assistant-subagents/workstation down
+   ```
+
+To run host-native without Docker, set `selection: omni-assistant-subagents` in [`examples_registry.yaml`](../../../examples_registry.yaml), then run `uv run python3 src/server.py`.
+
+## Customization
 
 | Path | Role |
 | --- | --- |
 | `pipeline.py` | entry point that wires the four workers into a `WorkerRunner` over a shared `WorkerBus` |
-| `subagents/speaker/agent.py` | `SpeakerOmniAgent` + structured-JSON wrapper around `NvidiaOmniMultimodalService` |
-| `subagents/transport/agent.py` | `OmniTransportAgent` — transport I/O, TTS, visual barge-in, analyzer dispatch |
-| `subagents/media_analyzer/agent.py` | `MediaAnalyzerWorker` for uploaded image / audio / video attachments |
+| `subagents/speaker/agent.py` | `SpeakerOmniAgent` plus a structured-JSON wrapper around `NvidiaOmniMultimodalService` |
+| `subagents/transport/agent.py` | `OmniTransportAgent` for transport I/O, TTS, visual barge-in, and analyzer dispatch |
+| `subagents/media_analyzer/agent.py` | `MediaAnalyzerWorker` for uploaded image, audio, and video attachments |
 | `subagents/webcam/agent.py` | `WebcamAgent` rolling scene summaries for live webcam context |
 | `media_dispatch_processor.py` | frame-processor that defers analyzer dispatch until the speaker ack closes |
-| `prompts.yaml` | example-local prompt catalog (top-level prompt + `agent_prompts:` per agent) |
+| `prompts.yaml` | example-local prompt catalog (top-level prompt plus `agent_prompts:` per agent) |
 | `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for cloud and on-prem deployments |
 
-## Running the example
-
-Host-native (no Docker), set `selection: omni-assistant-subagents`
-in [`examples_registry.yaml`](../../../examples_registry.yaml) at the
-repo root, then:
-
-```bash
-uv run python3 src/server.py
-```
-
-Docker — pick the recipe profile that matches your deployment intent.
-Cloud-only:
-
-```bash
-docker compose --profile omni-assistant-subagents up -d
-```
-
-Workstation local Omni vLLM + NIM TTS:
-
-```bash
-docker compose --profile omni-assistant-subagents/workstation up -d
-```
-
-DGX Spark local Omni vLLM + NIM TTS:
-
-```bash
-docker compose --profile omni-assistant-subagents/dgx-spark up -d
-```
-
-Tear down with the same profile used at `up` time.
-
-| Recipe profile | App service | Shared sidecars pulled from `docker/` |
-| --- | --- | --- |
-| `omni-assistant-subagents` | `omni-assistant-subagents` | none (cloud NVCF) |
-| `omni-assistant-subagents/workstation` | `omni-assistant-subagents` | `nvidia-llm-vllm-omni`, `tts-service` |
-| `omni-assistant-subagents/dgx-spark` | `omni-assistant-subagents` | `nvidia-llm-vllm-omni`, `tts-service` |
-
-> Jetson is not supported today: the 30B Omni NVFP4 model does not fit on Orin-class hardware. A jetson recipe will be added once a smaller Omni variant lands.
-
-The UI is served at `https://localhost:7860/` by default. Keep TLS enabled for
-browser UI testing; `PIPELINE_TLS=false` is intended for headless performance
-and API testing. If you still need HTTP for temporary browser testing, open the
-browser flags page (for example,
-`chrome://flags/#unsafely-treat-insecure-origin-as-secure` in Chrome or
-`edge://flags/#unsafely-treat-insecure-origin-as-secure` in Edge), enable the
-`Insecure origins treated as secure` flag, add `http://localhost:7860`,
-relaunch the browser, and remove the origin after testing.
-
-## Capabilities exposed to the UI
-
-The example declares `capabilities: [attachments, webcam]` in
-`examples_registry.yaml`, which gates these UI surfaces and backend
-endpoints:
+The example declares `capabilities: [attachments, webcam]` in `examples_registry.yaml`, which gates these UI surfaces and backend endpoints:
 
 | Endpoint | Purpose |
 | --- | --- |
-| `POST /api/sessions/{session_id}/attachments?kind={image,audio,video}` | Upload media attachment for the media analyzer |
+| `POST /api/sessions/{session_id}/attachments?kind={image,audio,video}` | Upload a media attachment for the media analyzer |
 | `POST /api/sessions/{session_id}/webcam/frames` | Upload one webcam JPEG frame |
 | `GET /api/webcam-config` | Browser webcam capture defaults |
 
-## Import convention
+## Tips & best practices
 
-Top-level `src/` is on `PYTHONPATH`, so imports should use:
-
-```python
-from examples.omni_assistant_subagents.pipeline import bot
-```
-
-and never `from src.examples.omni_assistant_subagents ...`.
-
-## Agent skills
-
-The repository ships AI agent skills under `skills/` that may help
-with deployment and configuration:
-
-| Skill | Purpose |
-| --- | --- |
-| [`deploy`](../../../skills/deploy/SKILL.md) | recipe-profile selection, NGC login, and root-compose deploy across supported example/hardware stacks |
-| [`configure-pipeline`](../../../skills/configure-pipeline/SKILL.md) | edit `.env`, example-local `prompts.yaml`, or example-local `services.{cloud,local}.yaml`, then re-apply |
-
-Install them into your coding agent with `npx skills add .` (see the
-[top-level README](../../../README.md#agent-skills)). When deploying only
-this example, the root `deploy` skill points at
-[`deploy/references/omni-assistant-subagents-deploy.md`](../../../skills/deploy/references/omni-assistant-subagents-deploy.md)
-for the subagents-specific profile combinations and failure modes.
+- **Keep the voice loop responsive.** Media and webcam analysis run as separate worker agents so the transport and speaker agents never block on vision work. Preserve that split when adding new capabilities.
+- **Reuse the deferred-dispatch pattern.** `media_dispatch_processor.py` holds analyzer dispatch until the current spoken turn finishes, which avoids cutting the user off. Reuse it for any new asynchronous worker.
+- **Model selection and VRAM** follow the Omni sizing in [Configure LLM](../../../docs/how-to/configure-llm.md). For deployment and general failure modes, see the [Troubleshooting guide](../../../docs/06-troubleshooting.md).

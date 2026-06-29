@@ -47,7 +47,7 @@ docker run --rm --gpus all \
 
 - For one GPU, use `tp=1`. Higher `tp` values require that many GPUs.
 - Prefer readable tag selection over profile hashes: `NIM_TAGS_SELECTOR=precision=fp8,tp=1`.
-- Match the local LLM to the GPU via `.env`: `NIM_KVCACHE_PERCENT` (VRAM budget — **raise** it on `No available memory for the cache blocks`, lower it on an OOM kill), `NIM_TAGS_SELECTOR` (weight precision and tensor-parallel size), and `LLM_MAX_NUM_SEQS` (lower it if startup fails CUDA-graph capture). On multi-GPU hosts, choose a NIM profile with matching `tp` and expose that many GPUs. See the "Local LLM GPU sizing & precision" section in `docs/how-to/configure-services.md`.
+- Match the local LLM to the GPU via `.env`: `NIM_KVCACHE_PERCENT` (VRAM budget — **raise** it on `No available memory for the cache blocks`, lower it on an OOM kill), `NIM_TAGS_SELECTOR` (weight precision and tensor-parallel size), and `LLM_MAX_NUM_SEQS` (lower it if startup fails CUDA-graph capture). On multi-GPU hosts, choose a NIM profile with matching `tp` and expose that many GPUs. See "VRAM & hardware support" in `docs/how-to/configure-llm.md`.
 - More details: https://docs.nvidia.com/nim/large-language-models/latest/deployment/model-profiles-and-selection.html
 
 ## Common failures

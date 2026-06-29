@@ -6,7 +6,13 @@ Use [`benchmarking_tools/scaling-perf/`](../../benchmarking_tools/scaling-perf/)
 
 ## Setup
 
-1. Add **16 kHz, mono, 16-bit PCM** WAV files to `benchmarking_tools/scaling-perf/dataset/`.
+1. Add WAV files to `benchmarking_tools/scaling-perf/dataset/` as the simulated user's utterances. Prepare each file so turns are timed correctly:
+
+    - **One continuous utterance per file, with no long internal pauses.** A long mid-file silence reads as the end of a turn, so the bot answers early and the turn is mis-timed.
+    - **Trim all trailing silence** (for example in Audacity) so the end of the file is the end of the query. The benchmark times from the end of the WAV to the bot's response, and the scripts add silence between files automatically.
+    - **Save as 16 kHz, mono, linear PCM (`int16`) WAV.**
+
+    See [Setup in the perf README](../../benchmarking_tools/scaling-perf/README.md#setup) for the full rationale (reverse barge-ins, and client-side versus RTVI latency).
 2. From the repository root, install benchmark dependencies once:
 
     ```bash
@@ -27,12 +33,8 @@ Use [`benchmarking_tools/scaling-perf/`](../../benchmarking_tools/scaling-perf/)
     ```
 
     `PIPELINE_TLS=false` is used here for headless benchmark traffic. Keep TLS
-    enabled when testing the interactive browser UI. If you still need HTTP for
-    temporary browser testing, open the browser flags page (for example,
-    `chrome://flags/#unsafely-treat-insecure-origin-as-secure` in Chrome or
-    `edge://flags/#unsafely-treat-insecure-origin-as-secure` in Edge), enable
-    the `Insecure origins treated as secure` flag, add the exact HTTP origin,
-    relaunch the browser, and remove the origin after testing.
+    enabled when testing the interactive browser UI. For temporary plain-HTTP
+    browser testing, see [browser access](../06-troubleshooting.md#browser-access).
 
     Or run it under Docker Compose with the matching example profile, for example `--profile generic-assistant`. See [Getting Started](../01-getting-started.md) for the full list of profile combinations.
 
