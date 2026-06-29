@@ -66,6 +66,15 @@ lint-check:
     - uv run ruff check .
   allow_failure: false
 
+unit-tests:
+  stage: validate
+  tags:
+    - shell
+  <<: *install_uv
+  script:
+    - PYTHONPATH=src uv run pytest tests/ -v
+  allow_failure: false
+
 skills-validate:
   stage: validate
   tags:
