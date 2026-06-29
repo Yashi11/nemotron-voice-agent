@@ -1,0 +1,50 @@
+# Cloud (NVCF) service catalog. On-prem entries live in services.local.yaml and
+# shadow these when their endpoint is reachable.
+
+# ── LLM Services (Cascaded pipeline) ──
+# "(Reasoning)" entries enable chain-of-thought via enable_thinking; the others
+# run reasoning-off for lowest latency.
+llm:
+  nemotron-nano:
+    name: "Nemotron 3 Nano 30B A3B"
+    model_id: "nvidia/nemotron-3-nano-30b-a3b"
+    base_url: "https://integrate.api.nvidia.com/v1"
+    system_prompt: ""
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
+
+  nemotron-nano-reasoning:
+    name: "Nemotron 3 Nano 30B A3B (Reasoning)"
+    model_id: "nvidia/nemotron-3-nano-30b-a3b"
+    base_url: "https://integrate.api.nvidia.com/v1"
+    system_prompt: ""
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true},"repetition_penalty":1.05}}'
+
+  nemotron-super:
+    name: "Nemotron 3 Super 120B A12B"
+    model_id: "nvidia/nemotron-3-super-120b-a12b"
+    base_url: "https://integrate.api.nvidia.com/v1"
+    system_prompt: ""
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
+
+  nemotron-super-reasoning:
+    name: "Nemotron 3 Super 120B A12B (Reasoning)"
+    model_id: "nvidia/nemotron-3-super-120b-a12b"
+    base_url: "https://integrate.api.nvidia.com/v1"
+    system_prompt: ""
+    extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":true},"repetition_penalty":1.05}}'
+
+# ── TTS Services (Cascaded pipeline) ──
+tts:
+  magpie-tts:
+    name: "Magpie TTS Multilingual"
+    server: "grpc.nvcf.nvidia.com:443"
+    voice_id: "Magpie-Multilingual.EN-US.Aria"
+    function_id: ""
+
+# ── ASR Services (Cascaded pipeline) ──
+asr:
+  parakeet-rnnt:
+    name: "Parakeet 1.1B RNNT Multilingual ASR"
+    server: "grpc.nvcf.nvidia.com:443"
+    model: "parakeet-1.1b-rnnt-multilingual-asr"
+    function_id: "71203149-d3b7-4460-8231-1be2543a1fca"
