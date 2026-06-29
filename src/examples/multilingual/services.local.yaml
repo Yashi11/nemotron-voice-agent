@@ -1,0 +1,57 @@
+# On-prem catalog. Entries are grouped by platform name for readability; the
+# backend merges all sections and exposes only the reachable ones. Compose
+# endpoints are rewritten to localhost for host-native runs.
+
+workstation:
+  llm:
+    nemotron-nano:
+      name: "Nemotron 3 Nano 30B A3B"
+      model_id: "nvidia/nemotron-3-nano"
+      base_url: "http://nvidia-llm:8000/v1"
+      system_prompt: ""
+      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
+  tts:
+    magpie-tts:
+      name: "Magpie TTS"
+      server: "tts-service:50051"
+      voice_id: "Magpie-Multilingual.EN-US.Aria"
+      function_id: ""
+  asr:
+    parakeet-rnnt:
+      name: "Parakeet 1.1B RNNT Multilingual ASR"
+      server: "parakeet-rnnt-asr:50052"
+      model: "parakeet-1.1b-rnnt-multilingual-asr"
+      function_id: ""
+    nemotron-asr-streaming-multilingual:
+      name: "Nemotron ASR Streaming Multilingual"
+      server: "nemotron-asr-streaming-multilingual:50052"
+      model: "cache-aware-parakeet-rnnt-multi-asr-streaming-sortformer"
+      language_code: "auto"
+      function_id: ""
+
+dgxspark:
+  llm:
+    nemotron-nano:
+      name: "Nemotron 3 Nano NVFP4"
+      model_id: "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4"
+      base_url: "http://nvidia-llm-vllm:8000/v1"
+      system_prompt: ""
+      extra_params: '{"extra_body":{"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
+  tts:
+    magpie-tts:
+      name: "Magpie TTS"
+      server: "tts-service:50051"
+      voice_id: "Magpie-Multilingual.EN-US.Aria"
+      function_id: ""
+  asr:
+    parakeet-rnnt:
+      name: "Parakeet 1.1B RNNT Multilingual ASR"
+      server: "parakeet-rnnt-asr:50052"
+      model: "parakeet-1.1b-rnnt-multilingual-asr"
+      function_id: ""
+    nemotron-asr-streaming-multilingual:
+      name: "Nemotron ASR Streaming Multilingual"
+      server: "nemotron-asr-streaming-multilingual:50052"
+      model: "cache-aware-parakeet-rnnt-multi-asr-streaming-sortformer"
+      language_code: "auto"
+      function_id: ""
