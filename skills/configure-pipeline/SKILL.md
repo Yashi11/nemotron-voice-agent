@@ -3,7 +3,7 @@ name: configure-pipeline
 description: Configure Nemotron Voice Agent runtime via `.env`, example-local `services.{cloud,local}.yaml`, and example-local `prompts.yaml`. Use when changing prompts, tracing, audio knobs, exposed pipelines or transports, or local NIM image overrides.
 version: "1.0.0"
 metadata:
-  author: Ashutosh Rautela <arautela@nvidia.com>
+  author: NVIDIA Voice Agent Team <nemotron-voice-agent@nvidia.com>
   tags: [configuration, pipeline, voice-agent, nemotron]
 ---
 
@@ -76,8 +76,8 @@ Edit the runtime configuration of the voice agent (built-in catalogs, prompts, f
 - **YAML catalog change does not appear in the UI** -> compose re-apply and refresh browser.
 - **`.env` change has no effect on a running container** -> environment is read at container start. Re-apply Compose so the container restarts.
 - **Local LLM/ASR/TTS missing from the Services tab** -> the corresponding sidecar is not deployed or is unreachable. The catalog filters local entries by TCP reachability.
-- **Local workstation LLM won't start or OOMs** -> match it to the GPU in `.env`: `NIM_KVCACHE_PERCENT` (**raise** on `No available memory for the cache blocks`, lower on an OOM kill), `NIM_TAGS_SELECTOR` (weight precision and tensor-parallel size), and `LLM_MAX_NUM_SEQS` (lower if CUDA-graph capture fails). On multi-GPU hosts, match the NIM profile `tp` to the exposed GPUs. See "Local LLM GPU sizing & precision" in `docs/how-to/configure-services.md`.
+- **Local workstation LLM won't start or OOMs** -> match it to the GPU in `.env`: `NIM_KVCACHE_PERCENT` (**raise** on `No available memory for the cache blocks`, lower on an OOM kill), `NIM_TAGS_SELECTOR` (weight precision and tensor-parallel size), and `LLM_MAX_NUM_SEQS` (lower if CUDA-graph capture fails). On multi-GPU hosts, match the NIM profile `tp` to the exposed GPUs. See "VRAM & hardware support" in `docs/how-to/configure-llm.md`.
 - **Multilingual responses do not use the right ASR/TTS** -> reorder catalog so a multilingual ASR/TTS sits first, or pick the entry from the UI Services tab.
 - **ASR/TTS sidecar image fails to pull** -> log in to `nvcr.io` with a `NVIDIA_API_KEY` that has access to the image. The active image is set in `docker/docker-compose.<variant>.yaml`.
-- **Local LLM 400 (`auto tool choice requires ...`), or reasoning spoken / `<think>` leaks** -> self-hosted Nemotron-3 2.x needs the parsers set (already in `docker/docker-compose.nemotron3-*.yaml`): NIM `NIM_PASSTHROUGH_ARGS=--enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser nemotron_v3`, or the same flags on `vllm serve`. See `docs/how-to/configure-services.md`.
+- **Local LLM 400 (`auto tool choice requires ...`), or reasoning spoken / `<think>` leaks** -> self-hosted Nemotron-3 2.x needs the parsers set (already in `docker/docker-compose.nemotron3-*.yaml`): NIM `NIM_PASSTHROUGH_ARGS=--enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser nemotron_v3`, or the same flags on `vllm serve`. See `docs/06-troubleshooting.md`.
 - **Raw vLLM `nemotron_v3` not found / Super (`MIXED_PRECISION`) won't load** -> image's vLLM too old; use NGC `vllm:26.05.post1-py3` (vLLM ≥ 0.20), not `vllm:25.12.post1-py3` (0.12.0).

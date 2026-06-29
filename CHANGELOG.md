@@ -6,80 +6,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Two new cascaded examples — `cascaded/omni-assistant` (Nemotron 3 Nano Omni as a single multimodal ASR + LLM service with Magpie TTS) and `cascaded/omni-assistant-subagents` (the same Omni service split across four cooperating Pipecat Subagents with live webcam vision and uploaded-media analysis)
-- `NvidiaOmniMultimodalService` — an upstream-compatible Pipecat `LLMService` for Nemotron Omni, with the application-policy extension hooks `_on_turn_result`, `_structured_response_control_fields`, `_should_emit_streamed_structured_response`
-- Generic `capabilities` field per example in `examples_registry.yaml` (`attachments`, `webcam`). The UI gates the attachment-upload control and the webcam panel on these capabilities so no example-specific code lives in the client
-- New session-scoped HTTP endpoints `POST /api/sessions/{session_id}/attachments`, `POST /api/sessions/{session_id}/webcam/frames`, `GET /api/webcam-config` (capability-driven, not example-named)
-- Generic client-visible `metric-group` server-message protocol for the Metrics panel. Any pipeline can publish grouped per-turn metrics
-- Recipe-style compose profiles (`<family>/<example>` for cloud-only and `<family>/<example>/<hardware>` for on-prem). Every profile is a complete, self-contained deployment stack — no orthogonal hardware profile to combine, no silent mis-pairing
-- `cascaded/omni-assistant-subagents` is built on Pipecat's built-in multi-agent framework (`pipecat.workers`: `WorkerRunner`, `PipelineWorker`/`BaseWorker`, `@job`, `WorkerBus`, `BusBridgeProcessor`)
-- `examples_registry.yaml` becomes the single source of truth for which examples and transports the UI exposes (`selection`, `transports` fields) and per-example slot defaults (`defaults`). `EXAMPLE_SELECTION` / `TRANSPORT_SELECTION` env vars provide runtime overrides without surfacing in `.env.example`
-- Compose recipes are named after the registry key for cloud-only deployments and append hardware for on-prem deployments (for example, `cascaded/generic/dgxspark`). Observability profiles (`tracing`, `turn`) remain optional overlays.
-- `nemotron-speech` compose service promotes Riva (ASR + TTS) to a first-class Jetson service so the full stack lifecycles via `docker compose --profile cascaded/generic/jetson up -d`. Replaces the prior host-side `riva_start.sh` flow
-- CUDA MPS SM-split and disjoint CPU pinning for Thor's shared GPU and LPDDR5X bus: `VLLM_MPS_THREAD_PCT` / `RIVA_MPS_THREAD_PCT` and `VLLM_CPUSET` / `RIVA_CPUSET` / `PIPECAT_CPUSET`. `scripts/start-mps.sh` and `scripts/stop-mps.sh` manage the daemon
-- Grouped service UI (Self-hosted / NVIDIA Cloud / Custom) in the LLM/ASR/TTS selectors, driven by namespaced service IDs returned by `/api/services`
-- `APP_RUNTIME=container` marker set by `docker-compose.yml`. When absent the backend rewrites Compose-reachable endpoints in `services.local.yaml` to `localhost` so host-native runs (`uv run`) work without editing the catalog
-- TCP reachability filter on `/api/services`: only deployed local services appear in the UI. Cloud entries always show
-- Pre-commit hook config (`uv run ruff check`, `uv run ruff format`, `npm run lint`)
-
-### Changed
-
-- Single root `docker-compose.yml` now hosts one `x-app` template plus per-example service variants (`cascaded-generic`, `cascaded-omni-assistant`, `cascaded-omni-assistant-subagents`)
-- Compose profile model switched from two orthogonal axes (`<example>` × `<hardware>`) to single recipe profiles (`<family>/<example>/<hardware>`). Each recipe is a complete deployment stack, so wrong-combo deployments become impossible to type. Replaces the previous `--profile <example> --profile <hardware>` style and the short-lived `dgxspark-omni` / `jetson-omni` hardware-suffix profiles
-- Pipelines default slot values come from `examples_registry.yaml` `defaults` rather than YAML insertion order, so YAML reformats do not silently change behavior
-- Registry-default service resolution now prefers the `self-hosted` variant over `cloud-nim` when both define the same key, matching `/api/services` precedence so local NIM sidecars become the active default as soon as they're deployed
-- Jetson ASR/TTS endpoint moves from `host.docker.internal:50051` to the `nemotron-speech:50051` compose service. Host-run Pipecat rewrites it to `localhost:50051` automatically
-- Service catalogs are example-local: each example owns `services.cloud.yaml` and `services.local.yaml`. The local catalog is merged on top of the cloud catalog when its endpoints are reachable. Selection no longer relies on a `DEPLOYMENT_PLATFORM` flag
-
-### Removed
-
-- The speech-to-speech example (Nemotron VoiceChat): deleted `src/speech_to_speech/`, its registry entry and compose profile, the `s2s` config slot, and the client S2S handling
-- Example/pipeline-shaping CLI flags from `src/server.py`: `--example`, `--bot`, `--all-examples`, `--pipeline`, `--transport`. Their behavior moves to `examples_registry.yaml` (`selection`, `transports`, `defaults`) plus optional env overrides. CLI args now cover only infrastructure concerns (`--host`, `--port`, `--prompt-file`, `--tls-cert`/`--tls-key`, `--workers`, `-v`)
-- `DEFAULT_PIPELINE_MODE` environment variable (superseded by `EXAMPLE_SELECTION`)
-- Per-example compose files for `cascaded/generic` (no example-specific sidecars to ship). Generic example now uses only the root compose template
-- `--profile all-examples`, `--profile generic[-*]`, and standalone hardware profiles such as `workstation`, `dgxspark`, and `jetson` (replaced by self-contained recipe profiles)
-- `LLM_INTERLEAVING` env flag and `NvidiaInterleavedLLMService`: MPS + CPU pinning replace the need for strict sentence-bounded interleaving
-- `S2S_API_KEY` environment variable
-- `DEPLOYMENT_PLATFORM`, `DEFAULT_LLM`, `DEFAULT_ASR`, `DEFAULT_TTS`, `BOOKING_API_URL`, `FAST_LLM_*`, and `ORCHESTRATOR_LLM_*` env vars. Configuration now lives entirely in the example service catalogs
-- Root-level `services.cloud.yaml` / `services.local.yaml` (replaced by example-local catalogs)
-
-## [2.0.0] - 2026-03-25
-
-Major architecture upgrade: new Pipecat-based pipeline with speech-to-speech support, unified React client, and flexible deployment profiles.
+Re-architecture by upstreaming `nvidia-pipecat` changes to [Pipecat](https://github.com/pipecat-ai/pipecat) and a unified React UI client, new multimodal Nemotron Omni and Frontend Backend Agent examples and recipe-style deployment profiles.
 
 ### Added
 
-- **Speech-to-speech pipeline mode** using Nemotron Voice Chat for direct voice-to-voice conversations
-- **Cascaded pipeline mode** with separate ASR → LLM → TTS services, selectable from the UI
-- Unified React/Vite client (`client/`) replacing the previous `frontend/` WebRTC and WebSocket UIs
-- `services.yaml` service catalog for configuring LLM, ASR, TTS, and S2S endpoints
-- Example-local `prompts.yaml` catalogs for persona/system prompt presets selectable from the UI
-- Docker Compose profiles for flexible deployment:
-  - `workstation`: local ASR + TTS + LLM sidecars
-  - `dgxspark`: 1 GPU — ASR + TTS NIMs + vLLM LLM on GPU 0
-  - `jetson`: 1 GPU — host-side ASR + TTS + vLLM LLM on GPU 0 (later replaced by the compose-managed `nemotron-speech` Riva service)
-- Additional LLM option: Nemotron 3 Super 120B A12B
-- Additional ASR option: Nemotron Speech Streaming En 0.6B
-- Local development support via `uv` without Docker
-- HTTPS by default on the server endpoint
+- **Example pipelines**, each shipped as self-contained Compose recipes:
+  - `generic-assistant`: baseline English cascaded pipeline (Nemotron ASR + LLM + Magpie TTS).
+  - `multilingual-assistant`: automatic language detection, mid-conversation language switching, and a session-language selector.
+  - `omni-assistant`: Nemotron 3 Nano Omni as a single multimodal ASR + LLM service with Magpie TTS.
+  - `omni-assistant-subagents`: the Omni service split across cooperating Pipecat Subagents with live webcam, vision and uploaded-media analysis.
+  - `frontend-backend-agent`: a talker LLM front-ending a stateful backend agent (airline-booking reference).
+- `NvidiaOmniMultimodalService`: an upstream-compatible Pipecat `LLMService` for Nemotron Omni
+- **Unified UI client** (`client/`) with grouped LLM/ASR/TTS selectors (Self-hosted / NVIDIA Cloud / Custom), a prompt-preset picker, a Metrics panel, attachment upload, and a webcam panel.
+- **New models**: Nemotron 3 Super 120B A12B and Nemotron 3 Nano Omni (LLMs), plus Nemotron ASR Streaming (English and Multilingual).
+- **DGX Spark and single-GPU workstation** local NIM deployment, plus improved Jetson Thor support.
+- Agent skills for example deployments and configurations.
+
+
+### Fixed
+
+- Improve TTS text filter to avoid removing commonly used special chars like $, %
+- Summarize chat history for longer session to limit LLM context
 
 ### Changed
 
-- Upgraded Pipecat from 0.0.98 to 0.0.107
-- Removed `nvidia-pipecat` Git submodule dependency (Pipecat services used directly)
-- Replaced separate `docker-compose.yml` and `docker-compose.jetson.yml` with a single `docker-compose.yml` using profiles
-- Moved environment config from `config/env.example` to `.env.example` at repo root
-- Server entry point changed from `src/pipeline.py` / `src/pipeline_websocket.py` to `src/server.py`
-- Default deployment mode is now cloud-only (no local GPUs required)
+- Pipecat is used directly and upgraded **0.0.98 → 1.3.0**.
+- Enabled Pipecat smart turn detection model as default turn taking solution replacing Silero VAD based silence EOU.
+- **Recipe-style Compose profiles**: `<example>` (cloud-only) and `<example>/<hardware>` (on-prem, e.g. `generic-assistant/dgx-spark`, `omni-assistant/jetson-thor`). Each is a complete, self-contained stack. `tracing` (Phoenix OTel) and `turn` (Coturn) remain optional overlays.
 
 ### Removed
 
-- `nvidia-pipecat` Git submodule
-- `frontend/` directory (replaced by `client/`)
-- `config/` directory (replaced by root-level `.env.example` and example-local YAML catalogs)
-- Separate Jetson Docker Compose file
+- `nvidia-pipecat` Git submodule (NVIDIA Services Upstreamed to Pipecat directly).
+- The previous `frontend/` WebRTC and WebSocket UIs, replaced by the React `client/` in the Pipecat-based re-architecture.
+- Speculative speech processing (`ENABLE_SPECULATIVE_SPEECH`), the latency optimization that used intermediate ASR transcripts.
+- Legacy configuration environment variables (per-slot `DEFAULT_*`, `DEPLOYMENT_PLATFORM`, pipeline-shaping CLI flags, and example-specific service URLs). Configuration now lives in the example service catalogs and `examples_registry.yaml`.
 
 ## [1.0.0] - 2025-03-03
 
@@ -110,7 +70,7 @@ Initial release of Nemotron Voice Agent — an end-to-end voice agent blueprint 
   - [Getting started guide](docs/01-getting-started.md) covering prerequisites, GPU configuration, and step-by-step setup
   - [Configuration guide](docs/02-configuration-guide.md) for pipeline customizations
   - [Jetson Thor deployment guide](docs/03-jetson-thor.md) for edge use cases
-  - [Best practices guide](docs/04-best-practices.md) covering production deployment, latency optimization, and conversational UX
+  - [Best practices guide](docs/05-best-practices.md) covering production deployment, latency optimization, and conversational UX
 - AI agent deployment skill for Cursor and Claude Code to streamline deployment on workstations and Jetson Thor
 
 ### Known Issues

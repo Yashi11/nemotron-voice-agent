@@ -1,31 +1,59 @@
 # Nemotron Omni Assistant - cascaded pipeline example
 
-Cascaded voice pipeline that uses Nemotron 3 Nano Omni as a single
-audio-input model for ASR and LLM, then hands the text reply to Magpie
-TTS. This example enables only text/audio inputs. Uploaded media and webcam
-vision are covered by `omni-assistant-subagents`.
+Cascaded voice pipeline that uses Nemotron 3 Nano Omni as a single model for ASR and the LLM, then hands the text reply to Magpie TTS. Nemotron Omni consumes user audio directly and produces the assistant text that Magpie TTS speaks. This example enables only text and audio inputs. Uploaded media and webcam vision are covered by [`omni-assistant-subagents`](../omni_assistant_subagents/README.md).
 
-Everything specific to this example lives under
-`src/examples/omni_assistant/`: pipeline entry point, the Omni
-multimodal service, service catalogs, and prompts. There is no
-per-example compose file. The app container and shared sidecars are
-defined in the root and `docker/` compose files.
-
-## Overview and Use Cases
-
-| Area | Details |
-| --- | --- |
-| Example intent | A cascaded Omni voice assistant where Nemotron Omni consumes user audio directly and produces the assistant text that Magpie TTS speaks. |
-| Architecture pattern | Replace the separate ASR and text LLM stages with one audio-input LLM service while preserving the familiar Pipecat transport, TTS, prompt, and service-catalog flow. |
-| What to study | `NvidiaOmniMultimodalService`, audio-only turn finalization, transcript recovery from Omni responses, and the smaller service surface needed for an Omni-based assistant. |
-| Best fit | Teams evaluating whether an audio-input LLM can simplify a voice stack or improve handling of spoken context before adding heavier domain workflows. |
-| Extend into | General conversational assistants, voice-first copilots, meeting or note-taking helpers, hands-free product guides, training companions, or domain agents that benefit from direct acoustic context with conventional TTS output. |
-
-## Architecture
+The pattern replaces the separate ASR and text LLM stages with one audio-input LLM service while preserving the familiar Pipecat transport, TTS, prompt, and service-catalog flow. It showcases `NvidiaOmniMultimodalService`, audio-only turn finalization, and a user transcript taken from the Omni response rather than a separate ASR pipeline.
 
 ![Nemotron Omni Assistant architecture](images/omni-assistant-architecture.png)
 
-## Layout
+## Running the example
+
+This example runs on every deployment profile: **Cloud** (no local GPU, NVCF endpoints), **Workstation** (single GPU), **DGX Spark** (Blackwell, 128 GB unified memory), and **Jetson Thor** (edge). See the [Getting Started guide](../../../docs/01-getting-started.md) for prerequisites and hardware detail. Run every command from the repository root.
+
+1. Create your `.env` from the template and set your NVIDIA API key:
+
+   ```bash
+   cp .env.example .env
+   export NVIDIA_API_KEY=<your-nvidia-api-key>
+   ```
+
+   > **Local profiles (Workstation, DGX Spark, Jetson Thor):** also set `HF_TOKEN` in `.env`. Omni is served with vLLM, which downloads the model weights from Hugging Face.
+
+2. Log in to the NVIDIA NGC container registry:
+
+   ```bash
+   printf '%s' "$NVIDIA_API_KEY" | docker login nvcr.io -u '$oauthtoken' --password-stdin
+   ```
+
+3. Deploy the profile that matches your hardware:
+
+   ```bash
+   docker compose --profile omni-assistant up -d              # Cloud (no local GPU)
+   docker compose --profile omni-assistant/workstation up -d  # Workstation
+   docker compose --profile omni-assistant/dgx-spark up -d    # DGX Spark
+   docker compose --profile omni-assistant/jetson-thor up -d  # Jetson Thor
+   ```
+
+   | Recipe profile | App service | Shared sidecars pulled from `docker/` |
+   | --- | --- | --- |
+   | `omni-assistant` | `omni-assistant` | none (cloud NVCF) |
+   | `omni-assistant/workstation` | `omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
+   | `omni-assistant/dgx-spark` | `omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
+   | `omni-assistant/jetson-thor` | `omni-assistant` | `nvidia-llm-vllm-omni`, `nemotron-speech-tts` (Riva TTS) |
+
+   > Jetson Thor (128 GB unified memory) fits the 30B Omni NVFP4 model and reuses the same Omni vLLM sidecar, with TTS served by the on-device Riva `nemotron-speech-tts` service instead of the Magpie NIM. It needs a one-time Riva model build first, so follow the [Jetson Thor guide](../../../docs/03-jetson-thor.md). Orin-class Jetson hardware is not supported because the models does not fit.
+
+4. Open the UI at `https://localhost:7860/`. Keep TLS enabled for browser UI testing. `PIPELINE_TLS=false` serves plain HTTP for headless performance and API testing. For plain-HTTP browser testing, see [browser access](../../../docs/06-troubleshooting.md#browser-access).
+
+5. Clean up when you are done by tearing down with the same profile you started with:
+
+   ```bash
+   docker compose --profile omni-assistant/workstation down
+   ```
+
+To run host-native without Docker, set `selection: omni-assistant` in [`examples_registry.yaml`](../../../examples_registry.yaml), then run `uv run python3 src/server.py`.
+
+## Customization
 
 | Path | Role |
 | --- | --- |
@@ -34,61 +62,6 @@ defined in the root and `docker/` compose files.
 | `audio_only_smart_turn_strategy.py` | smart-turn stop strategy that finalizes turns without an upstream `TranscriptionFrame` |
 | `prompts.yaml` | example-local prompt catalog |
 | `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for cloud and on-prem deployments |
-
-## Running the example
-
-Host-native (no Docker), set `selection: omni-assistant` in
-[`examples_registry.yaml`](../../../examples_registry.yaml) at the repo
-root, then:
-
-```bash
-uv run python3 src/server.py
-```
-
-Docker — pick the recipe profile that matches your deployment intent.
-Cloud-only:
-
-```bash
-docker compose --profile omni-assistant up -d
-```
-
-Workstation or DGX Spark (local Omni vLLM + NIM TTS):
-
-```bash
-docker compose --profile omni-assistant/workstation up -d
-docker compose --profile omni-assistant/dgx-spark up -d
-```
-
-Jetson Thor (local Omni vLLM + on-device Riva TTS):
-
-```bash
-docker compose --profile omni-assistant/jetson-thor up -d
-```
-
-Tear down with the same profile used at `up` time.
-
-| Recipe profile | App service | Shared sidecars pulled from `docker/` |
-| --- | --- | --- |
-| `omni-assistant` | `omni-assistant` | none (cloud NVCF) |
-| `omni-assistant/workstation` | `omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
-| `omni-assistant/dgx-spark` | `omni-assistant` | `nvidia-llm-vllm-omni`, `tts-service` |
-| `omni-assistant/jetson-thor` | `omni-assistant` | `nvidia-llm-vllm-omni`, `nemotron-speech-tts` (Riva TTS) |
-
-> Jetson Thor (128 GB unified memory) fits the 30B Omni NVFP4 model and reuses
-> the same Omni vLLM sidecar as the other recipes, with TTS served by the
-> on-device Riva `nemotron-speech-tts` service instead of the Magpie NIM. Orin-class
-> Jetson hardware is still not supported because the model does not fit.
-
-The UI is served at `https://localhost:7860/` by default. Keep TLS enabled for
-browser UI testing; `PIPELINE_TLS=false` is intended for headless performance
-and API testing. If you still need HTTP for temporary browser testing, open the
-browser flags page (for example,
-`chrome://flags/#unsafely-treat-insecure-origin-as-secure` in Chrome or
-`edge://flags/#unsafely-treat-insecure-origin-as-secure` in Edge), enable the
-`Insecure origins treated as secure` flag, add `http://localhost:7860`,
-relaunch the browser, and remove the origin after testing.
-
-## Tunables
 
 Environment variables read by [`pipeline.py`](pipeline.py):
 
@@ -102,28 +75,10 @@ Environment variables read by [`pipeline.py`](pipeline.py):
 | `TTS_STOP_FRAME_TIMEOUT_S` | `30` | TTS audio-context idle timeout |
 | `AUDIO_OUT_10MS_CHUNKS` | `5` (WebRTC) / `10` (WebSocket) | Outbound audio framing |
 
-## Import convention
+For model selection, voices, and shared service-catalog mechanics, see [Configure LLM](../../../docs/how-to/configure-llm.md), [Configure TTS](../../../docs/how-to/configure-tts.md), and [Configure Services](../../../docs/how-to/configure-services.md).
 
-Top-level `src/` is on `PYTHONPATH`, so imports should use:
+## Tips & best practices
 
-```python
-from examples.omni_assistant.pipeline import bot
-```
-
-and never `from src.examples.omni_assistant ...`.
-
-## Agent skills
-
-The repository ships AI agent skills under `skills/` that may help
-with deployment and configuration:
-
-| Skill | Purpose |
-| --- | --- |
-| [`deploy`](../../../skills/deploy/SKILL.md) | recipe-profile selection, NGC login, and root-compose deploy across supported example/hardware stacks |
-| [`configure-pipeline`](../../../skills/configure-pipeline/SKILL.md) | edit `.env`, example-local `prompts.yaml`, or example-local `services.{cloud,local}.yaml`, then re-apply |
-
-Install them into your coding agent with `npx skills add .` (see the
-[top-level README](../../../README.md#agent-skills)). When deploying only
-this example, the root `deploy` skill points at
-[`deploy/references/omni-assistant-deploy.md`](../../../skills/deploy/references/omni-assistant-deploy.md)
-for the Omni-specific profile combinations and failure modes.
+- **Omni model and hardware.** Omni serves the NVFP4 30B model through the `nvidia-llm-vllm-omni` vLLM sidecar, which needs a Blackwell GPU. For older hardware, see the [Hugging Face documentation](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16) for deploying with FP8 or BF16 precision.
+- **Tune Omni behavior** with the environment variables in the table above: keep user transcript on so the UI shows the user's words, raise the minimum-audio threshold if noise triggers spurious turns, and adjust max-tokens and sampling for your latency and verbosity targets.
+- For deployment and general failure modes, see the [Troubleshooting guide](../../../docs/06-troubleshooting.md). VRAM sizing for the Omni vLLM sidecar is covered in [Configure LLM](../../../docs/how-to/configure-llm.md#vram--hardware-support), and edge deployment in the [Jetson Thor guide](../../../docs/03-jetson-thor.md).

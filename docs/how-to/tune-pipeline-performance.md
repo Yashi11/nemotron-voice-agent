@@ -3,97 +3,49 @@
 This section covers pipeline configurations for optimizing the performance and user experience of the Nemotron Voice Agent.
 
 - [Smart Turn Detection](#smart-turn-detection)
-- [Audio Debugging](#audio-debugging)
 - [Chat History Limit](#chat-history-limit)
 - [Audio Output Buffering](#audio-output-buffering)
 - [Transport Selection](#transport-selection)
 
 ## Smart Turn Detection
 
-By default the cascaded pipeline uses Pipecat's built-in **smart turn** detection (powered by Silero VAD with `stop_secs=0.2`) to determine when the user has finished speaking, reducing unnecessary silence before generating a response.
-
-> The `0.2 s` above is the fixed silence floor for the default smart-turn path. The separate `SILERO_VAD_STOP_SECS` (default `0.5 s`) is read **only** in pure-VAD mode (`USE_SILERO_VAD_TURN_DETECTION=true`) — the two thresholds are independent and never both apply.
+By default the cascaded pipeline uses Pipecat's ML-based [**Smart Turn**](https://docs.pipecat.ai/api-reference/server/utilities/turn-detection/smart-turn-overview) detection to decide when the user has finished speaking, so the agent replies promptly without cutting the user off. [Silero VAD](https://docs.pipecat.ai/server/utilities/audio/silero-vad-analyzer) (`stop_secs=0.2`) detects the pause, and the Smart Turn model then judges whether the turn is actually complete.
 
 ### How It Works
 
-1. User speaks. ASR generates interim transcripts as audio is processed.
-2. Smart turn analysis evaluates the transcript context and audio signals to predict end-of-utterance.
-3. Once a turn boundary is detected, the pipeline sends the transcript to the LLM for response generation.
-4. TTS synthesizes and streams back the response.
+1. The user speaks, and ASR emits interim transcripts as audio streams in.
+2. Silero VAD detects a pause in speech.
+3. The Smart Turn model analyzes the recent audio and classifies the turn as **complete** or **incomplete**. If it's incomplete but silence continues past the stop threshold, the turn completes anyway (fallback).
+4. On a completed turn, the transcript goes to the LLM and TTS streams the reply back.
 
 ### Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `USE_SILERO_VAD_TURN_DETECTION` | `false` | Keep `false` for Pipecat smart turn. Set `true` to disable smart turn and use pure Silero VAD end-of-utterance detection instead. |
-| `SILERO_VAD_STOP_SECS` | `0.5` | Silence (seconds) before end-of-utterance, used only when `USE_SILERO_VAD_TURN_DETECTION=true`. |
+| `USE_SILERO_VAD_TURN_DETECTION` | `false` | Keep `false` for Smart Turn. Set `true` to disable it and use pure Silero VAD end-of-utterance detection instead. |
+| `SILERO_VAD_STOP_SECS` | `0.5` | Silence (seconds) before end-of-utterance. Applies **only** in pure-VAD mode (`USE_SILERO_VAD_TURN_DETECTION=true`). |
+
+> The default Smart Turn path uses a fixed `0.2 s` Silero floor (`stop_secs=0.2`), so `SILERO_VAD_STOP_SECS` does not apply there. The two thresholds are independent and never both active.
 
 ### Key Components
 
 | Component | Purpose |
 |-----------|---------|
-| `SileroVADAnalyzer` | Voice activity detection with configurable silence threshold |
-| Pipecat smart turn (default) | ML-based end-of-utterance detection for natural turn-taking |
-| `MuteUntilFirstBotCompleteUserMuteStrategy` | Mutes user input until the first bot response completes |
+| [`SileroVADAnalyzer`](https://docs.pipecat.ai/server/utilities/audio/silero-vad-analyzer) | Voice activity detection with a configurable silence threshold |
+| [Smart Turn](https://docs.pipecat.ai/api-reference/server/utilities/turn-detection/smart-turn-overview) (default) | ML end-of-utterance detection for natural turn-taking |
+| `SpeechTimeoutUserTurnStopStrategy` | End-of-turn strategy used **only** in pure-VAD mode (`USE_SILERO_VAD_TURN_DETECTION=true`). Ends the turn on a VAD silence timeout instead of the Smart Turn model |
+| `MuteUntilFirstBotCompleteUserMuteStrategy` | The user-mute strategy. Mutes user input until the first bot response completes |
 
-## Audio Debugging
-
-Enable raw audio capture for ASR/TTS debugging and issue reproduction. Each conversation turn is saved as a separate WAV file for easy analysis.
-
-### Configuration
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ENABLE_ASR_AUDIO_DUMP` | `false` | Capture incoming user audio (per turn) |
-| `ENABLE_TTS_AUDIO_DUMP` | `false` | Capture outgoing synthesized audio (per turn) |
-| `AUDIO_DUMP_PATH` | `audio_dumps/cascaded` | Output directory (relative to project root, or absolute) |
-
-To enable audio debugging, set the environment variables in the `.env` file:
-
-```bash
-ENABLE_ASR_AUDIO_DUMP=true
-ENABLE_TTS_AUDIO_DUMP=true
-AUDIO_DUMP_PATH=audio_dumps/cascaded
-```
-
-### Output Format
-
-Files are saved as 16-bit mono PCM WAV with per-turn indexing:
-
-```
-audio_dumps/cascaded/
-├── asr_<stream_id>_000.wav   # User turn 0
-├── asr_<stream_id>_001.wav   # User turn 1
-├── tts_<stream_id>_000.wav   # Bot turn 0
-├── tts_<stream_id>_001.wav   # Bot turn 1
-└── ...
-```
-
-The `<stream_id>` is a unique 8-character hex ID per session, so files from concurrent sessions don't collide.
-
-> **Note:** If Docker creates the folder with different permissions, fix ownership:
->
-> ```bash
-> # Option 1: Pre-create directory before container start
-> mkdir -p ./audio_dumps/cascaded
->
-> # Option 2: Fix ownership after container creates it
-> sudo chown -R $(id -u):$(id -g) ./audio_dumps
-> ```
-
-> **Warning:** Disable audio debugging in production to prevent disk exhaustion.
+The [Omni examples](../../src/examples/omni_assistant/README.md) run ASR inside the model, so there is no upstream `TranscriptionFrame` for Pipecat's stock Smart Turn stop strategy to wait on. They use a custom `AudioOnlySmartTurnStopStrategy` that wraps the same [Smart Turn](https://docs.pipecat.ai/api-reference/server/utilities/turn-detection/smart-turn-overview) model (`LocalSmartTurnAnalyzerV3`, `stop_secs=0.7`) plus a `VADUserTurnStartStrategy`, and finalizes the turn as soon as the analyzer returns `COMPLETE`. The same `MuteUntilFirstBotCompleteUserMuteStrategy` applies.
 
 ## Chat History Limit
 
-Controls the cascaded pipeline conversation window size while always preserving the initial prompt
-messages loaded at session start. The handling of older turns differs by example:
+Every turn appends to the LLM's context. Left unbounded, that context keeps growing, which raises latency (more tokens to process means a higher time-to-first-token), increases cost, and eventually overflows the model's context window. For real-time voice, a small, bounded context is what keeps replies fast. Pipecat manages history through its [context aggregators](https://docs.pipecat.ai/guides/learn/context-management) and built-in [context summarization](https://docs.pipecat.ai/pipecat/fundamentals/context-summarization). The examples wire a **turn-count** window (`CHAT_HISTORY_RECENT_TURNS`) on top for a predictable per-turn budget.
 
-- **Generic** and **Multilingual** assistants **summarize** older history: once the conversation
-  grows past the recent window, the older turns are condensed into a single pinned summary message
-  (an additional LLM call after the turn), and the most recent `CHAT_HISTORY_RECENT_TURNS` turns are
-  kept verbatim.
-- **Frontend/Backend Agent** uses a plain **sliding window**: older non-prompt messages are dropped, keeping
-  only the most recent `CHAT_HISTORY_RECENT_TURNS` messages.
+We use context summarization logic for our examples to always **pin the initial prompt / system messages** loaded at session start. Nemotron's chat template carries the assistant instructions and tool definitions in the *user* section, so those must stay verbatim. Evicting them (as a token-based window might) would degrade tool-calling and persona. Only the older **conversational** turns are trimmed, and the handling differs by example:
+
+- **Generic** and **Multilingual** assistants **summarize** older history: once the conversation grows past the recent window, the older turns are condensed into a single pinned summary message (an additional LLM call after the turn), and the most recent `CHAT_HISTORY_RECENT_TURNS` turns are kept verbatim.
+- **Frontend/Backend Agent** uses a plain **sliding window**: older non-prompt messages are dropped, keeping only the most recent `CHAT_HISTORY_RECENT_TURNS` messages.
 
 ### Configuration
 
@@ -112,30 +64,33 @@ When the message count exceeds `CHAT_HISTORY_RECENT_TURNS`:
 
 1. Initial prompt messages loaded at session start are always preserved.
 2. The most recent `CHAT_HISTORY_RECENT_TURNS` turns are kept verbatim.
-3. Older non-prompt turns are **summarized into one pinned summary message** (Generic / Multilingual)
-   or **removed** (Frontend/Backend Agent).
+3. Older non-prompt turns are **summarized into one pinned summary message** (Generic / Multilingual) or **removed** (Frontend/Backend Agent).
 
 ### Recommendations
 
 | Use Case | Value |
 |----------|-------|
 | Standard conversations | `10`–`20` |
-| Multilingual mode | `3-5` |
-| Long-form sessions | `30-50` |
+| Multilingual mode | `5-10` |
 
 ## Audio Output Buffering
 
-To control audio output latency and stability for the cascaded pipeline, set the `AUDIO_OUT_10MS_CHUNKS` environment variable to the number of 10ms chunks to buffer for output. By default, the cascaded pipeline uses `5` for WebRTC and `10` for FastAPI WebSocket.
+`AUDIO_OUT_10MS_CHUNKS` sets how many 10 ms audio frames the server batches per outbound send (the output buffer depth). Defaults are `5` (50 ms).
 
 ```bash
-# In .env file
-AUDIO_OUT_10MS_CHUNKS=10  # Override transport defaults
+# In .env — override the transport default
+AUDIO_OUT_10MS_CHUNKS=10
 ```
 
-The following are the configuration guidelines for the `AUDIO_OUT_10MS_CHUNKS` environment variable.
-- **Default WebRTC**: 5 chunks (50ms buffer) - optimized for low latency
-- **Default WebSocket**: 10 chunks (100ms buffer) - more stable for network variations
-- **High Concurrency**: 10-40 chunks (100-400ms buffer) - prevents audio glitches under high load
+- **WebRTC, `5` (50 ms):** lowest latency.
+- **WebSocket, `10` (100 ms):** smoother over a plain stream.
+- **High concurrency, `10`–`40` (100–400 ms):** prevents glitches under load.
+
+**Why buffer, and why more for WebSocket.** WebRTC ships its own jitter buffer and paces media for you, so a small buffer stays glitch-free at low latency. A raw WebSocket stream has no media-layer jitter buffer (frames ride a plain TCP connection), so under network jitter or many concurrent sessions, too-small chunks starve the client and you hear gaps or crackle. A larger buffer absorbs that variance, trading a little added latency for stable playback. Raise it further as concurrency grows.
+
+**Telephony / server-side: send in bursts.** When the consumer is a telephony gateway (SIP/PSTN) or another server that does its own buffering and pacing, real-time chunking on our side only adds latency. Use a custom transport to send audio as soon as it is generated, and let the downstream handle playout timing.
+
+**Barge-in trade-off.** Buffering works against fast barge-in: when the user interrupts, audio already queued downstream keeps playing until it drains, so the bot talks over the user for up to the buffer's duration. The bigger the buffer, the longer that tail. For low barge-in latency with a large buffer, the client must **flush its playback queue** on interruption (drop the buffered audio) rather than play it out. Custom and telephony clients (typically on the WebSocket path) should implement this flush.
 
 ## Transport Selection
 
@@ -143,7 +98,22 @@ The server supports both WebRTC and WebSocket transports simultaneously on diffe
 
 | Transport | Endpoint | Best For |
 |-----------|----------|----------|
-| **WebRTC** | `POST /api/offer` | Production voice interactions, lowest latency (~50-150ms) |
-| **WebSocket** | `WS /api/ws` | Testing, firewall-restricted environments, simpler deployments (~100-300ms) |
+| **WebRTC** | `POST /api/offer` | Production voice interactions, lowest latency |
+| **WebSocket** | `WS /api/ws` | Telephony / server-side integrations, testing, firewall-restricted environments, simpler deployments |
 
-The client UI automatically selects the transport. Both are available without any configuration changes.
+**For telephony (SIP/PSTN) and server-to-server use cases, use the WebSocket endpoint.** It streams raw audio frames you can bridge to a gateway or another service. WebRTC is best for direct browser clients, where its built-in jitter buffering and NAT traversal give the lowest latency.
+
+### Choosing which transports are exposed
+
+Both transports are exposed by default and the browser UI picks one. To restrict the server to a single transport, set `transports` in [`examples_registry.yaml`](../../examples_registry.yaml) or override it at runtime with the `TRANSPORT_SELECTION` environment variable (the env var wins):
+
+| Value | Exposes |
+|-------|---------|
+| `all` (default) | WebRTC and WebSocket |
+| `webrtc` | WebRTC only |
+| `websocket` | WebSocket only |
+
+```bash
+# .env — e.g. expose only WebSocket for a telephony / server-side deployment
+TRANSPORT_SELECTION=websocket
+```

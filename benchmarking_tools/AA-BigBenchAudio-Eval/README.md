@@ -1,10 +1,10 @@
 # BigBench Audio Eval
 
-Tools for **[Big Bench Audio](https://huggingface.co/datasets/ArtificialAnalysis/big_bench_audio)**: download data, speech or text inference, Riva transcription, LLM-judge accuracy.
+Tools for **[Big Bench Audio](https://huggingface.co/datasets/ArtificialAnalysis/big_bench_audio)**: download data, speech or text inference, ASR transcription, LLM-judge accuracy.
 
 ## Setup
 
-- **Python 3.12+** recommended (match [nemotron-voice-agent](../../) when possible), **ffmpeg** (MP3→WAV in `speech-inference.py`).
+- **Python 3.12+** recommended, **ffmpeg** (MP3→WAV in `speech-inference.py`).
 
 This tool reuses the repo's root environment — no separate venv required.
 Dependencies live in the `benchmark` group of the root `pyproject.toml`.
@@ -16,7 +16,7 @@ uv sync --group benchmark
 
 Run scripts with `uv run python …` from this directory (deps come from the `benchmark` group).
 
-## Layout
+## Dataset Layout
 
 Per sample ID folder: `input.mp3` / `input.wav`, `meta.json`, optional `question.txt`, `output.wav`, `response.txt`, `result.txt`.
 
@@ -65,7 +65,7 @@ uv run python speech-inference.py \
   --insecure-skip-verify
 ```
 
-**Transcribe** with Riva ASR (separate from the voice agent: gRPC to Riva, default **`localhost:50051`**). Override with `transcribe.py --host` / `--port`. See [Parakeet deploy](https://build.nvidia.com/nvidia/parakeet-ctc-1_1b-asr/deploy) for a local ASR NIM.
+**Transcribe** with ASR (separate from the voice agent: gRPC to Riva, default **`localhost:50051`**). Override with `transcribe.py --host` / `--port`. See [Parakeet deploy](https://build.nvidia.com/nvidia/parakeet-ctc-1_1b-asr/deploy) for a local ASR NIM.
 
 ```bash
 uv run python transcribe.py --input_dir ./datasets/bigbench_audio
@@ -93,9 +93,7 @@ Then run `eval.py` / `find_invalid_results.py` / `analyze_results.py` as above.
 
 | Model / API | Reasoning | Text-only (%) | In voice pipeline (%) |
 |-------------|-----------|---------------|------------------------|
-| Nemotron 49B | ON | 91.90 | 81.30 |
-| Nemotron 49B | OFF | 82.70 | 60.30 |
-| Nemotron 30B | ON | 78.76 | 75.60 |
-| Nemotron 30B | OFF | 56.50 | 50.40 |
-
-(Source: Artificial Analysis Big Bench Audio methodology.)
+| Llama Nemotron Super 49B v1.5 | ON | 91.90 | 81.30 |
+| Llama Nemotron Super 49B v1.5 | OFF | 82.70 | 60.30 |
+| Nemotron 3 Nano 30B | ON | 78.76 | 75.60 |
+| Nemotron 3 Nano 30B | OFF | 56.50 | 50.40 |

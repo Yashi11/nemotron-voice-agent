@@ -3,7 +3,7 @@ name: deploy
 description: Deploy Nemotron Voice Agent via root compose using recipe profiles. Use when deploying or troubleshooting auth/startup.
 version: "1.0.0"
 metadata:
-  author: Ashutosh Rautela <arautela@nvidia.com>
+  author: NVIDIA Voice Agent Team <nemotron-voice-agent@nvidia.com>
   tags: [deployment, docker-compose, voice-agent, nemotron]
 ---
 
@@ -59,7 +59,7 @@ For on-prem (`workstation`) recipes, set GPU-aware overrides for the local LLM (
 
 Device placement (which GPU each sidecar uses) is **not** an `.env` knob — `device_ids` are hardcoded to `['0']`. To move a service to GPU `N`, edit `device_ids: ['N']` under `deploy.resources.reservations.devices` in that service's compose file: `docker/docker-compose.nemotron-asr.yaml` (ASR), `docker/docker-compose.magpie-tts.yaml` (TTS), `docker/docker-compose.nemotron3-nano.yaml` (NIM LLM), `docker/docker-compose.nemotron3-omni.yaml` (Omni LLM). A tensor-parallel LLM (`tp=N`) needs `N` GPUs — list every index it uses (e.g. `device_ids: ['0','1']` for `tp=2`) and keep those GPUs free of ASR/TTS. Each target index must appear in the step 1 readout. With only one GPU you cannot split — keep everything on GPU 0, or run the cloud-only profile (no `/workstation`) so ASR/TTS/LLM use NVCF instead.
 
-Apply only what step 1 indicates; never silently change values. See `docs/how-to/configure-services.md` (Local LLM GPU sizing & precision) for the full reasoning.
+Apply only what step 1 indicates; never silently change values. See `docs/how-to/configure-llm.md` (VRAM & hardware support) for the full reasoning.
 
 4. Pick the recipe profile:
 

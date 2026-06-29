@@ -4,17 +4,7 @@ OpenTelemetry tracing provides observability for the cascaded voice pipelines, a
 
 ## Steps
 
-1. Start the Phoenix collector alongside the pipeline app by adding `--profile tracing` to the recipe you want to run.
-
-    ```bash
-    docker compose --profile generic-assistant --profile tracing up -d
-    ```
-
-    This starts the `phoenix` service defined in `docker-compose.yml` which exposes:
-    - **Port 6006** — Phoenix UI and OTLP HTTP collector
-    - **Port 4317** — OTLP gRPC collector
-
-2. Edit the `.env` file and enable tracing.
+1. Enable tracing in `.env` **before** starting the stack, so the app picks it up:
 
     ```bash
     ENABLE_TRACING=true
@@ -22,13 +12,17 @@ OpenTelemetry tracing provides observability for the cascaded voice pipelines, a
     OTEL_EXPORTER_OTLP_ENDPOINT=phoenix:4317
     ```
 
-3. Restart the pipeline app so it picks up the new environment. Replay the same recipe profile you started with and add `--profile tracing`. For example, with Generic Cascaded on a workstation:
+2. Start the stack with the `tracing` overlay added to your recipe profile. This brings up the `phoenix` collector alongside the pipeline app. For example, Generic Cascaded on a workstation:
 
     ```bash
     docker compose --profile generic-assistant/workstation --profile tracing up -d
     ```
 
-4. Open the Phoenix UI.
+    If the stack is already running, the same command recreates the app container with the new settings, so no separate restart is needed. The `phoenix` service (defined in `docker-compose.yml`) exposes:
+    - **Port 6006** — Phoenix UI
+    - **Port 4317** — OTLP gRPC collector
+
+3. Open the Phoenix UI.
 
     ```
     http://localhost:6006
@@ -49,8 +43,6 @@ OpenTelemetry tracing provides observability for the cascaded voice pipelines, a
 - **HTTP** (port 4318 or custom): `http://host:port` — e.g. `http://phoenix:4318`
 
 ## Trace Structure
-
-### Cascaded Pipeline
 
 ```
 Conversation
