@@ -1,192 +1,251 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024–2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: BSD-2-Clause
-
 name: nemotron-voice-agent
 
+# Compose deployments are recipe-based. Every profile is a complete,
+# self-contained deployment recipe so users never have to AND two
+# profiles together.
+#
+#   <example>                  cloud-only models
+#   <example>/<hardware>       on-prem models with local sidecars
+#
+# Examples:
+#   generic-assistant            Cascaded ASR + LLM + TTS Pipeline (Generic Assistant)
+#   multilingual-assistant       Cascaded Multilingual ASR + LLM + TTS Pipeline (Multilingual Assistant)
+#   omni-assistant               Cascaded Omni LLM + TTS Pipeline (Omni Assistant)
+#   omni-assistant-subagents     Cascaded Omni LLM + TTS Pipeline (Omni Assistant Subagents)
+#   frontend-backend-agent               Cascaded Frontend/Backend Agent Pipeline (Airline Assistant)
+#
+# Hardware targets:
+#   workstation               Single GPU with 80+ GB VRAM or modify to support multiple GPUs
+#   dgx-spark                 DGX Spark with 128 GB unified memory
+#   jetson-thor               Jetson Thor with 128 GB unified memory
+#
+# Cloud-only recipes:
+#   docker compose --profile generic-assistant up
+#   docker compose --profile multilingual-assistant up
+#   docker compose --profile omni-assistant up
+#   docker compose --profile omni-assistant-subagents up
+#   docker compose --profile frontend-backend-agent up
+#
+# On-prem recipes:
+#   docker compose --profile generic-assistant/workstation up
+#   docker compose --profile generic-assistant/workstation-perf up
+#   docker compose --profile generic-assistant/dgx-spark up
+#   docker compose --profile generic-assistant/jetson-thor up
+#   docker compose --profile multilingual-assistant/workstation up
+#   docker compose --profile multilingual-assistant/dgx-spark up
+#   docker compose --profile omni-assistant/workstation up
+#   docker compose --profile omni-assistant/dgx-spark up
+#   docker compose --profile omni-assistant/jetson-thor up
+#   docker compose --profile omni-assistant-subagents/workstation up
+#   docker compose --profile omni-assistant-subagents/dgx-spark up
+#   docker compose --profile frontend-backend-agent/workstation up
+#
+# Observability profiles compose orthogonally with any recipe:
+#   docker compose --profile <recipe> --profile tracing up   # Phoenix OTel
+#   docker compose --profile <recipe> --profile turn up      # coturn TURN
+
+include:
+  - path: docker/docker-compose.nemotron3-nano.yaml
+  - path: docker/docker-compose.nemotron3-super.yaml
+  - path: docker/docker-compose.nemotron-asr.yaml
+  - path: docker/docker-compose.parakeet-asr.yaml
+  - path: docker/docker-compose.magpie-tts.yaml
+  - path: docker/docker-compose.nemotron3-omni.yaml
+  - path: docker/docker-compose.speech-jetson.yaml
+  - path: docker/docker-compose.coturn.yaml
+  - path: docker/docker-compose.phoenix.yaml
+  - path: src/examples/frontend_backend_agent/airline/database/docker-compose.yml
+
+x-app: &app-base
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  image: nemotron-voice-agent:latest
+  cpuset: ${PIPECAT_CPUSET:-}
+  command: ["uv", "run", "python", "src/server.py", "--host", "0.0.0.0"]
+  ports:
+    - "${PIPELINE_APP_PORT:-7860}:7860"
+  env_file:
+    - .env
+  volumes:
+    - ./src:/app/src:ro
+    - ./examples_registry.yaml:/app/examples_registry.yaml:ro
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fk $$(test \"$$(printf %s \"$${PIPELINE_TLS:-true}\" | tr '[:upper:]' '[:lower:]')\" = true && echo https || echo http)://localhost:7860/health || exit 1"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 30s
+  restart: unless-stopped
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "50m"
+      max-file: "5"
+
+x-app-env: &app-env
+  APP_RUNTIME: container
+  TRANSPORT_SELECTION: ${TRANSPORT_SELECTION:-}
+
+# Platform overrides keep recipe services small and make future hardware targets
+# a one-anchor addition.
+x-platform-cloud: &platform-cloud
+  PLATFORM: cloud
+
+x-platform-workstation: &platform-workstation
+  PLATFORM: workstation
+
+x-platform-dgx-spark: &platform-dgx-spark
+  PLATFORM: dgxspark
+
+x-platform-jetson-thor: &platform-jetson-thor
+  PLATFORM: jetsonthor
+
 services:
-  tts-service:
-    image: ${TTS_DOCKER_IMAGE:-nvcr.io/nim/nvidia/magpie-tts-multilingual:1.6.0}
-    user: "0:0"
+  generic-assistant:
+    <<: *app-base
+    profiles:
+      - generic-assistant
     environment:
-      - NGC_API_KEY=${NVIDIA_API_KEY}
-      - NIM_HTTP_API_PORT=9000
-      - NIM_GRPC_API_PORT=50051
-      - NIM_TAGS_SELECTOR=${TTS_NIM_TAGS:-name=magpie-tts-multilingual,batch_size=32}
-    ports:
-      - "50151:50051"
-    ulimits:
-      nofile: 2048
-    healthcheck:
-      test: ["CMD-SHELL", "/bin/grpc_health_probe -addr=:50051 || exit 1"]
-      interval: 60s
-      timeout: 10s
-      retries: 10
-      start_period: 3000s # Longer startup for TensorRT engine compilation on first run
-    volumes:
-      - tts_cache:/opt/nim/.cache
-    shm_size: 16GB
-    restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ['0']
-              capabilities: [gpu]
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
+      <<: [*app-env, *platform-cloud]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-generic-assistant}
 
-  asr-service:
-    image: ${ASR_DOCKER_IMAGE:-nvcr.io/nim/nvidia/parakeet-1-1b-ctc-en-us:1.4.0}
-    user: "0:0"
+  generic-assistant-workstation:
+    <<: *app-base
+    profiles:
+      - generic-assistant/workstation
     environment:
-      - NGC_API_KEY=${NVIDIA_API_KEY}
-      - NIM_HTTP_API_PORT=9001
-      - NIM_GRPC_API_PORT=50052
-      - NIM_TAGS_SELECTOR=${ASR_NIM_TAGS:-mode=str,vad=silero}
-    ports:
-      - "50152:50052"
-    ulimits:
-      nofile: 2048
-    volumes:
-      - asr_cache:/opt/nim/.cache
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "/bin/grpc_health_probe -addr=:50052 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 3000s # Longer startup for TensorRT engine compilation on first run
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ['0']
-              capabilities: [gpu]
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
+      <<: [*app-env, *platform-workstation]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-generic-assistant}
 
-  nvidia-llm:
-    image: ${NVIDIA_LLM_IMAGE:-nvcr.io/nim/nvidia/nemotron-3-nano:1.7.0-variant}
-    env_file:
-      - .env
-    user: "0:0"
+  generic-assistant-dgx-spark:
+    <<: *app-base
+    profiles:
+      - generic-assistant/dgx-spark
     environment:
-      - NGC_API_KEY=${NVIDIA_API_KEY}
-      - NIM_HTTP_API_PORT=8000
-    ports:
-      - "18000:8000"
-    ulimits:
-      nofile: 2048
-    volumes:
-      - llm_cache:/opt/nim/.cache
-    shm_size: 16GB
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/v1/health/ready\").read()' || exit 1"]
-      interval: 30s
-      timeout: 15s
-      retries: 5
-      start_period: 1800s # longer startup time needed for TRT engine build if prebuilt engine is not available.
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ['1']
-              capabilities: [gpu]
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
+      <<: [*app-env, *platform-dgx-spark]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-generic-assistant}
 
-  python-app:
-    image: nvcr.io/nvidia/blueprint/nemotron-voice-agent:${IMAGE_VERSION:-dev}
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: >
-      bash -c "
-      if [ \"$${TRANSPORT:-WEBRTC}\" = \"WEBSOCKET\" ]; then
-        echo \"Starting WebSocket pipeline...\"
-        uv run src/pipeline_websocket.py --host 0.0.0.0 --port 7860 --workers $${WORKERS:-1}
-      else
-        echo \"Starting WebRTC pipeline...\"
-        uv run src/pipeline.py --host 0.0.0.0 --port 7860 --workers $${WORKERS:-1}
-      fi
-      "
-    ports:
-      - "7860:7860"
-    volumes:
-      - ./audio_dumps:/app/audio_dumps
-      - ./config/:/app/config/
-    env_file:
-      - .env
+  generic-assistant-jetson-thor:
+    <<: *app-base
+    profiles:
+      - generic-assistant/jetson-thor
     environment:
-      # Docker services endpoints
-      - ASR_SERVER_URL=${ASR_SERVER_URL:-asr-service:50052}
-      - TTS_SERVER_URL=${TTS_SERVER_URL:-tts-service:50051}
-      - NVIDIA_LLM_URL=${NVIDIA_LLM_URL:-http://nvidia-llm:8000/v1}
-      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      <<: [*app-env, *platform-jetson-thor]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-generic-assistant}
 
-    depends_on:
-      tts-service:
-        condition: service_healthy
-      asr-service:
-        condition: service_healthy
-      nvidia-llm:
-        condition: service_healthy
+  generic-assistant-workstation-perf:
+    <<: *app-base
+    profiles:
+      - generic-assistant/workstation-perf
+    environment:
+      <<: [*app-env, *platform-workstation]
+      EXAMPLE_SELECTION: generic-assistant
+      UVICORN_WORKERS: "200"
+      PROMPT_FILE_PATH: ${PROMPT_FILE_PATH:-}
+      PROMPT_SELECTOR: ${PROMPT_SELECTOR:-}
+      USE_SILERO_VAD_TURN_DETECTION: "true"
+      SILERO_VAD_STOP_SECS: "0.5"
+      AUDIO_OUT_10MS_CHUNKS: "40"
+    volumes:
+      - ./src:/app/src:ro
+      - ./examples_registry.yaml:/app/examples_registry.yaml:ro
+      - ./benchmarking_tools/scaling-perf:/app/benchmarking_tools/scaling-perf:ro
 
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:7860/docs || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+  multilingual-assistant:
+    <<: *app-base
+    profiles:
+      - multilingual-assistant
+    environment:
+      <<: [*app-env, *platform-cloud]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-multilingual-assistant}
 
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
+  multilingual-assistant-workstation:
+    <<: *app-base
+    profiles:
+      - multilingual-assistant/workstation
+    environment:
+      <<: [*app-env, *platform-workstation]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-multilingual-assistant}
 
-  ui-app:
-    image: nvcr.io/nvidia/blueprint/nemotron-voice-agent-ui:${IMAGE_VERSION:-dev}
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    ports:
-      - "9000:8000"
-    env_file:
-      - .env
+  multilingual-assistant-dgx-spark:
+    <<: *app-base
+    profiles:
+      - multilingual-assistant/dgx-spark
+    environment:
+      <<: [*app-env, *platform-dgx-spark]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-multilingual-assistant}
 
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000', timeout=5).read()"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+  omni-assistant:
+    <<: *app-base
+    profiles:
+      - omni-assistant
+    environment:
+      <<: [*app-env, *platform-cloud]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant}
 
-    depends_on:
-      python-app:
-        condition: service_healthy
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
+  omni-assistant-workstation:
+    <<: *app-base
+    profiles:
+      - omni-assistant/workstation
+    environment:
+      <<: [*app-env, *platform-workstation]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant}
 
-volumes:
-  llm_cache:
-  asr_cache:
-  tts_cache:
+  omni-assistant-dgx-spark:
+    <<: *app-base
+    profiles:
+      - omni-assistant/dgx-spark
+    environment:
+      <<: [*app-env, *platform-dgx-spark]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant}
+
+  omni-assistant-jetson-thor:
+    <<: *app-base
+    profiles:
+      - omni-assistant/jetson-thor
+    environment:
+      <<: [*app-env, *platform-jetson-thor]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant}
+
+  omni-assistant-subagents:
+    <<: *app-base
+    profiles:
+      - omni-assistant-subagents
+    environment:
+      <<: [*app-env, *platform-cloud]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant-subagents}
+
+  omni-assistant-subagents-workstation:
+    <<: *app-base
+    profiles:
+      - omni-assistant-subagents/workstation
+    environment:
+      <<: [*app-env, *platform-workstation]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant-subagents}
+
+  omni-assistant-subagents-dgx-spark:
+    <<: *app-base
+    profiles:
+      - omni-assistant-subagents/dgx-spark
+    environment:
+      <<: [*app-env, *platform-dgx-spark]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-omni-assistant-subagents}
+
+  frontend-backend-agent:
+    <<: *app-base
+    profiles:
+      - frontend-backend-agent
+    environment:
+      <<: [*app-env, *platform-cloud]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-frontend-backend-agent}
+
+  frontend-backend-agent-workstation:
+    <<: *app-base
+    profiles:
+      - frontend-backend-agent/workstation
+    environment:
+      <<: [*app-env, *platform-workstation]
+      EXAMPLE_SELECTION: ${EXAMPLE_SELECTION:-frontend-backend-agent}

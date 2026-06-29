@@ -6,75 +6,32 @@ This guide covers deploying the Nemotron Voice Agent on Jetson Thor using Docker
 
 ## Prerequisites
 
-- **Jetson Thor** flashed with **JetPack 7.0** using [NVIDIA SDK Manager](https://developer.nvidia.com/sdk-manager) (with CUDA, CUDA-X, TensorRT, and NVIDIA Container Runtime components installed)
+- **Jetson Thor** flashed with **JetPack 7.0** using [NVIDIA SDK Manager](https://developer.nvidia.com/sdk-manager) (with CUDA, CUDA-X, TensorRT, and NVIDIA Container Runtime components installed). Orin-class Jetsons are not supported.
 - [NGC CLI](https://org.ngc.nvidia.com/setup/installers/cli) installed and configured
 - [Docker Engine](https://docs.docker.com/engine/install/ubuntu/) and [Docker Compose](https://docs.docker.com/compose/install/linux/)
 - [HuggingFace API token](https://huggingface.co/docs/hub/en/security-tokens) for downloading LLM models
-- Network connectivity
-
----
-
-## Project Structure
-
-The configuration files for this deployment are the following:
-
-```
-./
-├── docker-compose.jetson.yml   # Jetson-specific deployment
-└── config
-    └── env.jetson.example      # Template for .env
-```
-
-| File | Purpose |
-|------|---------|
-| [docker-compose.jetson.yml](../docker-compose.jetson.yml) | Jetson-specific Docker Compose with vLLM |
-| [env.jetson.example](../config/env.jetson.example) | Environment template for Jetson deployment |
-
-> **Note:** This deployment uses vLLM for LLM inference instead of NVIDIA NIM. LLM NIM microservices for Jetson Thor are not yet available, so this guide uses vLLM as a flexible alternative to load Hugging Face models directly.
-
----
-
-## Models Used by Default
-
-All models are deployed on the local Jetson device. Default models used:
-
-| Component | Default model / identifier |
-|-----------|----------------------------|
-| **ASR**   | `parakeet-1.1b-en-US-asr-streaming` |
-| **TTS**   | `magpie_tts_ensemble-Magpie-Multilingual` |
-| **LLM**   | `RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16` |
 
 ---
 
 ## Deployment Steps
 
-1. Clone the repository and navigate to the root directory.
+1. Clone the repository and configure the environment:
 
     ```bash
     git clone git@github.com:NVIDIA-AI-Blueprints/nemotron-voice-agent.git
     cd nemotron-voice-agent
-    git submodule update --init
+    cp .env.example .env
     ```
 
-2. Configure the environment. Copy the example environment file [env.jetson.example](../config/env.jetson.example) to the root directory:
-
-    ```bash
-    cp config/env.jetson.example .env
-    ```
-
-3. Set your API keys as environment variables:
+2. Set your API keys in the `.env` file:
 
     ```bash
     # Required
-    export NVIDIA_API_KEY=<your-nvidia-api-key>
-    export HF_TOKEN=<your-huggingface-token>
+    NVIDIA_API_KEY=<your-nvidia-api-key>
+    HF_TOKEN=<your-huggingface-token>
     ```
 
-    **Jetson-specific defaults** (differ from main deployment)
-    - `ENABLE_SPECULATIVE_SPEECH=false` — Disabled for resource optimization.
-    - `WORKERS=1` — Single worker to reduce memory usage.
-
-4. Deploy Nemotron Speech ASR and TTS models.
+3. Build the Nemotron Speech (Riva) model repository. **One-time per machine.**
 
     a. Ensure you meet the [prerequisites](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/quick-start-guide.html#prerequisites) before proceeding.
 
@@ -84,110 +41,87 @@ All models are deployed on the local Jetson device. Default models used:
     ngc config set
     ```
 
-    c. Download the Nemotron Speech ASR and TTS Quick Start scripts:
+    c. Download the Riva Speech Skills v2.26.0 Quick Start bundle for L4T (JetPack 7.0) **next to the repo** (not inside it), so the ~30–50 GB model repo survives re-clones and worktrees:
 
     ```bash
-    ngc registry resource download-version nvidia/riva/riva_quickstart_arm64:2.24.0
-    cd riva_quickstart_arm64_v2.24.0
+    cd ..
+    ngc registry resource download-version "nvidia/riva/riva_quickstart_arm64:2.26.0"
+    cd riva_quickstart_arm64_v2.26.0
     ```
 
-    d. [Optional] Enable Silero VAD for improved ASR performance:
+    d. **Configure the Riva deployment.** Edit `config.sh` in the quickstart directory to choose which services and models `riva_init.sh` builds into `model_repository/`:
 
-    > **Tip:** Enabling Silero VAD can help improve End-of-Utterance (EOU) detection and performance in noisy environments.
+    | Setting | Parameter in `config.sh` | Default |
+    |---|---|---|
+    | Enable ASR service | `service_enabled_asr` | `true` |
+    | Enable TTS service | `service_enabled_tts` | `true` |
+    | ASR acoustic model to fetch from NGC | `asr_acoustic_model` | English Parakeet (default) |
+    | ASR language | `asr_language_code` | `en-US` |
+    | TTS language | `tts_language_code` | `en-US` |
 
-    1. Edit the `config.sh` in Quick Start directory `riva_quickstart_arm64_v2.24.0`:
+    - **Omni examples** (`omni-assistant/jetson-thor`): set `service_enabled_asr=false`. Omni LLM doesn't need ASR separately, so Riva only needs to serve TTS.
+    - **Multilingual example**: switch `asr_acoustic_model` to the multilingual ASR model and set `asr_language_code` (and `tts_language_code`) to your target locales.
 
-        ```bash
-        # Use Silero Diarizer as accessory model for ASR
-        asr_accessory_model=("silero_diarizer")
-        ```
+    > Exact model identifiers and the full option list live in the downloaded `config.sh`.
 
-    2. Update your `.env` file with the ASR model name:
-
-        ```bash
-        ASR_MODEL_NAME=parakeet-1.1b-en-US-asr-streaming-silero-vad-sortformer
-        ```
-
-    e. Deploy Nemotron Speech ASR and TTS models:
+    e. Run only `riva_init.sh`. It downloads the configured ASR/TTS models and compiles the TRT engines into `model_repository/`. **Do not run `riva_start.sh`**: the `nemotron-speech` compose service in step 5 will serve the models itself.
 
     ```bash
     bash riva_init.sh
-    bash riva_start.sh
+    cd ../nemotron-voice-agent
     ```
 
-    > **Note:** Initialization may take 30-60 minutes on first run.
+    > **Note:** Initialization may take 30–60 minutes on first run.
 
-5. Start LLM Service and Voice Agent Application. Start services from the root directory:
+    > If the quickstart lives somewhere other than the repo's sibling directory, set `RIVA_MODEL_LOC` in `.env` to the absolute path of `model_repository/`.
+
+4. **(Optional) Production tuning: CUDA MPS + CPU pinning.** On Thor, vLLM and Riva share a single GPU and the memory bus. Left unmanaged they contend for GPU SMs and CPU cores, which shows up as audible glitches in the bot's speech. CUDA MPS partitions the GPU's compute between the two services, and CPU pinning gives each its own cores. Both are recommended on Thor. Set the split in `.env`, then start the MPS daemon **before** bringing up the stack (step 5):
 
     ```bash
-    docker compose -f docker-compose.jetson.yml up -d
+    # .env
+    VLLM_MPS_THREAD_PCT=50
+    RIVA_MPS_THREAD_PCT=50
+    VLLM_CPUSET=0-3
+    RIVA_CPUSET=4-7
+    PIPECAT_CPUSET=8-11
     ```
 
-    > **Note:** Deployment may take 15-20 minutes on first run.
+    ```bash
+    sudo bash scripts/start-mps.sh
+    ```
 
-6. Access the application at `http://<jetson-ip>:8081` on your browser.
+5. Start the full stack via Docker Compose. This brings up the LLM (vLLM), Riva speech, and the Pipecat pipeline together. Choose the profile for your example:
+
+    ```bash
+    # Generic Cascaded — Riva ASR + TTS + vLLM LLM
+    docker compose --profile generic-assistant/jetson-thor up -d
+
+    # Nemotron Omni — local Omni vLLM + Riva TTS only (Omni does its own ASR; set service_enabled_asr=false in step 3d)
+    docker compose --profile omni-assistant/jetson-thor up -d
+    ```
+
+    > **Note:** First-run deployment can take 30–60 minutes. On local recipes, the **first voice interaction** may also lag while GPU sidecars warm up. Later turns are much faster.
+
+6. Access the application at `https://<machine-ip>:7860` (HTTPS by default, which browser microphone and WebRTC require).
+
+    > **Note:** `PIPELINE_TLS=false` serves plain HTTP for headless/API testing only. For plain-HTTP browser testing, see [plain-HTTP deployment and usage](06-troubleshooting.md#browser-access).
 
     > **Tip:** For the best experience, we recommend using a headset (preferably wired) instead of your laptop's built-in microphone.
 
-   > **Note:** To enable microphone access in Chrome, go to `chrome://flags/`, enable "Insecure origins treated as secure", add `http://<jetson-ip>:8081` to the list, and restart Chrome. If you need to access the application from remote locations or deploy on cloud platforms, configure a TURN server. Refer to [Optional: Deploy TURN Server for Remote Access](01-getting-started.md#optional-deploy-turn-server-for-remote-access).
-
----
-
-## Switching LLM Models
-
-The Jetson deployment uses vLLM to load HuggingFace models. Update these variables in your `.env` file:
-
-| Variable | Description |
-|----------|-------------|
-| `NVIDIA_LLM_MODEL` | HuggingFace model identifier |
-| `GPU_MEMORY_UTILIZATION` | GPU memory fraction (0.0-1.0). Adjust based on model size. |
-| `SYSTEM_PROMPT_SELECTOR` | Prompt path from [config/prompt.yaml](../config/prompt.yaml) |
-
-### Available Models
-
-| Model | Size | `GPU_MEMORY_UTILIZATION` |
-|-------|------|--------------------------|
-| `RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16` | 8B (4-bit) | 0.15 |
-| `nvidia/Nemotron-Mini-4B-Instruct` | 4B | 0.10 |
-| `nvidia/NVIDIA-Nemotron-Nano-9B-v2-FP8` | 9B (FP8) | 0.20 |
-| `Qwen/Qwen3-4B-Instruct-2507` | 4B | 0.10 |
-
-### Example: Switch to Nemotron-Mini-4B
-
-1. Edit your `.env` file:
+7. **Manage and tear down.** Use the same profile you started with (`<example>` = `generic-assistant` or `omni-assistant`). If you enabled CUDA MPS in step 4, stop the daemon when tearing down.
 
     ```bash
-    NVIDIA_LLM_MODEL=nvidia/Nemotron-Mini-4B-Instruct
-    GPU_MEMORY_UTILIZATION=0.10
-    SYSTEM_PROMPT_SELECTOR=llama/flowershop
+    # View logs
+    docker compose --profile <example>/jetson-thor logs -f <example>
+
+    # Rebuild after code changes
+    docker compose --profile <example>/jetson-thor up --build -d <example>
+
+    # Stop all services
+    docker compose --profile <example>/jetson-thor down
+
+    # Stop CUDA MPS (only if you ran scripts/start-mps.sh)
+    sudo bash scripts/stop-mps.sh
     ```
 
-2. Restart the services:
-
-    ```bash
-    docker compose -f docker-compose.jetson.yml down
-    docker compose -f docker-compose.jetson.yml up -d
-    ```
-
-3. Verify the model is loading:
-
-    ```bash
-    docker compose -f docker-compose.jetson.yml logs -f llm-nvidia-jetson
-    ```
-
-> **Note:** The first model download may take several minutes depending on model size and network speed.
-
----
-
-## Common Commands
-
-```bash
-# View logs
-docker compose -f docker-compose.jetson.yml logs -f python-app
-
-# Stop all services
-docker compose -f docker-compose.jetson.yml down
-
-# Rebuild after code changes
-docker compose -f docker-compose.jetson.yml up --build -d python-app
-```
+    If hitting startup or runtime issues, see [Troubleshooting](06-troubleshooting.md#jetson-thor), which covers Jetson low-memory and vLLM engine-core failures, and more.

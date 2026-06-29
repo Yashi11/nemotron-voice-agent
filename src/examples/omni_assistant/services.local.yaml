@@ -1,0 +1,55 @@
+# On-prem catalog for the Nemotron Omni Assistant example.
+#
+# Pair each platform block with the matching ``omni-assistant/<hardware>``
+# compose recipe/profile. ``workstation`` and ``dgxspark`` start the
+# ``nvidia-llm-vllm-omni`` sidecar (Nemotron Omni vLLM) plus the Magpie TTS
+# NIM (``tts-service``). The ``jetson`` block pairs with the
+# ``omni-assistant/jetson-thor`` recipe: it reuses the same Omni vLLM sidecar
+# but takes TTS from the on-device Riva ``nemotron-speech-tts`` service. Jetson
+# Thor's 128 GB unified memory fits the 30B Omni NVFP4 model; Orin-class
+# hardware does not.
+
+workstation:
+  llm:
+    nemotron-omni-nvfp4:
+      name: "Nemotron 3 Nano Omni 30B A3B Reasoning NVFP4"
+      model_id: "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4"
+      base_url: "http://nvidia-llm-vllm-omni:8002/v1"
+      system_prompt: ""
+      extra_params: '{"extra_body":{"top_k":1,"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
+  tts:
+    magpie-tts:
+      name: "Magpie TTS"
+      server: "tts-service:50051"
+      voice_id: "Magpie-Multilingual.EN-US.Aria"
+      function_id: ""
+
+dgxspark:
+  llm:
+    nemotron-omni-nvfp4:
+      name: "Nemotron 3 Nano Omni 30B A3B Reasoning NVFP4"
+      model_id: "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4"
+      base_url: "http://nvidia-llm-vllm-omni:8002/v1"
+      system_prompt: ""
+      extra_params: '{"extra_body":{"top_k":1,"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
+  tts:
+    magpie-tts:
+      name: "Magpie TTS"
+      server: "tts-service:50051"
+      voice_id: "Magpie-Multilingual.EN-US.Aria"
+      function_id: ""
+
+jetson:
+  llm:
+    nemotron-omni-nvfp4:
+      name: "Nemotron 3 Nano Omni 30B A3B Reasoning NVFP4"
+      model_id: "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4"
+      base_url: "http://nvidia-llm-vllm-omni:8002/v1"
+      system_prompt: ""
+      extra_params: '{"extra_body":{"top_k":1,"chat_template_kwargs":{"enable_thinking":false},"repetition_penalty":1.05}}'
+  tts:
+    magpie-tts:
+      name: "Magpie TTS"
+      server: "nemotron-speech-tts:50051"
+      voice_id: "Magpie-Multilingual.EN-US.Aria"
+      function_id: ""
