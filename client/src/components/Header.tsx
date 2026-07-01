@@ -185,8 +185,8 @@ export function Header() {
       }
 
       if (isConnected) {
-        await client.disconnect();
         setCurrentSessionId("");
+        await client.disconnect();
       } else {
         const config = buildSessionConfig({
           selectedExample,
