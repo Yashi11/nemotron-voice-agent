@@ -20,6 +20,7 @@ from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
+    LLMUserAggregatorParams,
 )
 from pipecat.processors.aggregators.llm_text_processor import LLMTextProcessor
 from pipecat.processors.frameworks.rtvi import RTVIObserverParams
@@ -28,6 +29,8 @@ from pipecat.runner.types import RunnerArguments
 from pipecat.services.nvidia.llm import NvidiaLLMService, NvidiaLLMSettings
 from pipecat.services.nvidia.stt import NvidiaSTTService, NvidiaSTTSettings
 from pipecat.services.nvidia.tts import NvidiaTTSService, NvidiaTTSSettings
+from pipecat.turns.user_start.vad_user_turn_start_strategy import VADUserTurnStartStrategy
+from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.workers.runner import WorkerRunner
 
 import config_store
@@ -65,6 +68,16 @@ from utils import (
 
 load_dotenv(override=True)
 CHAT_HISTORY_RECENT_TURNS = parse_env_int("CHAT_HISTORY_RECENT_TURNS", 10)
+
+
+def _build_multilingual_user_aggregator_params() -> LLMUserAggregatorParams:
+    """Use VAD-only turn starts so interim ASR text does not start a user turn."""
+    params = build_user_aggregator_params()
+    if params.user_turn_strategies is None:
+        params.user_turn_strategies = UserTurnStrategies(start=[VADUserTurnStartStrategy()])
+    else:
+        params.user_turn_strategies.start = [VADUserTurnStartStrategy()]
+    return params
 
 
 async def _build_multilingual_pipeline(
@@ -226,7 +239,7 @@ async def bot(runner_args: RunnerArguments) -> None:
 
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
-        user_params=build_user_aggregator_params(),
+        user_params=_build_multilingual_user_aggregator_params(),
     )
     logger.info(
         f"Chat history summarization enabled: recent_turns={CHAT_HISTORY_RECENT_TURNS}, "

@@ -16,12 +16,7 @@ from pipecat.runner.types import RunnerArguments
 from pipecat.services.nvidia.llm import NvidiaLLMService
 from pipecat.transports.base_transport import TransportParams
 from pipecat.turns.user_mute import MuteUntilFirstBotCompleteUserMuteStrategy
-from pipecat.turns.user_start.vad_user_turn_start_strategy import VADUserTurnStartStrategy
-from pipecat.turns.user_stop import (
-    BaseUserTurnStopStrategy,
-    SpeechTimeoutUserTurnStopStrategy,
-    TurnAnalyzerUserTurnStopStrategy,
-)
+from pipecat.turns.user_stop import SpeechTimeoutUserTurnStopStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.utils.context.llm_context_summarization import (
     DEFAULT_SUMMARIZATION_PROMPT,
@@ -31,33 +26,19 @@ from pipecat.utils.context.llm_context_summarization import (
 from utils import parse_env_bool, parse_env_float, parse_env_int
 
 
-def _vad_start_only_strategies(*, stop: list[BaseUserTurnStopStrategy]) -> UserTurnStrategies:
-    return UserTurnStrategies(
-        start=[VADUserTurnStartStrategy()],
-        stop=stop,
-    )
-
-
-def _local_smart_turn_stop_strategies() -> list[TurnAnalyzerUserTurnStopStrategy]:
-    from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
-
-    return [TurnAnalyzerUserTurnStopStrategy(turn_analyzer=LocalSmartTurnAnalyzerV3())]
-
-
 def build_user_aggregator_params() -> LLMUserAggregatorParams:
-    """Return user-turn configuration with VAD-only turn starts."""
+    """Return user-turn configuration, defaulting to Pipecat smart turn."""
     if not parse_env_bool("USE_SILERO_VAD_TURN_DETECTION", default=False):
         return LLMUserAggregatorParams(
             vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2)),
             user_mute_strategies=[MuteUntilFirstBotCompleteUserMuteStrategy()],
-            user_turn_strategies=_vad_start_only_strategies(stop=_local_smart_turn_stop_strategies()),
         )
 
     stop_secs = parse_env_float("SILERO_VAD_STOP_SECS", 0.5, min_value=0.0)
     return LLMUserAggregatorParams(
         vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=stop_secs)),
         user_mute_strategies=[MuteUntilFirstBotCompleteUserMuteStrategy()],
-        user_turn_strategies=_vad_start_only_strategies(
+        user_turn_strategies=UserTurnStrategies(
             stop=[SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.0)],
         ),
     )
