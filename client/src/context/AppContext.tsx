@@ -25,6 +25,7 @@ const SELECTED_EXAMPLE_STORAGE = "nvidia-voice-agent-selected-example";
 
 /** Empty string = auto-detect language on each turn. */
 export const SESSION_LANGUAGE_AUTO = "";
+export const SESSION_LANGUAGE_DEFAULT = "es-US";
 
 type ManagedService = {
   id: string;
@@ -308,7 +309,7 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const [selectedVoiceId, setSelectedVoiceId] = useState("");
 
-  const [selectedSessionLanguage, setSelectedSessionLanguage] = useState(SESSION_LANGUAGE_AUTO);
+  const [selectedSessionLanguage, setSelectedSessionLanguage] = useState(SESSION_LANGUAGE_DEFAULT);
 
   // --- TTS state ---
   const { data: defaultTTS = [], isLoading: ttsLoading } = useDefaultTTS(serviceCatalogKey);
