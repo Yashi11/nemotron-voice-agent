@@ -58,6 +58,7 @@ class PromptDefault(TypedDict, total=False):
 
 _SRC_ROOT = Path(__file__).resolve().parent
 _REGISTRY_PATH = _SRC_ROOT.parent / "examples_registry.yaml"
+_DEFAULT_SESSION_LANGUAGE_KEY = "default_session_language"
 
 
 def _load_yaml_registry() -> dict:
@@ -345,7 +346,6 @@ def _load_examples(data: dict) -> dict[str, ExampleEntry]:
         bot_spec = str(entry.get("bot") or "").strip()
         slots = entry.get("slots", [])
         capabilities = entry.get("capabilities", [])
-        default_session_language = str(entry.get("default_session_language") or "").strip()
         agent_prompt_keys = entry.get("agent_prompt_keys", [])
         defaults = entry.get("defaults", {})
         if not label or not bot_spec:
@@ -358,8 +358,17 @@ def _load_examples(data: dict) -> dict[str, ExampleEntry]:
             raise RuntimeError(f"Example {example_id!r} agent_prompt_keys must be a list of strings")
         if not isinstance(defaults, dict):
             raise RuntimeError(f"Example {example_id!r} defaults must be a mapping")
+        default_session_language_value = defaults.get(
+            _DEFAULT_SESSION_LANGUAGE_KEY,
+            entry.get(_DEFAULT_SESSION_LANGUAGE_KEY),
+        )
+        if default_session_language_value is not None and not isinstance(default_session_language_value, str):
+            raise RuntimeError(f"Example {example_id!r} defaults[{_DEFAULT_SESSION_LANGUAGE_KEY!r}] must be a string")
+        default_session_language = str(default_session_language_value or "").strip()
         normalized_defaults: dict[str, list[str]] = {}
         for slot, service_ids in defaults.items():
+            if slot == _DEFAULT_SESSION_LANGUAGE_KEY:
+                continue
             if not isinstance(service_ids, list) or not all(isinstance(service_id, str) for service_id in service_ids):
                 raise RuntimeError(f"Example {example_id!r} defaults[{slot!r}] must be a list of strings")
             normalized_defaults[str(slot)] = list(service_ids)
