@@ -33,7 +33,7 @@ class MultilingualTurnStrategyTests(unittest.TestCase):
     def test_default_multilingual_turn_start_is_vad_only(self) -> None:
         with (
             patch.dict(os.environ, {"USE_SILERO_VAD_TURN_DETECTION": "false"}),
-            patch("examples.shared.pipeline_utils.SileroVADAnalyzer", return_value=_FakeVADAnalyzer()),
+            patch("examples.multilingual.pipeline.SileroVADAnalyzer", return_value=_FakeVADAnalyzer()),
             patch(
                 "pipecat.audio.turn.smart_turn.local_smart_turn_v3.LocalSmartTurnAnalyzerV3",
                 return_value=_FakeTurnAnalyzer(),
@@ -53,7 +53,7 @@ class MultilingualTurnStrategyTests(unittest.TestCase):
                     "SILERO_VAD_STOP_SECS": "0.5",
                 },
             ),
-            patch("examples.shared.pipeline_utils.SileroVADAnalyzer", return_value=_FakeVADAnalyzer()),
+            patch("examples.multilingual.pipeline.SileroVADAnalyzer", return_value=_FakeVADAnalyzer()),
         ):
             params = _build_multilingual_user_aggregator_params()
 
