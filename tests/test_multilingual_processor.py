@@ -5,9 +5,9 @@
 
 import unittest
 
+from pipecat.utils.text.base_text_aggregator import AggregationType
+
 from examples.multilingual.multilingual_processor import (
-    LANG_TYPE,
-    META_TYPE,
     MultilingualTextAggregator,
     fixed_session_language_addon_key,
 )
@@ -19,81 +19,46 @@ async def _collect_aggregations(chunks: list[str]):
     for chunk in chunks:
         async for aggregation in aggregator.aggregate(chunk):
             aggregations.append(aggregation)
-    while tail := await aggregator.flush():
+    if tail := await aggregator.flush():
         aggregations.append(tail)
     return aggregations
 
 
 def _spoken_texts(aggregations) -> list[str]:
-    return [aggregation.text for aggregation in aggregations if aggregation.type not in {LANG_TYPE, META_TYPE}]
-
-
-def _metadata_texts(aggregations) -> list[str]:
-    return [aggregation.text for aggregation in aggregations if aggregation.type == META_TYPE]
+    return [aggregation.text for aggregation in aggregations if aggregation.type == AggregationType.SENTENCE.value]
 
 
 class MultilingualTextAggregatorTests(unittest.IsolatedAsyncioTestCase):
-    async def test_newline_metadata_is_not_spoken(self) -> None:
+    async def test_json_response_field_is_spoken(self) -> None:
         aggregations = await _collect_aggregations(
             [
-                "Language: en-US Text: Hello there.",
-                "\nMetaData: internal note. This must not be spoken.",
+                '{"lang_id":"fr-FR","response":"Bonjour. ',
+                'Comment puis-je aider ?"}',
             ]
         )
 
-        self.assertEqual(_spoken_texts(aggregations), ["Hello there."])
-        self.assertTrue(any(aggregation.type == META_TYPE for aggregation in aggregations))
+        self.assertEqual(" ".join(_spoken_texts(aggregations)), "Bonjour. Comment puis-je aider ?")
 
-    async def test_split_metadata_marker_is_not_spoken(self) -> None:
-        aggregations = await _collect_aggregations(
-            [
-                "Language: en-US Text: Hello there. Me",
-                "taData: hidden note.",
-            ]
-        )
+    async def test_language_handler_fires_when_lang_id_is_complete(self) -> None:
+        languages: list[str] = []
 
-        self.assertEqual(_spoken_texts(aggregations), ["Hello there."])
-        self.assertTrue(
-            any(
-                aggregation.type == META_TYPE and aggregation.text == "MetaData: hidden note."
-                for aggregation in aggregations
-            )
-        )
+        async def on_language(code: str) -> None:
+            languages.append(code)
 
-    async def test_only_text_field_is_spoken(self) -> None:
-        aggregations = await _collect_aggregations(
-            [
-                "Language: en-US Text: Hello there.MetaData: user intent. Extra reasoning after metadata.",
-            ]
-        )
-
-        self.assertEqual(_spoken_texts(aggregations), ["Hello there."])
-        self.assertEqual(
-            _metadata_texts(aggregations),
-            ["MetaData: user intent. Extra reasoning after metadata."],
-        )
-
-    async def test_missing_text_marker_drops_raw_output(self) -> None:
-        aggregations = await _collect_aggregations(
-            [
-                "Language: en-US Hello there. MetaData: hidden note.",
-            ]
-        )
-
-        self.assertEqual(aggregations, [])
-
-    async def test_flush_preserves_metadata_after_spoken_text(self) -> None:
-        aggregator = MultilingualTextAggregator()
-        async for _ in aggregator.aggregate("Language: en-US Text:"):
+        aggregator = MultilingualTextAggregator(on_language=on_language)
+        async for _ in aggregator.aggregate('{"lang_id":"es-ES","response":"Ho'):
             pass
-        aggregator._buf = "Hello there. MetaData: hidden note."
 
-        first = await aggregator.flush()
-        second = await aggregator.flush()
+        self.assertEqual(languages, ["es-ES"])
 
-        self.assertEqual(first.text if first else "", "Hello there.")
-        self.assertEqual(second.text if second else "", "MetaData: hidden note.")
-        self.assertEqual(second.type if second else "", META_TYPE)
+    async def test_plain_text_fallback_is_spoken_when_json_is_missing(self) -> None:
+        aggregations = await _collect_aggregations(
+            [
+                "Bonjour tout le monde.",
+            ]
+        )
+
+        self.assertEqual(_spoken_texts(aggregations), ["Bonjour tout le monde."])
 
 
 class FixedSessionLanguageAddonKeyTests(unittest.TestCase):
