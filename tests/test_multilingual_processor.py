@@ -5,7 +5,12 @@
 
 import unittest
 
-from examples.multilingual.multilingual_processor import LANG_TYPE, META_TYPE, MultilingualTextAggregator
+from examples.multilingual.multilingual_processor import (
+    LANG_TYPE,
+    META_TYPE,
+    MultilingualTextAggregator,
+    fixed_session_language_addon_key,
+)
 
 
 async def _collect_aggregations(chunks: list[str]):
@@ -89,6 +94,33 @@ class MultilingualTextAggregatorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first.text if first else "", "Hello there.")
         self.assertEqual(second.text if second else "", "MetaData: hidden note.")
         self.assertEqual(second.type if second else "", META_TYPE)
+
+
+class FixedSessionLanguageAddonKeyTests(unittest.TestCase):
+    def test_exact_locale_prompt_wins(self) -> None:
+        catalog = {
+            "fixed_session_language_addon": {"content": "english"},
+            "fixed_session_language_addon_es": {"content": "spanish"},
+            "fixed_session_language_addon_es_us": {"content": "spanish us"},
+        }
+
+        self.assertEqual(fixed_session_language_addon_key(catalog, "es-US"), "fixed_session_language_addon_es_us")
+
+    def test_language_family_prompt_wins_before_fallback(self) -> None:
+        catalog = {
+            "fixed_session_language_addon": {"content": "english"},
+            "fixed_session_language_addon_fr": {"content": "french"},
+        }
+
+        self.assertEqual(fixed_session_language_addon_key(catalog, "fr-FR"), "fixed_session_language_addon_fr")
+
+    def test_missing_language_prompt_uses_english_fallback(self) -> None:
+        catalog = {
+            "fixed_session_language_addon": {"content": "english"},
+            "fixed_session_language_addon_fr": {"content": "french"},
+        }
+
+        self.assertEqual(fixed_session_language_addon_key(catalog, "de-DE"), "fixed_session_language_addon")
 
 
 if __name__ == "__main__":

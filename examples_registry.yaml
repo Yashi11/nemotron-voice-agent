@@ -37,6 +37,8 @@ examples:
     capabilities: [session_languages]
     agent_prompt_keys:
       - fixed_session_language_addon
+      - fixed_session_language_addon_fr
+      - fixed_session_language_addon_es
       - auto_detect_language_addon
     defaults:
       default_session_language: es-US

@@ -41,10 +41,10 @@ import config_store
 from examples.multilingual.multilingual_processor import (
     AUTO_DETECT_LANGUAGE_ADDON_KEY,
     FIXED_SESSION_GREETING_TRIGGER,
-    FIXED_SESSION_LANGUAGE_ADDON_KEY,
     SKIP_TTS_AGGREGATIONS,
     MultilingualTextAggregator,
     RTVISpokenTextEmitter,
+    fixed_session_language_addon_key,
     get_lang_codes,
     make_language_handler,
 )
@@ -231,13 +231,15 @@ async def bot(runner_args: RunnerArguments) -> None:
     # --- Context ---
     if fixed_session_language:
         prompt_catalog = load_prompt_catalog(__file__)
+        addon_key = fixed_session_language_addon_key(prompt_catalog, fixed_session_language)
         base_system_content = base_system_content.replace("{lang_codes}", fixed_session_language)
         base_system_content = render_prompt_addon(
             base_system_content,
             prompt_catalog,
-            FIXED_SESSION_LANGUAGE_ADDON_KEY,
+            addon_key,
             {"fixed_language": fixed_session_language, "lang_codes": fixed_session_language},
         )
+        logger.info(f"Multilingual fixed-session prompt add-on: {addon_key}")
     elif lang_codes:
         prompt_catalog = load_prompt_catalog(__file__)
         base_system_content = base_system_content.replace("{lang_codes}", lang_codes)

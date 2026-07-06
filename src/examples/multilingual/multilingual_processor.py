@@ -13,7 +13,7 @@ TTS service configured with ``skip_aggregator_types=SKIP_TTS_AGGREGATIONS``.
 """
 
 import re
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 
 from loguru import logger
 from pipecat.frames.frames import (
@@ -249,6 +249,33 @@ def get_lang_codes(
 FIXED_SESSION_LANGUAGE_ADDON_KEY = "fixed_session_language_addon"
 AUTO_DETECT_LANGUAGE_ADDON_KEY = "auto_detect_language_addon"
 FIXED_SESSION_GREETING_TRIGGER = "[session_start]"
+
+
+def fixed_session_language_addon_key(catalog: Mapping[str, object], fixed_language: str) -> str:
+    """Return the best fixed-session prompt add-on key for ``fixed_language``.
+
+    Lookup order is exact locale, language family, then the English fallback.
+    For example, ``fr-FR`` checks ``fixed_session_language_addon_fr_fr`` and
+    ``fixed_session_language_addon_fr`` before using ``fixed_session_language_addon``.
+    """
+    normalized = normalize_lang_code(fixed_language.strip()) if fixed_language else ""
+    suffix = normalized.replace("-", "_").lower()
+    language = suffix.split("_", 1)[0] if suffix else ""
+    candidates = [
+        f"{FIXED_SESSION_LANGUAGE_ADDON_KEY}_{suffix}" if suffix else "",
+        f"{FIXED_SESSION_LANGUAGE_ADDON_KEY}_{language}" if language else "",
+        FIXED_SESSION_LANGUAGE_ADDON_KEY,
+    ]
+    seen: set[str] = set()
+    for key in candidates:
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        entry = catalog.get(key)
+        content = entry.get("content") if isinstance(entry, Mapping) else ""
+        if isinstance(content, str) and content.strip():
+            return key
+    return FIXED_SESSION_LANGUAGE_ADDON_KEY
 
 
 def make_language_handler(

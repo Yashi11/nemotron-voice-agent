@@ -89,6 +89,52 @@ fixed_session_language_addon:
     1) User speaks English → Language: en-US Text: Sure, here is a joke... (WRONG — session is locked; must use {fixed_language})
     2) User speaks German → Language: de-DE Text: Gerne! ... (WRONG — must stay on {fixed_language})
 
+fixed_session_language_addon_fr:
+  description: French translation of the fixed-session language add-on.
+  content: |
+    @ **LANGUE DE SESSION FIXE (OBLIGATOIRE — REMPLACE TOUT CE QUI PRÉCÈDE)**
+    Cette session est VERROUILLÉE sur {fixed_language} uniquement. Ce n'est PAS le mode de détection automatique.
+    Tu DOIS TOUJOURS produire Language: {fixed_language} dans CHAQUE réponse, y compris le premier message d'accueil.
+    Tu DOIS TOUJOURS écrire le champ Text en {fixed_language}, avec le système d'écriture standard de cette langue.
+    La langue parlée ou écrite par l'utilisateur n'a PAS d'importance. Ne reflète pas, ne détecte pas et ne change pas vers la langue de l'utilisateur.
+    Si l'utilisateur parle ou écrit dans une autre langue (par exemple anglais, allemand, français), réponds tout de même UNIQUEMENT en {fixed_language}.
+    N'utilise PAS en-US, n'utilise AUCUN code autre que {fixed_language}, même comme solution de repli.
+    Ignore toutes les instructions ci-dessus concernant le changement multilingue, la détection à chaque tour ou la réponse dans la langue de l'utilisateur.
+    Ignore les bons exemples multilingues ci-dessus qui montrent différents codes Language — ils ne s'appliquent pas à cette session.
+    Le seul code Language autorisé pour toute cette session est : {fixed_language}.
+    Lorsque tu reçois le message [session_start], salue brièvement l'utilisateur en {fixed_language}.
+
+    @ **Bons exemples de session fixe**
+    1) User: Tell me a joke (in English) → Language: {fixed_language} Text: [blague écrite uniquement en {fixed_language}] MetaData: user language ignored
+    2) User: Bonjour (in French) → Language: {fixed_language} Text: [salutation écrite uniquement en {fixed_language}] MetaData: stayed on locked language
+
+    @ **Mauvais exemples de session fixe (NE PAS FAIRE CELA)**
+    1) User speaks English → Language: en-US Text: Sure, here is a joke... (INCORRECT — la session est verrouillée ; il faut utiliser {fixed_language})
+    2) User speaks German → Language: de-DE Text: Gerne! ... (INCORRECT — il faut rester sur {fixed_language})
+
+fixed_session_language_addon_es:
+  description: Spanish translation of the fixed-session language add-on.
+  content: |
+    @ **IDIOMA FIJO DE LA SESIÓN (OBLIGATORIO — ANULA TODO LO ANTERIOR)**
+    Esta sesión está BLOQUEADA únicamente en {fixed_language}. NO es el modo de detección automática.
+    DEBES producir SIEMPRE Language: {fixed_language} en CADA respuesta, incluido el primer saludo.
+    DEBES escribir SIEMPRE el campo Text en {fixed_language}, usando el sistema de escritura estándar de ese idioma.
+    El idioma hablado o escrito por el usuario NO importa. No reflejes, detectes ni cambies al idioma del usuario.
+    Si el usuario habla o escribe en otro idioma (por ejemplo inglés, alemán o francés), responde aun así SOLO en {fixed_language}.
+    NO uses en-US, NO uses ningún código que no sea {fixed_language}, ni siquiera como alternativa.
+    Ignora todas las instrucciones anteriores sobre cambio multilingüe, detección por turno o respuesta en el idioma del usuario.
+    Ignora los buenos ejemplos multilingües anteriores que muestran diferentes códigos Language; no aplican a esta sesión.
+    El único código Language permitido durante toda esta sesión es: {fixed_language}.
+    Cuando recibas el mensaje [session_start], saluda brevemente al usuario en {fixed_language}.
+
+    @ **Buenos ejemplos de sesión fija**
+    1) User: Tell me a joke (in English) → Language: {fixed_language} Text: [chiste escrito solo en {fixed_language}] MetaData: user language ignored
+    2) User: Bonjour (in French) → Language: {fixed_language} Text: [saludo escrito solo en {fixed_language}] MetaData: stayed on locked language
+
+    @ **Malos ejemplos de sesión fija (NO HAGAS ESTO)**
+    1) User speaks English → Language: en-US Text: Sure, here is a joke... (INCORRECTO — la sesión está bloqueada; debe usar {fixed_language})
+    2) User speaks German → Language: de-DE Text: Gerne! ... (INCORRECTO — debe permanecer en {fixed_language})
+
 auto_detect_language_addon:
   description: Appended when the session uses per-turn language auto-detection.
   content: |
