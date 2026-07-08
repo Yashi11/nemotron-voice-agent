@@ -25,17 +25,23 @@ _service_context: ContextVar[tuple[Path, tuple[str, ...]] | None] = ContextVar("
 
 
 def _services_cloud_path() -> Path:
+    override = os.getenv("SERVICES_CLOUD_PATH", "").strip()
+    if override:
+        return Path(override)
     context = _service_context.get()
     if context:
         return context[0] / "services.cloud.yaml"
-    return Path(os.getenv("SERVICES_CLOUD_PATH", str(PROJECT_ROOT / "src/examples/generic/services.cloud.yaml")))
+    return PROJECT_ROOT / "src/examples/generic/services.cloud.yaml"
 
 
 def _services_local_path() -> Path:
+    override = os.getenv("SERVICES_LOCAL_PATH", "").strip()
+    if override:
+        return Path(override)
     context = _service_context.get()
     if context:
         return context[0] / "services.local.yaml"
-    return Path(os.getenv("SERVICES_LOCAL_PATH", str(PROJECT_ROOT / "src/examples/generic/services.local.yaml")))
+    return PROJECT_ROOT / "src/examples/generic/services.local.yaml"
 
 
 _SLOT_CONFIG_KEYS: dict[str, frozenset[str]] = {

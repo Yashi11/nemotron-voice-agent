@@ -223,7 +223,8 @@ def _activate_example_catalog(module_file: Path, example: dict) -> None:
         ("SERVICES_CLOUD_PATH", module_dir / "services.cloud.yaml"),
         ("SERVICES_LOCAL_PATH", module_dir / "services.local.yaml"),
     ):
-        os.environ[env_var] = str(candidate)
+        if not os.getenv(env_var, "").strip():
+            os.environ[env_var] = str(candidate)
     set_active_slots(example.get("slots") or None)
 
 

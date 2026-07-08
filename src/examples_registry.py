@@ -180,7 +180,8 @@ def _first_reachable_variant(variants: list[tuple[str, dict]]) -> tuple[str, dic
 
 def _load_local_service_catalog(example_dir: Path) -> dict[str, dict]:
     """Load platform-scoped local service entries for one example."""
-    data = _load_yaml_mapping(example_dir / "services.local.yaml")
+    override = os.getenv("SERVICES_LOCAL_PATH", "").strip()
+    data = _load_yaml_mapping(Path(override) if override else example_dir / "services.local.yaml")
     platform_data = select_runtime_platform_catalog(data)
     if platform_data is not None:
         return _rewrite_catalog_for_host_runtime(_normalize_service_catalog(platform_data))
@@ -221,7 +222,10 @@ def _load_local_service_catalog(example_dir: Path) -> dict[str, dict]:
 def _load_service_catalogs(example_dir: str) -> tuple[dict[str, dict], dict[str, dict]]:
     """Load cloud and local service catalogs for one example directory."""
     base = Path(example_dir)
-    cloud = _normalize_service_catalog(_load_yaml_mapping(base / "services.cloud.yaml"))
+    cloud_override = os.getenv("SERVICES_CLOUD_PATH", "").strip()
+    cloud = _normalize_service_catalog(
+        _load_yaml_mapping(Path(cloud_override) if cloud_override else base / "services.cloud.yaml")
+    )
     local = _load_local_service_catalog(base)
     return cloud, local
 
