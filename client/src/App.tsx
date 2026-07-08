@@ -48,12 +48,18 @@ function AppInner() {
 
   return (
     <PipecatClientProvider client={client}>
-      <div className="h-screen d-flex flex-col overflow-hidden">
-        <Header />
-        <div className="flex-1 d-flex overflow-hidden">
-          <StatusPanel />
-          <CenterPanel />
-          <Sidebar />
+      <div className="app-page">
+        <div className="app-shell">
+          <Header />
+          <div className="readme-head">
+            <span aria-hidden="true">README.md</span>
+            <strong>Live voice agent console</strong>
+          </div>
+          <div className="app-layout">
+            <StatusPanel />
+            <CenterPanel />
+            <Sidebar />
+          </div>
         </div>
         <PipecatClientAudio />
       </div>

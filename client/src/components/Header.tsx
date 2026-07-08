@@ -236,24 +236,35 @@ export function Header() {
   }
 
   return (
-    <header className="px-4 py-3 border-b">
-      <div className="d-flex justify-between items-center">
-        <h1 className="text-lg font-semibold">
-          <span style={{ color: "#76b900", fontWeight: 700, letterSpacing: "0.08em" }}>Nemotron</span> Voice Agent
-        </h1>
-        <div className="d-flex items-center gap-3">
-          {isConnected && <DevicesSection />}
-          <button
-            className={isConnected ? "btn-secondary" : "btn-primary"}
-            onClick={handleClick}
-            disabled={isConnecting}
-          >
-            {buttonText}
-          </button>
+    <header className="mock-header">
+      <div className="ghbar">
+        <div className="repo-title">
+          <span className="repo-org">NVIDIA-AI-Blueprints /</span>
+          <span> nemotron-voice-agent</span>
         </div>
+        <span className="repo-pill">Public</span>
+        <span className="ghbar-spacer" />
+        <span className="ghbtn"><b>Star</b> 62</span>
+        <span className="ghbtn"><b>Fork</b> 29</span>
+        {isConnected && <DevicesSection />}
+        <button
+          className={isConnected ? "btn-secondary" : "btn-primary"}
+          onClick={handleClick}
+          disabled={isConnecting}
+        >
+          {buttonText}
+        </button>
       </div>
+      <nav className="mock-tabs" aria-label="Repository sections">
+        <span className="active">Code</span>
+        <span>Issues</span>
+        <span>Pull requests</span>
+        <span>Discussions</span>
+        <span>Actions</span>
+        <span>Security</span>
+      </nav>
       {connectionError && (
-        <p className="mt-2 text-xs" style={{ color: "#f87171" }}>
+        <p className="connection-error">
           {connectionError}
         </p>
       )}

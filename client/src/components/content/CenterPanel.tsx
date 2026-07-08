@@ -9,6 +9,7 @@ import { MetricsPanel } from "./MetricsPanel";
 import { ServicesPanel } from "./ServicesPanel";
 import { PromptsPanel } from "./PromptsPanel";
 import { ToolsPanel } from "./ToolsPanel";
+import { LiveDemoHero } from "./LiveDemoHero";
 
 type Tab = "conversation" | "metrics" | "services" | "prompts" | "tools";
 
@@ -36,7 +37,9 @@ export function CenterPanel() {
   const [activeTab, setActiveTab] = useState<Tab>("conversation");
 
   return (
-    <main className="flex-1 d-flex flex-col overflow-hidden">
+    <main className="main-panel flex-1 d-flex flex-col overflow-hidden">
+      <LiveDemoHero />
+
       <div className="tab-header">
         {ALL_TABS.map((tab) => (
           <button

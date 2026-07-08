@@ -6,7 +6,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   type ReactNode,
 } from "react";
 import { useDeployment, useDefaultLLMs, useDefaultPrompts, useDefaultASR, useDefaultTTS, useDefaultTools, type DeploymentOption, type LLMService, type Prompt, type SimpleService, type Tool, type TransportOption, type TransportType } from "../api";
@@ -309,16 +308,26 @@ export function AppProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const [selectedVoiceId, setSelectedVoiceId] = useState("");
 
-  const [selectedSessionLanguage, setSelectedSessionLanguage] = useState(DEFAULT_SESSION_LANGUAGE);
-  const defaultSessionLanguageExampleKey = useRef("");
+  const [selectedSessionLanguageState, setSelectedSessionLanguageState] = useState({
+    exampleKey: "",
+    language: DEFAULT_SESSION_LANGUAGE,
+  });
+  const selectedExampleKeyForLanguage = selectedExample?.key ?? "";
   const selectedExampleDefaultSessionLanguage = selectedExample?.default_session_language ?? DEFAULT_SESSION_LANGUAGE;
 
-  useEffect(() => {
-    const selectedExampleKey = selectedExample?.key ?? "";
-    if (!selectedExampleKey || defaultSessionLanguageExampleKey.current === selectedExampleKey) return;
-    defaultSessionLanguageExampleKey.current = selectedExampleKey;
-    setSelectedSessionLanguage(selectedExampleDefaultSessionLanguage || DEFAULT_SESSION_LANGUAGE);
-  }, [selectedExample?.key, selectedExampleDefaultSessionLanguage]);
+  const selectedSessionLanguage = useMemo(() => {
+    if (!selectedExampleKeyForLanguage || selectedSessionLanguageState.exampleKey === selectedExampleKeyForLanguage) {
+      return selectedSessionLanguageState.language;
+    }
+    return selectedExampleDefaultSessionLanguage || DEFAULT_SESSION_LANGUAGE;
+  }, [selectedExampleDefaultSessionLanguage, selectedExampleKeyForLanguage, selectedSessionLanguageState]);
+
+  const setSelectedSessionLanguage = useCallback((language: string) => {
+    setSelectedSessionLanguageState({
+      exampleKey: selectedExampleKeyForLanguage,
+      language,
+    });
+  }, [selectedExampleKeyForLanguage]);
 
   // --- TTS state ---
   const { data: defaultTTS = [], isLoading: ttsLoading } = useDefaultTTS(serviceCatalogKey);

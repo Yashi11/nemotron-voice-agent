@@ -325,6 +325,19 @@ function formatMetricValue(metric?: MetricGroupValue) {
   return metric.unit ? `${value} ${metric.unit}` : value;
 }
 
+function formatLatencyValue(value?: number) {
+  if (value === undefined) return "--";
+  return `${Math.round(value)} ms`;
+}
+
+function median(values: number[]) {
+  if (values.length === 0) return undefined;
+  const sorted = [...values].sort((a, b) => a - b);
+  const midpoint = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[midpoint];
+  return (sorted[midpoint - 1] + sorted[midpoint]) / 2;
+}
+
 function groupRowStyle(groupId?: string) {
   const color = groupColor(groupId);
   return color ? { backgroundColor: color } : undefined;
@@ -349,6 +362,20 @@ export function MetricsPanel() {
     }
     return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [ttfbHistory]);
+  const turnLatencySamples = useMemo(
+    () => latencyHistory.filter((point) => !point.first),
+    [latencyHistory],
+  );
+  const firstAudioSamples = useMemo(
+    () => latencyHistory.filter((point) => point.first),
+    [latencyHistory],
+  );
+  const latestTurnLatency = turnLatencySamples.at(-1)?.value;
+  const latestFirstAudioLatency = firstAudioSamples.at(-1)?.value;
+  const medianTurnLatency = useMemo(
+    () => median(turnLatencySamples.map((point) => point.value)),
+    [turnLatencySamples],
+  );
   const filteredMetricRows = useMemo(
     () => metricRows.filter((row) => metricMatchesFilter(row, boardFilter)),
     [boardFilter, metricRows],
@@ -513,6 +540,20 @@ export function MetricsPanel() {
           {/* User→Bot Latency */}
           <div className="metrics-section">
             <h3 className="metrics-title">User→Bot Latency</h3>
+            <div className="metrics-grid latency-summary-grid">
+              <div className="metric-card metric-card-highlight">
+                <span className="metric-label">Latest Turn</span>
+                <span className="metric-value">{formatLatencyValue(latestTurnLatency)}</span>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">First Audio</span>
+                <span className="metric-value">{formatLatencyValue(latestFirstAudioLatency)}</span>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">Median Turn</span>
+                <span className="metric-value">{formatLatencyValue(medianTurnLatency)}</span>
+              </div>
+            </div>
             {latencyHistory.length >= 2 ? (
               <TTFBChart data={latencyHistory} title="Response Latency" label="Latency" />
             ) : (

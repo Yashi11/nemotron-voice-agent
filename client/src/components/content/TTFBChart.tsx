@@ -25,23 +25,23 @@ export function TTFBChart({ data, title, label = "TTFB" }: Readonly<TTFBChartPro
         <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <XAxis
             dataKey="id"
-            stroke="#666666"
+            stroke="#6e7781"
             fontSize={10}
             tickLine={false}
             tickFormatter={(_, index) => data[index]?.timestamp ?? ""}
           />
           <YAxis
-            stroke="#666666"
+            stroke="#6e7781"
             fontSize={10}
             tickLine={false}
             tickFormatter={(v) => `${v}ms`}
           />
           <Tooltip
             contentStyle={{
-              background: "#1a1a1a",
-              border: "1px solid #2a2a2a",
+              background: "#ffffff",
+              border: "1px solid #d1d9e0",
               borderRadius: "4px",
-              color: "#e0e0e0",
+              color: "#1f2328",
               fontSize: "12px",
             }}
             labelFormatter={(_, payload) => payload?.[0]?.payload?.timestamp ?? ""}
