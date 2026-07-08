@@ -163,7 +163,11 @@ async def bot(runner_args: RunnerArguments) -> None:
         f"extra_params={extra_params or '(none)'}"
     )
 
-    booking_backend_url = default_booking_server.get("server") or _default_booking_backend_url()
+    booking_backend_url = (
+        os.getenv("BOOKING_BACKEND_URL", "").strip()
+        or default_booking_server.get("server")
+        or _default_booking_backend_url()
+    )
     thinker_model_id = body.get("thinker_model_id", "") or default_thinker_llm.get("model_id", "") or model_id
     thinker_base_url = body.get("thinker_base_url", "") or default_thinker_llm.get("base_url", "") or base_url
     thinker_max_tokens = _parse_optional_int(

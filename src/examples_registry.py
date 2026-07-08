@@ -319,9 +319,9 @@ def _resolve_prompt_defaults(example: EnrichedExample) -> list[PromptDefault]:
     return [_resolve_prompt_default(example, prompt_key) for prompt_key in example["defaults"].get("prompt", [])]
 
 
-def prompt_default_key(example_key: str = "") -> str | None:
+def prompt_default_key(example_key: str = "", *, ignore_lock: bool = False) -> str | None:
     """Return the configured default prompt key for an example, if any."""
-    example = find(example_key)
+    example = find(example_key, ignore_lock=ignore_lock)
     prompt_keys = example["defaults"].get("prompt", [])
     return prompt_keys[0] if prompt_keys else None
 
@@ -465,7 +465,7 @@ def _lookup_by_key(key: str) -> EnrichedExample:
     return _enrich(key, EXAMPLES[key])
 
 
-def find(value: str = "") -> EnrichedExample:
+def find(value: str = "", *, ignore_lock: bool = False) -> EnrichedExample:
     """Resolve an example.
 
     Routing rules:
@@ -473,11 +473,12 @@ def find(value: str = "") -> EnrichedExample:
       * Otherwise prefer an explicit example-id match within the visible
         set, then fall back to the default example.
     """
-    if _SELECTION.locked:
+    if _SELECTION.locked and not ignore_lock:
         return _lookup_by_key(_SELECTION.default_key)
 
     cleaned = (value or "").strip().lower()
-    if cleaned and cleaned in _SELECTION.example_keys:
+    allowed_keys = tuple(EXAMPLES) if ignore_lock else _SELECTION.example_keys
+    if cleaned and cleaned in allowed_keys:
         return _lookup_by_key(cleaned)
     return _lookup_by_key(_SELECTION.default_key)
 

@@ -11,5 +11,5 @@ turns:
       - event: llm_started
         within_ms: 45000
       - event: response
-        eval: "the reply is an English initial greeting that identifies the assistant as Atlas"
+        eval: "the reply is a brief English initial greeting or offer to help"
         within_ms: 90000

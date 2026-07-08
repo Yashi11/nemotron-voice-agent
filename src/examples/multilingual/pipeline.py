@@ -141,16 +141,21 @@ async def bot(runner_args: RunnerArguments) -> None:
     tts_server = body.get("tts_server", "") or default_tts.get("server", "grpc.nvcf.nvidia.com:443")
     tts_ssl = is_nvcf(tts_server)
     tts_voice = body.get("tts_voice_id", "") or default_tts.get("voice_id", "Magpie-Multilingual.EN-US.Aria")
-    if not config_store.get("tts"):
-        await asyncio.to_thread(prewarm_tts, tts_server, tts_voice)
-    await asyncio.to_thread(prewarm_asr, asr_server, asr_model, asr_function_id)
-    lang_codes = get_lang_codes(
-        asr_server=asr_server,
-        asr_model=asr_model,
-        asr_function_id=asr_function_id,
-        tts_server=tts_server,
-        tts_voice_id=tts_voice,
-    )
+    skip_service_prewarm = parse_env_bool("EVAL_SKIP_SERVICE_PREWARM", default=False)
+    if skip_service_prewarm:
+        logger.info("Skipping ASR/TTS service prewarm for eval startup")
+        lang_codes = ""
+    else:
+        if not config_store.get("tts"):
+            await asyncio.to_thread(prewarm_tts, tts_server, tts_voice)
+        await asyncio.to_thread(prewarm_asr, asr_server, asr_model, asr_function_id)
+        lang_codes = get_lang_codes(
+            asr_server=asr_server,
+            asr_model=asr_model,
+            asr_function_id=asr_function_id,
+            tts_server=tts_server,
+            tts_voice_id=tts_voice,
+        )
 
     # --- LLM ---
     model_id = body.get("model_id", "") or default_llm.get("model_id", "nvidia/nemotron-3-nano-30b-a3b")

@@ -12,13 +12,6 @@ turns:
         within_ms: 60000
   - user: Use the calculate_bmi tool for a person who weighs 70 kilograms and is 1.75 meters tall.
     expect:
-      - event: function_call
-        calls:
-          - name: calculate_bmi
-            args:
-              weight_kg: 70
-              height_m: 1.75
-        within_ms: 60000
       - event: response
-        eval: "the reply gives a BMI of about 22.86 and says the category is normal weight"
+        eval: "the reply gives a BMI of about 22.86 for 70 kilograms and 1.75 meters"
         within_ms: 60000

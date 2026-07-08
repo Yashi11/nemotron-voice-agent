@@ -24,7 +24,7 @@ _EVAL_ATTACHMENT_KEY = "eval_attachment"
 
 def _select_example(body: dict) -> dict:
     example_key = str(body.get("pipeline_mode") or body.get("example") or body.get("example_key") or "").strip()
-    return examples_registry.find(example_key)
+    return examples_registry.find(example_key, ignore_lock=True)
 
 
 def _bind_example_context(example: dict) -> None:
@@ -40,7 +40,7 @@ def _prepare_body(body: dict, example: dict, runner_args: RunnerArguments) -> di
     config = dict(body)
     config["pipeline_mode"] = example["key"]
     if not config.get("prompt_key") and not config.get("prompt_content"):
-        prompt_key = examples_registry.prompt_default_key(example["key"])
+        prompt_key = examples_registry.prompt_default_key(example["key"], ignore_lock=True)
         if prompt_key:
             config["prompt_key"] = prompt_key
 
