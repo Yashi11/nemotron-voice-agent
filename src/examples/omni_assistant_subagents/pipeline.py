@@ -57,7 +57,7 @@ async def bot(runner_args: RunnerArguments) -> None:
     """Build and run the Omni subagents pipeline for one session."""
     transport = _create_transport(runner_args)
     body = runner_args.body if isinstance(runner_args.body, dict) else {}
-    session_id = str(body.get("session_id") or "").strip()
+    session_id = str(body.get("session_id") or getattr(runner_args, "session_id", "") or "").strip()
     prompt_catalog = load_prompt_catalog(__file__)
 
     prompt_key, base_system_content = resolve_prompt(

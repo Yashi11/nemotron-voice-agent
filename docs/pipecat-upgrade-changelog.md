@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Upgraded server dependency `pipecat-ai[nvidia,silero,runner,webrtc,websocket,openai]` from `1.3.0` to `1.5.0`.
+- Upgraded server dependency `pipecat-ai[nvidia,silero,runner,webrtc,websocket,openai,evals]` from `1.3.0` to `1.5.0`.
 - Refreshed `uv.lock`; the `runner` extra now resolves `pipecat-ai-prebuilt==1.0.3`.
 - Upgraded client RTVI packages to the versions listed in the Pipecat `v1.5.0` release notes:
   - `@pipecat-ai/client-js` `1.11.0` to `1.12.0`
@@ -19,6 +19,8 @@
 ## Repo Impact
 
 - No server import or constructor migrations were required for the current examples.
+- Pipecat eval support is layered on top of the pure `upgrade/pipecat-1.5.0` branch through the `evals` extra,
+  `src/eval_bot.py`, and no-services CI eval scenarios under `evals/ci`.
 - The repo does not import the removed `WorkerParams.loop`, `RealtimeServiceMetadataFrame`, or `RealtimeServiceInfo` symbols.
 - The repo does not use `pipecat_flows`, so the `pipecat-ai-flows` fold-in does not require code changes.
 - The repo does not use the deprecated `WebsocketServerTransport` aliases directly.
@@ -36,6 +38,8 @@
 - `PYTHONPATH=src uv run python -c "import src.server"`
 - `PYTHONPATH=src uv run python -c "from examples.generic import pipeline; from examples.multilingual import pipeline"`
 - `PYTHONPATH=src uv run python -c "from examples.omni_assistant import pipeline; from examples.frontend_backend_agent import pipeline; from examples.omni_assistant_subagents import pipeline"`
+- `PYTHONPATH=src uv run python evals/ci/smoke.py`
+- `PYTHONPATH=src uv run python -m pipecat.evals suite evals/ci/manifest.yaml --timeout 5 --name ci`
 - `.venv/bin/ruff format --check .`
 - `.venv/bin/ruff check .`
 - `PYTHONPATH=src .venv/bin/pytest tests/ -x -q`

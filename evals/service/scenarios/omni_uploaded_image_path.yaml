@@ -1,0 +1,17 @@
+name: omni_uploaded_image_path
+user:
+  modality: text
+judge:
+  modality: text
+  eval:
+    service: ollama
+    model: gemma2:9b
+turns:
+  - user: "Use the uploaded attachment image. Please inspect the uploaded image and summarize what the diagram shows."
+    expect:
+      - event: response
+        within_ms: 90000
+  - expect:
+      - event: response
+        eval: "the reply presents results from analyzing the uploaded image and describes an architecture diagram or system workflow"
+        within_ms: 180000

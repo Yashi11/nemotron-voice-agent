@@ -1,0 +1,6 @@
+{
+  "pipeline_mode": "omni-assistant",
+  "prompt_key": "generic_omni_assistant",
+  "llm_id": "cloud-nim:nemotron-omni-nvfp4",
+  "session_id": "eval-omni-default"
+}

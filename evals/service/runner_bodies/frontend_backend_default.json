@@ -1,0 +1,5 @@
+{
+  "pipeline_mode": "frontend-backend-agent",
+  "prompt_key": "talker",
+  "session_id": "eval-frontend-backend-default"
+}

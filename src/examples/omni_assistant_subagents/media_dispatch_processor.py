@@ -11,6 +11,8 @@ from pipecat.frames.frames import (
     BotStartedSpeakingFrame,
     BotStoppedSpeakingFrame,
     Frame,
+    LLMConfigureOutputFrame,
+    LLMFullResponseEndFrame,
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
     VADUserStartedSpeakingFrame,
@@ -49,11 +51,16 @@ class PostAckMediaDispatchProcessor(FrameProcessor):
         self._handler = handler
         self._assistant_speaking = False
         self._assistant_interrupted = False
+        self._skip_tts = False
 
     async def process_frame(self, frame: Frame, direction: FrameDirection) -> None:
         """Pass frames through, then dispatch pending analysis after bot speech stops."""
         await super().process_frame(frame, direction)
         await self.push_frame(frame, direction)
+
+        if direction == FrameDirection.DOWNSTREAM and isinstance(frame, LLMConfigureOutputFrame):
+            self._skip_tts = frame.skip_tts
+            return
 
         if isinstance(frame, (UserStartedSpeakingFrame, VADUserStartedSpeakingFrame)):
             if self._assistant_speaking:
@@ -79,4 +86,12 @@ class PostAckMediaDispatchProcessor(FrameProcessor):
             await self._handler.on_assistant_speaking_stopped()
             if was_interrupted:
                 return
+            await self._handler.start_pending_media_analysis()
+
+        if (
+            direction == FrameDirection.DOWNSTREAM
+            and isinstance(frame, LLMFullResponseEndFrame)
+            and self._skip_tts
+            and not self._assistant_speaking
+        ):
             await self._handler.start_pending_media_analysis()

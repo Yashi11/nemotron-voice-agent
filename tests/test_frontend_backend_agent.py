@@ -10,6 +10,7 @@ import unittest
 from contextlib import suppress
 from datetime import date, timedelta
 from typing import Any
+from unittest.mock import patch
 
 from pipecat.frames.frames import LLMFullResponseEndFrame, LLMFullResponseStartFrame, LLMTextFrame
 from pipecat.services.llm_service import FunctionCallParams
@@ -23,6 +24,7 @@ from examples.frontend_backend_agent.airline.tools import CALL_BACKEND_TOOL, CAN
 from examples.frontend_backend_agent.airline.transform import _server_booking_to_record, _server_flight_to_option
 from examples.frontend_backend_agent.src.planner import NvidiaThinkerPlanner
 from examples.frontend_backend_agent.src.protocol import ThinkerLifecycleEvent, is_speakable_payload
+from examples.frontend_backend_agent.src.runtime_context import runtime_today
 from examples.frontend_backend_agent.src.tool_handlers import (
     _emit_talker_response,
     _normalize_arguments,
@@ -347,6 +349,17 @@ def _has_route_fields(slots: dict[str, Any]) -> bool:
 
 
 class FrontendBackendAgentTests(unittest.IsolatedAsyncioTestCase):
+    def test_runtime_today_uses_frontend_backend_agent_override(self) -> None:
+        with patch.dict("os.environ", {"FRONTEND_BACKEND_AGENT_TODAY": "2026-04-30"}):
+            self.assertEqual(runtime_today(), date(2026, 4, 30))
+
+    def test_runtime_today_rejects_invalid_override(self) -> None:
+        with (
+            patch.dict("os.environ", {"FRONTEND_BACKEND_AGENT_TODAY": "04/30/2026"}),
+            self.assertRaisesRegex(ValueError, "YYYY-MM-DD"),
+        ):
+            runtime_today()
+
     def test_spoken_time_preserves_ten_oclock_hours(self) -> None:
         self.assertEqual(spoken_time("2026-05-26T10:05:00"), "10:05 AM")
         self.assertEqual(spoken_time("2026-05-26T22:45:00"), "10:45 PM")
