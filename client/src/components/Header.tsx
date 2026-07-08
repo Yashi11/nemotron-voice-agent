@@ -172,8 +172,11 @@ export function Header() {
     setCurrentSessionId,
   } = useApp();
   const [connectionError, setConnectionError] = useState("");
+  const [connectionPending, setConnectionPending] = useState(false);
 
   const handleClick = async () => {
+    if (connectionPending) return;
+    setConnectionPending(true);
     setConnectionError("");
 
     try {
@@ -206,12 +209,12 @@ export function Header() {
           setCurrentSessionId(sessionId);
           await client.connect({ wsUrl: `${wsProto}//${globalThis.location.host}/api/ws?${qs}` });
         } else {
-          await client.initDevices();
           const webrtcUrl = await createWebRTCSession(config);
           const sessionId = sessionIdFromWebRTCUrl(webrtcUrl);
           if (!sessionId) {
             throw new Error("WebRTC session URL did not include session_id.");
           }
+          await client.initDevices();
           setCurrentSessionId(sessionId);
           await withWebRTCConnectTimeout(client.connect({ webrtcUrl }));
         }
@@ -225,11 +228,14 @@ export function Header() {
         setConnectionError(getConnectionErrorMessage(err));
       }
       console.error("Connection error:", err);
+    } finally {
+      setConnectionPending(false);
     }
   };
 
   let buttonText = "Connect";
-  if (isConnecting) {
+  const connectBusy = isConnecting || connectionPending;
+  if (connectBusy) {
     buttonText = "Connecting...";
   } else if (isConnected) {
     buttonText = "Disconnect";
@@ -250,7 +256,7 @@ export function Header() {
         <button
           className={isConnected ? "btn-secondary" : "btn-primary"}
           onClick={handleClick}
-          disabled={isConnecting}
+          disabled={connectBusy}
         >
           {buttonText}
         </button>
