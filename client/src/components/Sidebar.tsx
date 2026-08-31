@@ -9,6 +9,7 @@ import { SessionSection } from "./status-panel/SessionSection";
 import { SubagentsPanel } from "./SubagentsPanel";
 import { VoiceLevelVisualizer } from "./VoiceLevelVisualizer";
 import { WebcamVisionPanel } from "./WebcamVisionPanel";
+import { ScreenVisionPanel } from "./ScreenVisionPanel";
 
 const VISUALIZER_PROPS = {
   backgroundColor: "#0a0a0a",
@@ -24,6 +25,7 @@ export function Sidebar() {
   const { isConnected } = useConnectionState();
   const { currentSessionId, selectedExample } = useApp();
   const canUseWebcam = selectedExample?.capabilities?.includes("webcam") ?? false;
+  const canUseScreenShare = selectedExample?.capabilities?.includes("screen_share") ?? false;
 
   return (
     <aside className="sidebar-panel d-flex flex-col" style={{ width: "300px" }}>
@@ -44,8 +46,6 @@ export function Sidebar() {
             </div>
           </CollapsibleCard>
 
-          {currentSessionId && <SubagentsPanel key={currentSessionId} />}
-
           {canUseWebcam && currentSessionId && (
             <CollapsibleCard
               label="WEBCAM VISION"
@@ -56,6 +56,13 @@ export function Sidebar() {
               <WebcamVisionPanel key={currentSessionId} sessionId={currentSessionId} />
             </CollapsibleCard>
           )}
+          {canUseScreenShare && currentSessionId && (
+            <CollapsibleCard label="SCREEN VISION" className="sidebar-webcam-card" storageKey="screen-vision" keepMounted>
+              <ScreenVisionPanel key={currentSessionId} sessionId={currentSessionId} />
+            </CollapsibleCard>
+          )}
+
+          {currentSessionId && <SubagentsPanel key={currentSessionId} />}
         </>
       )}
     </aside>

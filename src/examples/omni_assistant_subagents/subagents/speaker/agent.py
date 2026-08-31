@@ -42,6 +42,7 @@ from utils import parse_env_float, parse_env_int
 
 _CAPTURE_ESCALATION_COOLDOWN = 3
 _ACTION_CORRECTION_MAX_TOKENS = 2048
+_SCREEN_REFERENCE_TERMS = ("screen", "display", "paragraph", "figure", "diagram", "image", "page")
 
 
 class SubagentsSpeakerOmniService(NvidiaOmniLLMService):
@@ -108,9 +109,9 @@ class SubagentsSpeakerOmniService(NvidiaOmniLLMService):
         if not live_view and self._attachment_pending is None:
             return ""
         pointer = (
-            "Reminder: your current visual sources are on the pinned Subagents board — the live webcam "
-            "(your eyes) under the webcam entry, and any uploaded file under the media analyzer entry. "
-            "Read them there for this turn and keep the two sources separate."
+            "Reminder: your current visual sources are on the pinned Subagents board — the live webcam, "
+            "the explicitly shared screen, and any uploaded file. Read the relevant latest note for this turn "
+            "and keep the sources separate."
         )
         if not live_view:
             return pointer
@@ -493,6 +494,12 @@ class SubagentsSpeakerOmniService(NvidiaOmniLLMService):
                 f"transcript_chars={len(transcript)}"
             )
             return
+        if repeated and not needs_thinking and self._is_live_screen_question(transcript):
+            logger.info(
+                "Speaker Omni skipped repetition escalation for a live shared-screen question: "
+                f"transcript_chars={len(transcript)}"
+            )
+            return
         reason = "repetition" if repeated else ""
         effort = "high" if repeated else "medium"
         try:
@@ -503,6 +510,18 @@ class SubagentsSpeakerOmniService(NvidiaOmniLLMService):
             await self.push_error_frame(
                 ErrorFrame(error="Could not start deliberate thinking. Please try again.", fatal=False)
             )
+
+    def _is_live_screen_question(self, transcript: str) -> bool:
+        """Whether the user refers to an actively shared display.
+
+        A repeated response to a visual question must not launch the vision-less
+        Thinker: the Speaker already has the freshest screen observation on its board.
+        """
+        status = self._live_view().lower()
+        if 'name="shared_screen" availability="live"' not in status:
+            return False
+        normalized = transcript.lower()
+        return any(term in normalized for term in _SCREEN_REFERENCE_TERMS)
 
 
 class SpeakerOmniAgent(PipelineWorker):

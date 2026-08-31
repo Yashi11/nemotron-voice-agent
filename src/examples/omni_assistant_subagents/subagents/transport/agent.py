@@ -50,6 +50,7 @@ from attachment_store import (
 from examples.omni_assistant.pipeline import _build_user_turn_processor
 from examples.omni_assistant.user_mute_processor import UserMuteProcessor
 from examples.omni_assistant_subagents.media_dispatch_processor import PostAckMediaDispatchProcessor
+from examples.omni_assistant_subagents.subagents.screen import SCREEN_SUMMARY_TASK_NAME, ScreenAgent
 from examples.omni_assistant_subagents.subagents.thinker import ThinkerWorker
 from examples.omni_assistant_subagents.subagents.transport.media_analysis_controller import MediaAnalysisController
 from examples.omni_assistant_subagents.subagents.transport.proactive_gesture_controller import (
@@ -126,6 +127,7 @@ class OmniTransportAgent(PipelineWorker):
         self._proactive_directives = proactive_directives or {}
         self._unregister_attachment_listener = None
         self._pending_capture_query = ""
+        self._pending_capture_source = ""
         self._awaiting_capture = False
         self._capture_task: asyncio.Task[None] | None = None
         self._assistant_speaking = False
@@ -185,6 +187,26 @@ class OmniTransportAgent(PipelineWorker):
             request_job=self.request_job,
             queue_frame=self.queue_frame,
             conversation_provider=self._recent_conversation,
+        )
+        self._screen_controller = WebcamController(
+            session_id=self._session_id,
+            board=self._subagent_board,
+            request_job=self.request_job,
+            queue_frame=self.queue_frame,
+            conversation_provider=self._recent_conversation,
+            worker_name=ScreenAgent.AGENT_NAME,
+            task_name=SCREEN_SUMMARY_TASK_NAME,
+            frame_source="screen",
+            board_agent_name="omni_screen",
+            update_type="screen-agent-update",
+            upload_control_type="screen-upload-control",
+            inactive_state="the shared screen is OFF right now — there is no display visible live",
+            starting_state="the shared screen just turned on; the live display is loading",
+            minimum_dispatch_interval_ms=8000,
+            initial_window_seconds=3.0,
+            detect_frame_changes=True,
+            stable_refresh_interval_ms=30_000,
+            two_stage_initial_analysis=True,
         )
         self._gestures = ProactiveGestureController(
             queue_frame=self.queue_frame,
@@ -344,6 +366,7 @@ class OmniTransportAgent(PipelineWorker):
             logger.info(f"Nemotron Omni subagents client session start via {source}")
             self._start_attachment_state_listener()
             self._webcam_controller.start_summary_loop()
+            self._screen_controller.start_summary_loop()
             if not welcome_enabled:
                 logger.info("Welcome message disabled; waiting for the user to speak first")
                 return
@@ -368,10 +391,17 @@ class OmniTransportAgent(PipelineWorker):
             async def on_client_connected(rtvi):  # noqa: ARG001
                 await _start_session("rtvi-client-ready")
 
+            @self._transport.event_handler("on_client_connected")
+            async def on_webrtc_connected(transport, client):  # noqa: ARG001
+                """Start the session if the RTVI ready event was missed during WebRTC setup."""
+                await asyncio.sleep(1)
+                await _start_session("webrtc-transport-connected-fallback")
+
         @self._transport.event_handler("on_client_disconnected")
         async def on_client_disconnected(transport, client):
             logger.info("Nemotron Omni subagents client disconnected")
             self._webcam_controller.stop_summary_loop()
+            self._screen_controller.stop_summary_loop()
             self._stop_attachment_state_listener()
             clear_session_attachments(self._session_id)
             clear_session_webcam_frames(self._session_id)
@@ -397,6 +427,8 @@ class OmniTransportAgent(PipelineWorker):
                 await self._apply_set_voice(payload)
             elif message.type == "webcam-state":
                 await self._webcam_controller.apply_webcam_state(payload)
+            elif message.type == "screen-state":
+                await self._screen_controller.apply_webcam_state(payload)
             elif message.type == "webcam-chunk":
                 await self._webcam_controller.set_window_seconds(payload)
 
@@ -435,7 +467,7 @@ class OmniTransportAgent(PipelineWorker):
         await self._thinking.start_pending()
 
     async def queue_highres_capture(self, query: str) -> None:
-        """Ask the browser for a native-res snapshot the moment the Speaker requests one.
+        """Ask the active approved visual source for a native-resolution snapshot.
 
         Dispatched immediately, NOT gated on a spoken ack: the Speaker sometimes returns an
         empty ``response`` for the capture turn, and a speech-gated dispatch would then never
@@ -447,23 +479,44 @@ class OmniTransportAgent(PipelineWorker):
         self._pending_capture_query = query.strip()
         if not self._pending_capture_query:
             return
+        self._pending_capture_source = "screen_capture" if self._screen_controller.is_enabled else "capture"
         self._awaiting_capture = True
         request_id = create_capture_request(self._session_id)
+        request_type = (
+            "screen-capture-request"
+            if self._pending_capture_source == "screen_capture"
+            else "webcam-capture-request"
+        )
         await self.queue_frame(
-            RTVIServerMessageFrame(data={"type": "webcam-capture-request", "request_id": request_id})
+            RTVIServerMessageFrame(
+                data={
+                    "type": request_type,
+                    "request_id": request_id,
+                }
+            )
         )
         logger.info(
-            f"Requested a high-res webcam snapshot from the browser: query_chars={len(self._pending_capture_query)}"
+            f"Requested high-res {self._pending_capture_source} snapshot from the browser: "
+            f"query_chars={len(self._pending_capture_query)}"
         )
 
     def current_visual_status(self) -> str:
-        """The live webcam status right now, for per-turn injection into the Speaker turn.
+        """Source-tagged visual records for per-turn Speaker grounding.
 
         Read synchronously by the Speaker service while it assembles each turn so the
         freshest live view sits next to the user's audio (the most salient position),
         not only in the older top-pinned board note.
         """
-        return self._webcam_controller.current_visual_status()
+        return "\n".join(
+            (
+                "<visual_source name=\"webcam\" "
+                f"availability=\"{self._webcam_controller.visual_availability}\">"
+                f"{self._webcam_controller.current_visual_status()}</visual_source>",
+                "<visual_source name=\"shared_screen\" "
+                f"availability=\"{self._screen_controller.visual_availability}\">"
+                f"{self._screen_controller.current_visual_status()}</visual_source>",
+            )
+        )
 
     def _recent_conversation(self, max_turns: int = 6, max_chars: int = 600) -> str:
         """Render the last few user/assistant turns as plain text for the webcam analyzer.
@@ -552,12 +605,20 @@ class OmniTransportAgent(PipelineWorker):
         mode = str(response.get("mode") or "").strip()
         if source == WebcamAgent.AGENT_NAME:
             if mode == "summary":
-                accepted = await self._webcam_controller.handle_summary_response(message.job_id, response)
+                controller = self._screen_controller if response.get("source") == "screen" else self._webcam_controller
+                accepted = await controller.handle_summary_response(message.job_id, response)
                 if accepted:
                     frame = response.get("frame") if isinstance(response.get("frame"), dict) else {}
-                    await self._gestures.handle(response.get("visual_control") or {}, frame=frame)
+                    if response.get("source") != "screen":
+                        await self._gestures.handle(response.get("visual_control") or {}, frame=frame)
             elif mode:
                 logger.debug(f"Ignoring unsupported webcam task response mode: {mode}")
+            return
+        if source == ScreenAgent.AGENT_NAME:
+            if mode == "summary":
+                await self._screen_controller.handle_summary_response(message.job_id, response)
+            elif mode:
+                logger.debug(f"Ignoring unsupported screen task response mode: {mode}")
             return
         if source == ThinkerWorker.AGENT_NAME:
             await self._thinking.handle_job_response(message)
@@ -586,10 +647,11 @@ class OmniTransportAgent(PipelineWorker):
         """
         if self._awaiting_capture:
             latest = latest_attachment(self._session_id)
-            if latest is not None and latest.source == "capture":
+            if latest is not None and latest.source == self._pending_capture_source:
                 self._awaiting_capture = False
                 query = self._pending_capture_query
                 self._pending_capture_query = ""
+                self._pending_capture_source = ""
                 self._capture_task = asyncio.create_task(self._media_analysis.analyze_capture(latest.metadata(), query))
                 return
         self._media_analysis.mark_attachment_pending()

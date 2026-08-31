@@ -27,6 +27,7 @@ class WebcamFrame:
     content_type: str
     data: bytes
     created_at: str
+    source: str = "webcam"
 
     def metadata(self) -> dict[str, str | int]:
         """Return public frame metadata without raw bytes."""
@@ -50,7 +51,7 @@ class WebcamFrame:
 _lock = threading.Lock()
 _sequence = itertools.count(1)
 _frames_by_session: dict[str, list[WebcamFrame]] = {}
-_listeners_by_session: dict[str, list[Callable[[], None]]] = {}
+_listeners_by_session: dict[str, list[tuple[str, Callable[[], None]]]] = {}
 _SAMPLE_INTERVAL_SECONDS = 1.0
 _FRAME_MAX_WIDTH = 640
 _JPEG_QUALITY = 0.7
@@ -59,13 +60,17 @@ _FRAME_MAX_BYTES = 5_000_000
 _FRAME_RING_LIMIT = 64
 
 
-def register_webcam_frame_listener(session_id: str, listener: Callable[[], None]) -> Callable[[], None]:
-    """Register a callback invoked whenever a session stores a new webcam frame."""
+def register_webcam_frame_listener(
+    session_id: str, listener: Callable[[], None], *, source: str = "webcam"
+) -> Callable[[], None]:
+    """Register a callback invoked when a session stores a frame from ``source``."""
     cleaned_session_id = session_id.strip()
-    if not cleaned_session_id:
+    cleaned_source = source.strip().lower()
+    if not cleaned_session_id or cleaned_source not in {"webcam", "screen"}:
         return lambda: None
+    registration = (cleaned_source, listener)
     with _lock:
-        _listeners_by_session.setdefault(cleaned_session_id, []).append(listener)
+        _listeners_by_session.setdefault(cleaned_session_id, []).append(registration)
 
     def unregister() -> None:
         with _lock:
@@ -73,7 +78,7 @@ def register_webcam_frame_listener(session_id: str, listener: Callable[[], None]
             if not listeners:
                 return
             with contextlib.suppress(ValueError):
-                listeners.remove(listener)
+                listeners.remove(registration)
             if not listeners:
                 _listeners_by_session.pop(cleaned_session_id, None)
 
@@ -97,14 +102,18 @@ def store_webcam_frame(
     name: str,
     content_type: str,
     data: bytes,
+    source: str = "webcam",
 ) -> WebcamFrame:
     """Store one ephemeral webcam snapshot for a live session."""
     cleaned_session_id = session_id.strip()
     cleaned_content_type = content_type.strip().lower() or "image/jpeg"
+    cleaned_source = source.strip().lower() or "webcam"
     if not cleaned_session_id:
         raise ValueError("session_id is required")
     if not cleaned_content_type.startswith("image/"):
         raise ValueError("webcam frame must be an image")
+    if cleaned_source not in {"webcam", "screen"}:
+        raise ValueError("frame source must be webcam or screen")
     if not data:
         raise ValueError("webcam frame is empty")
 
@@ -120,21 +129,26 @@ def store_webcam_frame(
             content_type=cleaned_content_type,
             data=data,
             created_at=datetime.now(UTC).isoformat(),
+            source=cleaned_source,
         )
         frames = _frames_by_session.setdefault(cleaned_session_id, [])
         frames.append(frame)
         del frames[:-_FRAME_RING_LIMIT]
-        listeners = list(_listeners_by_session.get(cleaned_session_id, ()))
+        listeners = [
+            listener
+            for listener_source, listener in _listeners_by_session.get(cleaned_session_id, ())
+            if listener_source == cleaned_source
+        ]
     for listener in listeners:
         listener()
     return frame
 
 
-def latest_webcam_frame(session_id: str) -> WebcamFrame | None:
+def latest_webcam_frame(session_id: str, *, source: str = "webcam") -> WebcamFrame | None:
     """Return the latest webcam frame for a session."""
     with _lock:
         frames = list(_frames_by_session.get(session_id.strip(), ()))
-    return frames[-1] if frames else None
+    return next((frame for frame in reversed(frames) if frame.source == source), None)
 
 
 def recent_webcam_frames(
@@ -142,6 +156,7 @@ def recent_webcam_frames(
     *,
     max_seconds: float | None = None,
     max_count: int | None = None,
+    source: str = "webcam",
 ) -> list[WebcamFrame]:
     """Return recent webcam frames (oldest to newest) for a session.
 
@@ -154,6 +169,9 @@ def recent_webcam_frames(
         return []
     with _lock:
         frames = list(_frames_by_session.get(cleaned_session_id, ()))
+    if not frames:
+        return []
+    frames = [frame for frame in frames if frame.source == source]
     if not frames:
         return []
     if max_seconds is not None and math.isfinite(max_seconds) and max_seconds > 0:

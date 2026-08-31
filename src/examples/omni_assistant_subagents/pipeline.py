@@ -13,6 +13,7 @@ workers under ``examples.omni_assistant_subagents.subagents``:
   agent allowed to emit spoken responses.
 * ``MediaAnalyzerWorker`` analyzes uploaded image/audio/video attachments.
 * ``WebcamAgent`` produces rolling scene summaries from the browser webcam.
+* ``ScreenAgent`` maintains structured findings from an explicitly shared display.
 * ``ThinkerWorker`` handles on-demand reasoning escalation.
 """
 
@@ -29,6 +30,7 @@ from pipecat.workers.runner import WorkerRunner
 
 from examples.omni_assistant_subagents.subagents.media_analyzer import MediaAnalyzerWorker
 from examples.omni_assistant_subagents.subagents.speaker import SpeakerOmniAgent
+from examples.omni_assistant_subagents.subagents.screen import ScreenAgent
 from examples.omni_assistant_subagents.subagents.thinker import ThinkerWorker
 from examples.omni_assistant_subagents.subagents.transport import OmniTransportAgent
 from examples.omni_assistant_subagents.subagents.webcam import WebcamAgent
@@ -107,7 +109,7 @@ async def bot(runner_args: RunnerArguments) -> None:
     base_system_content = _expand_fragments(base_system_content, prompt_catalog)
     logger.info(
         f"Starting Nemotron Omni Assistant Subagents pipeline "
-        f"(prompt={prompt_key}, agents=transport,speaker,media,webcam,thinker)"
+        f"(prompt={prompt_key}, agents=transport,speaker,media,webcam,screen,thinker)"
     )
 
     default_llm = load_service_entry("llm", "")
@@ -198,6 +200,15 @@ async def bot(runner_args: RunnerArguments) -> None:
         gesture_system_prompt=_agent_prompt_content(prompt_catalog, "WebcamAgent", "gesture_system_prompt"),
         gesture_prompt=_agent_prompt_content(prompt_catalog, "WebcamAgent", "gesture_prompt"),
     )
+    screen_agent = ScreenAgent(
+        api_key=api_key,
+        base_url=base_url,
+        model_id=model_id,
+        extra_params=extra_params,
+        reasoning=_reasoning_for(registry, ScreenAgent.AGENT_NAME, "off"),
+        system_prompt=_agent_prompt_content(prompt_catalog, "ScreenAgent", "screen_system_prompt"),
+        prompt=_agent_prompt_content(prompt_catalog, "ScreenAgent", "screen_prompt"),
+    )
     thinker_agent = ThinkerWorker(
         api_key=api_key,
         base_url=base_url,
@@ -206,5 +217,5 @@ async def bot(runner_args: RunnerArguments) -> None:
         system_prompt=_agent_prompt_content(prompt_catalog, "ThinkerAgent", "thinking_system_prompt"),
     )
 
-    await runner.add_workers(transport_agent, media_analyzer_agent, webcam_agent, thinker_agent, speaker_agent)
+    await runner.add_workers(transport_agent, media_analyzer_agent, webcam_agent, screen_agent, thinker_agent, speaker_agent)
     await runner.run()

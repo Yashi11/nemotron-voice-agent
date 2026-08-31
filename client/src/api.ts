@@ -372,6 +372,30 @@ export async function uploadWebcamFrame(sessionId: string, frame: Blob) {
   return res.json();
 }
 
+export async function uploadScreenFrame(sessionId: string, frame: Blob) {
+  const form = new FormData();
+  form.append("file", frame, "screen-frame.jpg");
+  const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/screen/frames`, { method: "POST", body: form });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function uploadScreenCapture(sessionId: string, frame: Blob, requestId: string) {
+  const form = new FormData();
+  form.append("file", frame, "screen-detail.jpg");
+  form.append("request_id", requestId);
+  const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/screen/capture`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    const details = body ? `: ${body.slice(0, 200)}` : "";
+    throw new Error(`HTTP ${res.status}${details}`);
+  }
+  return res.json();
+}
+
 export async function uploadWebcamCapture(sessionId: string, frame: Blob, requestId: string) {
   const form = new FormData();
   form.append("file", frame, "focused-capture.jpg");

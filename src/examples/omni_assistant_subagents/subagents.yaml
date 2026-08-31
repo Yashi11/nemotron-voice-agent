@@ -56,6 +56,18 @@ subagents:
       past descriptions are stale. If it says the camera is off, tell the user you cannot see
       anything at the moment.
 
+  omni_screen:
+    label: Screen Vision
+    reasoning: off
+    findings_label: what is currently on the shared screen
+    capability: >-
+      samples an explicitly user-shared display and continuously describes what is visible.
+    routing_rules: >-
+      This is ambient awareness and runs on its own — you never route to it. Use its latest
+      note for questions about the shared display. If it says the camera is off, no display is
+      currently shared. Do not claim a cursor position, because display capture does not provide
+      reliable cursor coordinates.
+
   omni_thinker:
     label: Thinker
     reasoning: on_demand

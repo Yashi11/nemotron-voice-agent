@@ -5,10 +5,17 @@
 
 import asyncio
 import unittest
+from io import BytesIO
 from unittest.mock import AsyncMock, Mock
 
+from PIL import Image
+
 from examples.omni_assistant.nvidia_omni_multimodal_service import NvidiaOmniInferenceResult
-from examples.omni_assistant_subagents.subagents.transport.webcam_controller import WebcamController
+from examples.omni_assistant_subagents.subagents.transport.webcam_controller import (
+    WebcamController,
+    _has_material_screen_change,
+    _screen_fingerprint,
+)
 from examples.omni_assistant_subagents.subagents.webcam.agent import WebcamAgent, _steering_preamble
 from webcam_frame_store import clear_session_webcam_frames, recent_webcam_frames, store_webcam_frame
 
@@ -36,6 +43,27 @@ class ConversationContextTests(unittest.TestCase):
             raise RuntimeError("no context")
 
         self.assertEqual(_controller(boom)._conversation_context(), "")
+
+
+class ScreenChangeDetectionTests(unittest.TestCase):
+    @staticmethod
+    def _jpeg(color: int) -> bytes:
+        image = Image.new("L", (128, 72), color=color)
+        output = BytesIO()
+        image.save(output, format="JPEG")
+        return output.getvalue()
+
+    def test_first_frame_is_a_material_change(self) -> None:
+        self.assertTrue(_has_material_screen_change(None, _screen_fingerprint(self._jpeg(0))))
+
+    def test_identical_frame_is_not_a_material_change(self) -> None:
+        fingerprint = _screen_fingerprint(self._jpeg(80))
+        self.assertFalse(_has_material_screen_change(fingerprint, fingerprint))
+
+    def test_large_display_change_is_detected(self) -> None:
+        dark = _screen_fingerprint(self._jpeg(0))
+        light = _screen_fingerprint(self._jpeg(255))
+        self.assertTrue(_has_material_screen_change(dark, light))
 
 
 class VisualStatusTests(unittest.TestCase):

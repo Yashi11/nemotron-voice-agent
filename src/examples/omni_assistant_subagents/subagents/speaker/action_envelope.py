@@ -83,7 +83,8 @@ def action_correction_instruction(result: SpeakerTurnResult, *, reason: str) -> 
         "current user transcript and intent. Output one JSON object only, with these fields in exact order: "
         "transcript, turn_action, response, selected_input_source, media_analysis_action, media_analysis_prompt, "
         "highres_query. "
-        "turn_action must be exactly respond, analyze_attachment, capture_highres, or clarify, and alone declares "
+        "turn_action must be exactly respond, analyze_attachment, capture_highres, "
+        "or clarify, and alone declares "
         "ownership. Do NOT use think here: give the complete answer directly, or clarify if you truly cannot — "
         "deliberate reasoning is escalated automatically and is not a correction option. respond and clarify "
         "carry no arguments; analyze_attachment sets uploaded_attachment plus new or rerun and a media task; "
@@ -166,7 +167,6 @@ def normalize_action_envelope(
             media_analysis_prompt="",
             highres_query=query,
         )
-
     payload["turn_action"] = action
     return payload, recovery
 

@@ -667,8 +667,12 @@ body {
 }
 
 .sidebar-panel {
+  box-sizing: border-box;
   gap: var(--space-3);
-  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: var(--space-3);
 }
 

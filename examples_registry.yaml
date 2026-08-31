@@ -61,7 +61,7 @@ examples:
   omni-assistant-subagents:
     label: Nemotron Omni Assistant Subagents
     slots: [llm, tts]
-    capabilities: [attachments, webcam]
+    capabilities: [attachments, webcam, screen_share]
     defaults:
       prompt: [generic_omni_assistant]
       llm: [nemotron-omni-nvfp4]

@@ -118,7 +118,7 @@ class WebcamAgent(BaseWorker):
         self._system_prompt = gesture_system_prompt.strip()
         self._prompt = gesture_prompt.strip()
         if not self._system_prompt or not self._prompt:
-            raise ValueError("WebcamAgent system and user prompts must be provided from prompts.yaml")
+            raise ValueError("Webcam prompts must be provided from prompts.yaml")
         omni_extra = dict(extra_params or {})
         extra_body = dict(omni_extra.get("extra_body") or {})
         extra_body["chat_template_kwargs"] = {
@@ -144,6 +144,7 @@ class WebcamAgent(BaseWorker):
         frame_metadata = payload.get("frame") if isinstance(payload.get("frame"), dict) else {}
         session_id = str(payload.get("session_id") or "").strip()
         conversation_context = str(payload.get("conversation_context") or "").strip()
+        source = str(payload.get("source") or "webcam").strip().lower()
         try:
             window_seconds = float(payload.get("window_seconds") or self._window_seconds)
         except (TypeError, ValueError):
@@ -154,13 +155,13 @@ class WebcamAgent(BaseWorker):
         observation = ""
         focus = ""
         visual_control = normalize_visual_control({})
-        frames = recent_webcam_frames(session_id, max_seconds=window_seconds, max_count=self._max_frames)
+        frames = recent_webcam_frames(session_id, max_seconds=window_seconds, max_count=self._max_frames, source=source)
         if frames:
             try:
                 mp4 = await asyncio.to_thread(self._encode_mp4, frames)
                 if mp4:
                     observation, visual_control, focus = await self._describe(
-                        mp4, len(frames), window_seconds, conversation_context
+                        mp4, len(frames), window_seconds, conversation_context, source
                     )
             except Exception as exc:
                 logger.exception(f"Webcam video summary failed: {exc}")
@@ -175,6 +176,7 @@ class WebcamAgent(BaseWorker):
                 "focus": focus,
                 "visual_control": visual_control,
                 "frame": frame_metadata,
+                "source": source,
             },
         )
 
@@ -212,7 +214,7 @@ class WebcamAgent(BaseWorker):
             return out.read_bytes()
 
     async def _describe(
-        self, mp4: bytes, n_frames: int, window_seconds: float, conversation: str = ""
+        self, mp4: bytes, n_frames: int, window_seconds: float, conversation: str = "", source: str = "webcam"
     ) -> tuple[str, dict[str, Any], str]:
         """Describe the recent-window video and score gestures.
 
@@ -220,7 +222,7 @@ class WebcamAgent(BaseWorker):
         details that matter now while defaulting to the person's current activity.
         """
         steering = _steering_preamble(conversation)
-        prompt = f"{steering}\n{self._prompt}" if steering else self._prompt
+        prompt = f"{steering}\n{self._prompt}"
         content = [video_message_part(mp4), text_message_part(prompt)]
         context = LLMContext(
             messages=[

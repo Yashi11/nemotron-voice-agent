@@ -14,7 +14,8 @@ It is a React and TypeScript single-page app built with [Vite](https://vite.dev/
 - **Audio visualizers**: real-time input and output waveform display.
 - **Metrics dashboard**: time-to-first-byte latency charts, token usage, and connection status.
 - **Conversation transcript**: live ASR and bot-response display.
-- **Webcam vision panel**: live webcam input for the multimodal Omni Subagents example.
+- **Webcam Vision panel**: live webcam input for the multimodal Omni Subagents example.
+- **Screen Vision panel**: user-approved display sharing for the multimodal Omni Subagents example. The assistant uses sampled frames as ambient context to describe visible screen content. You can stop sharing at any time. Cursor position is not guaranteed.
 
 ## Getting started
 

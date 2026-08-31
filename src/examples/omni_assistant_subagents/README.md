@@ -1,8 +1,8 @@
 # Nemotron 3 Omni Assistant Subagents - cascaded pipeline example
 
-Multi-agent variant of [`omni-assistant`](../omni_assistant/README.md) built on Pipecat's built-in multi-agent framework (`pipecat.workers`). A transport agent owns I/O and TTS, a speaker agent owns spoken output, and worker agents handle uploaded media, live webcam vision, and deliberate reasoning. It keeps the voice conversation responsive while specialized agents analyze uploaded media and live webcam frames and escalate difficult turns to a reasoning pass.
+Multi-agent variant of [`omni-assistant`](../omni_assistant/README.md) built on Pipecat's built-in multi-agent framework (`pipecat.workers`). A transport agent owns I/O and TTS, a speaker agent owns spoken output, and worker agents handle uploaded media, live webcam vision, live Screen Vision, and deliberate reasoning. It keeps the voice conversation responsive while specialized agents analyze uploaded media and sampled webcam and screen frames, and escalate difficult turns to a reasoning pass.
 
-The pattern splits responsibility across a transport agent, speaker agent, media analyzer, webcam agent, and thinker using `pipecat.workers`, with explicit dispatch and acknowledgement points. It showcases agent boundaries and prompt separation, visual barge-in, deferred media dispatch, rolling webcam scene summaries, on-demand high-resolution capture, proactive hand-gesture behavior, and UI capability declarations for attachments and webcam support.
+The pattern splits responsibility across a transport agent, speaker agent, media analyzer, webcam agent, and thinker using `pipecat.workers`, with explicit dispatch and acknowledgement points. It showcases agent boundaries and prompt separation, visual barge-in, deferred media dispatch, rolling visual scene summaries, on-demand high-resolution capture, proactive hand-gesture behavior, and UI capability declarations for attachments, webcam, and Screen Vision support.
 
 ![Omni Assistant Subagents architecture](images/omni-subagent-example.jpeg)
 
@@ -69,13 +69,21 @@ To run host-native without Docker, set `selection: omni-assistant-subagents` in 
 | `prompts.yaml` | example-local prompt catalog (top-level prompt plus `agent_prompts:` per agent) |
 | `services.cloud.yaml`, `services.local.yaml` | example-local service catalogs for cloud and on-prem deployments |
 
-The example declares `capabilities: [attachments, webcam]` in `examples_registry.yaml`, which gates these UI surfaces and backend endpoints:
+The example declares `capabilities: [attachments, webcam, screen_share]` in `examples_registry.yaml`, which gates these UI surfaces and backend endpoints:
 
 | Endpoint | Purpose |
 | --- | --- |
 | `POST /api/sessions/{session_id}/attachments?kind={image,audio,video}` | Upload a media attachment for the media analyzer |
 | `POST /api/sessions/{session_id}/webcam/frames` | Upload one webcam JPEG frame |
 | `GET /api/webcam-config` | Browser webcam capture defaults |
+
+## Screen Vision
+
+The **SCREEN VISION** panel appears beside **WEBCAM VISION** in the right sidebar. Select **Start sharing** and use the browser picker to explicitly choose a display. While sharing is active, the browser samples frames from that display, and the assistant can use the visible screen content as ambient context. For example, it can answer questions about the active application, text, dialogs, and layout.
+
+Select **Stop sharing** to end display sharing immediately. The browser does not start sharing from a voice command, and the assistant does not capture a display that you have not explicitly selected. Screen Vision is available only in the `omni-assistant-subagents` example.
+
+Screen Vision does not provide reliable cursor location. A cursor can appear in captured pixels when the browser and operating system include it, but the assistant cannot guarantee its position.
 
 ## Tips & best practices
 

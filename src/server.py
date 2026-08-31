@@ -764,6 +764,27 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
         )
         return frame.metadata()
 
+    @app.post("/api/sessions/{session_id}/screen/frames")
+    async def upload_screen_frame(session_id: str, file: Annotated[UploadFile, File()]):
+        """Store one ephemeral browser display frame for ambient Screen Vision."""
+        if _multi_worker_mode_enabled():
+            return _multi_worker_session_config_response()
+        if (failure := _session_capability_error(session_id, "screen_share")) is not None:
+            return failure
+        try:
+            data = await _read_upload_file_with_limit(file)
+            frame = store_webcam_frame(
+                session_id=session_id,
+                name=file.filename or "screen-frame.jpg",
+                content_type=file.content_type or "image/jpeg",
+                data=data,
+                source="screen",
+            )
+        except ValueError as exc:
+            status_code = 413 if "limit" in str(exc).lower() else 400
+            return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+        return frame.metadata()
+
     @app.post("/api/sessions/{session_id}/webcam/capture")
     async def upload_webcam_capture(
         session_id: str,
@@ -796,6 +817,35 @@ def create_app(host: str = "localhost", prompt_file: str = "") -> FastAPI:
             status_code = 413 if "limit" in str(exc).lower() else 400
             return JSONResponse(status_code=status_code, content={"detail": str(exc)})
         logger.debug(f"Stored high-res webcam capture (session_id={session_id[:8]}..., bytes={len(attachment.data)})")
+        return attachment.metadata()
+
+    @app.post("/api/sessions/{session_id}/screen/capture")
+    async def upload_screen_capture(
+        session_id: str,
+        file: Annotated[UploadFile, File()],
+        request_id: Annotated[str, Form()],
+    ):
+        """Store an agent-requested native-resolution shared-screen snapshot."""
+        if _multi_worker_mode_enabled():
+            return _multi_worker_session_config_response()
+        if (failure := _session_capability_error(session_id, "screen_share")) is not None:
+            return failure
+        if not consume_capture_request(session_id, request_id):
+            return JSONResponse(status_code=409, content={"detail": "capture request is missing, stale, or invalid"})
+        try:
+            data = await _read_upload_file_with_limit(file)
+            attachment = store_attachment(
+                session_id=session_id,
+                kind="image",
+                name=file.filename or "screen-detail.jpg",
+                content_type=file.content_type or "image/jpeg",
+                data=data,
+                source="screen_capture",
+            )
+        except ValueError as exc:
+            status_code = 413 if "limit" in str(exc).lower() else 400
+            return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+        logger.debug(f"Stored high-res screen capture (session_id={session_id[:8]}..., bytes={len(attachment.data)})")
         return attachment.metadata()
 
     # ---- WebRTC signaling ----
