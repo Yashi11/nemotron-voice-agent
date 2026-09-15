@@ -1,6 +1,7 @@
-# Phase 1 — Explore & Discover
+# Phase 1 — Explore, Discover, and Document
 
-Build the change inventory before touching code. Steps: **Resolve → Read notes → Diff → Scan repo → Synthesize**.
+Build the change inventory before touching code. Steps:
+**Resolve → Read notes and changelogs → Diff → Scan repo → Synthesize → Write both documents**.
 
 ## Step 1 — Resolve inputs
 
@@ -13,6 +14,9 @@ OLD (always inspectable):
       then read server versions from uv.lock and client versions from client/package-lock.json (or node_modules)
   - installed source = ground truth: .venv/lib/python3.12/site-packages/ (pipecat + every pipecat_* package)
 NEW (target pipecat-ai):
+  - when `new` is omitted, resolve the latest stable, non-draft, non-prerelease from
+    https://github.com/pipecat-ai/pipecat/releases at execution time
+  - when `new` is explicit, resolve that exact target; do not silently replace it with latest
   - latest version + notes ALWAYS from https://github.com/pipecat-ai/pipecat/releases
   - local repo path → tag matching target; git tag → use with repo
   - PyPI version → the releases page above (+ CHANGELOG.md); pip download wheel to read module tree if needed
@@ -22,20 +26,34 @@ NEW (target pipecat-ai):
 The only target you choose is the `pipecat-ai` version. The fate of every other pipecat subpackage (bump /
 rename / remove / fold-into-core) is decided by the release notes read in Step 2 — not chosen here.
 
-Record: `OLD_REF`, `NEW_REF`, `OLD_PKG_PATH`, `NEW_SRC`, and the full list of pipecat packages on both surfaces
-(server `pipecat*` and client `@pipecat-ai/*`) with each current version.
+Record: `OLD_REF`, `NEW_REF`, whether `NEW_REF` is latest stable or user-selected, the resolution date,
+`OLD_PKG_PATH`, `NEW_SRC`, and the full list of pipecat packages on both surfaces (server `pipecat*` and client
+`@pipecat-ai/*`) with each current version. If the canonical releases cannot be queried, stop and report that
+latest cannot be verified; do not guess from cached knowledge.
 
-## Step 2 — Read release notes & analyze
+## Step 2 — Read Release Notes and Analyze
 
 An upgrade crosses multiple releases (`1.2.1 → 1.5.0` = `1.3.x`/`1.4.x`/`1.5.x`). Read them **cumulatively**.
+Read the current version's entry for baseline context, then every stable release in `(OLD_REF, NEW_REF]`,
+including patch releases. Include a prerelease only when it is the explicit target or lies on an explicitly
+requested prerelease path.
 
-### Core `pipecat-ai` notes — sources (priority order)
+### Core `pipecat-ai` notes — required sources
 
-1. **GitHub Releases (canonical)** — <https://github.com/pipecat-ai/pipecat/releases> — read EVERY release in
-   `(OLD_REF, NEW_REF]`: `gh release view <tag> -R pipecat-ai/pipecat` or WebFetch the tag pages.
-2. `CHANGELOG.md` — `sed -n '/## \[<NEW>\]/,/## \[<OLD>\]/p' <NEW_SRC>/CHANGELOG.md`.
-3. Docs — <https://docs.pipecat.ai/> (search "migration", "breaking changes").
-4. `pipecat-docs` MCP (`search_daily_knowledge_sources`) — clarify any note you don't fully understand.
+1. **GitHub Releases (canonical, mandatory)** — <https://github.com/pipecat-ai/pipecat/releases> — enumerate the complete
+   ordered tag range, read the current release entry as baseline, and read EVERY applicable release in
+   `(OLD_REF, NEW_REF]`: `gh release view <tag> -R pipecat-ai/pipecat` or fetch the tag pages/API.
+2. **`CHANGELOG.md` (mandatory)** — read the entry for every version in the same ordered range from the tagged
+   source, or from the target checkout when it contains the full history. Record an explicit `no entry` result if
+   a released tag has no matching changelog heading; do not silently treat the GitHub release body as its
+   changelog entry.
+3. **Docs (supplemental)** — <https://docs.pipecat.ai/> (search "migration", "breaking changes").
+4. **`pipecat-docs` MCP (supplemental)** — use `search_daily_knowledge_sources` to clarify any note you don't
+   fully understand.
+
+Maintain a release-coverage ledger with one row per version and separate GitHub Release and `CHANGELOG.md`
+evidence columns. Do not proceed to the source diff or repository edits while any applicable version is missing
+from the ledger.
 
 ### Every other pipecat package — read its notes too (server + client)
 
@@ -164,7 +182,7 @@ Cross-reference the inventory (Step 3) with the per-example maps (4b): each inve
 sites; each repo symbol → confirm in inventory or verify unchanged against the new tree. Produces the **change
 matrix** (what changes, where, to what, which examples).
 
-## Step 5 — Synthesize & present
+## Step 5 — Synthesize, prioritize, and write both documents
 
 | Change | Old (repo) | New (Pipecat) | File:Symbol | Surface (example / shared / server / client) | Priority |
 |--------|------------|---------------|-------------|----------------------------------------------|----------|
@@ -173,4 +191,16 @@ Also list: obsolete code to remove; extras changes; per-dependency decision (bum
 migrate-to-core) for BOTH server and client packages, with the release-note entry that justifies it; behavioral
 changes; release-note coverage
 (cite the entry behind each change; confirm every breaking change is in the matrix or marked "not used").
-Present for review before Phase 2.
+
+Read [../references/upgrade-document-contract.md](../references/upgrade-document-contract.md), then create:
+
+- `docs/how-to/upgrade-pipecat-v<NEW_REF>-compatibility.md`
+- `docs/how-to/adopt-pipecat-v<NEW_REF>-features.md`
+
+The compatibility document is the priority-tagged implementation queue. The feature-adoption document is an
+advisory list only. Put required migration work in the former and optional experience improvements in the latter;
+never duplicate an optional item into Blocker merely to implement it during the upgrade.
+
+Confirm the release coverage table contains the current baseline and every applicable release through the target.
+Present both paths, priority counts, optional-feature count, and unresolved evidence. Then proceed to Phase 2 and
+implement Blockers only unless the user asks to pause before implementation.

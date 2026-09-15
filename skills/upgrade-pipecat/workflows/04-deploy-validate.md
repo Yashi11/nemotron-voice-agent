@@ -1,8 +1,12 @@
-# Phase 4 — Deploy & Validate
+# Phase 4 — Deploy and Validate
 
-Run the upgraded agent end-to-end to confirm runtime (not just import/test) correctness. Use the repo's
+Enter this phase only after the mandatory post-Blocker approval. Run the upgraded agent end-to-end to confirm
+runtime (not just import/test) correctness. Use the repo's
 `deploy` skill for mechanics. Needs a deploy env (host `uv`, or Docker + `NVIDIA_API_KEY`). If unavailable,
 report DEFERRED with the recipe list left to validate.
+
+Validate only approved compatibility work. Do not enable or deploy a feature from the feature-adoption document
+unless the user separately authorized that feature.
 
 ## Step 1 — Pick surface
 
@@ -53,4 +57,6 @@ Server pipecat-ai {old}→{new} (+ subpackages) | Client @pipecat-ai/* {old}→{
 Client build: ✅/❌ | Runtime issues fixed: N | Remaining: M | server↔client RTVI contract changes: {...}
 ```
 
-After all pass, do one final run of the touched examples to confirm no regressions.
+After all pass, do one final run of the touched examples to confirm no regressions. Update the compatibility
+document with deployment evidence and report that optional feature recommendations remain unchanged unless the
+user explicitly requested them.

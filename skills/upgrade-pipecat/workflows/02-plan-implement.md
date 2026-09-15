@@ -1,17 +1,34 @@
-# Phase 2 — Plan & Implement
+# Phase 2 — Priority-Gated Implementation
 
-Turn the change matrix into code changes, bottom-up so the tree stays consistent.
+Use the compatibility document as the implementation queue. The first pass is Blocker-only. The feature-adoption
+document is never an implementation queue without a separate explicit user request.
 
-## Step 1 — Implementation order
+## Step 0 — Freeze scope and priorities
 
-Derive from the change matrix; skip layers with no changes. Default bottom-up order:
+Before editing code, reread both generated documents and the document contract. Confirm every compatibility item
+has a priority and `Planned` status. Resolve or mark evidence gaps; do not hide uncertainty by calling an item a
+Blocker.
+
+Create two work sets:
+
+- **Now:** all compatibility items classified Blocker.
+- **After human approval:** High, Medium, and Low compatibility items.
+
+Exclude every feature-adoption item from both work sets. A prior request to upgrade Pipecat, approval of the two
+documents, or a later message such as “continue with the compatibility work” does not authorize optional feature
+implementation.
+
+## Step 1 — Blocker implementation order
+
+Filter the change matrix to Blockers. Derive their order from dependencies; skip layers with no Blocker. Default
+bottom-up order:
 
 1. Import paths / module moves
-2. Service constructors & `*Settings` (`Nvidia{LLM,STT,TTS}Service`)
+2. Service constructors and `*Settings` (`Nvidia{LLM,STT,TTS}Service`)
 3. Shared plumbing (`src/examples/shared/`: `pipeline_utils.py`, `prewarm.py`, text filters, audio recorder)
 4. Frames, `FrameProcessor` subclasses, aggregators / `LLMContext`
 5. Turn strategies, VAD, smart-turn
-6. Transports & serializers (`src/server.py`: SmallWebRTC / FastAPI websocket)
+6. Transports and serializers (`src/server.py`: SmallWebRTC / FastAPI websocket)
 7. Per-example `pipeline.py` (`Pipeline`, pipeline-task/runner, params) — use the new names from the notes
 8. Companion-package usage (e.g. the `omni_assistant_subagents` example): if its package was folded into
    `pipecat-ai` core, rewrite imports to the new in-core modules; otherwise apply that package's own changes
@@ -21,9 +38,10 @@ Derive from the change matrix; skip layers with no changes. Default bottom-up or
     `client/src/**` RTVI usage (renamed events/messages/providers/hooks, transport setup), then refresh the
     lockfile — do last so the client builds against the matching server contract
 
-## Step 2 — Implement each layer
+## Step 2 — Implement Blockers only
 
-Per layer: re-read the current code → apply changes → trace propagation → verify imports.
+Per layer: re-read the current code → apply Blocker changes → trace propagation → verify imports. Do not include a
+lower-priority cleanup just because it touches the same file; record it for the post-review pass.
 
 Apply rules:
 
@@ -44,7 +62,7 @@ uv run python -c "from src.examples.shared import pipeline_utils"
 uv run ruff check src/ | head -40
 ```
 
-## Step 2e — Parallel agents for large rewrites
+## Step 2e — Parallel agents for large Blocker rewrites
 
 If an example needs more than renames (reworked turn-taking, transport handshake), give one agent the new
 source/docs + the example's `pipeline.py` and custom processors. Likely candidates: `omni_assistant`
@@ -52,9 +70,9 @@ source/docs + the example's `pipeline.py` and custom processors. Likely candidat
 (planner + TTS filter + tools). Add a translation layer if a frame/RTVI payload shape changed rather than
 dropping fields.
 
-## Step 3 — Cross-cutting sweep
+## Step 3 — Blocker-scope cross-cutting sweep
 
-- **Import roots**: no `src/` import from an old module path.
+- **Import roots**: no Blocker-level `src/` import from an old module path.
 - **Frames**: every referenced frame (`LLMRunFrame`, `LLMTextFrame`, `LLMFullResponse{Start,End}Frame`,
   `TTSUpdateSettingsFrame`, `RTVIServerMessageFrame`, …) exists; `isinstance` checks use new names.
 - **Services**: `Nvidia{LLM,STT,TTS}Service` + `*Settings` constructors/fields + update-settings frames align.
@@ -70,7 +88,7 @@ dropping fields.
   modules it was folded into.
 - **Extras/dead code**: update `pipecat-ai[...]` extras; remove old-version shims and `F401` imports.
 
-## Step 4 — Dependencies
+## Step 4 — Blocker dependencies
 
 **Server** — apply the change-matrix decisions to `pyproject.toml`: set `pipecat-ai[<extras>]==<NEW_REF>`; for
 each companion package **bump / rename / or remove it if folded into core**; keep `[tool.uv]
@@ -92,7 +110,7 @@ cd client && npm install && npm run lint && npm run build   # tsc surfaces RTVI 
 
 Fix client type/lint errors using the renamed RTVI APIs from the notes. Confirm the lockfile updated.
 
-## Step 5 — Tests
+## Step 5 — Blocker validation and document evidence
 
 Unit tests live under `tests/unit/` (`test_service_catalog.py`, `test_prompt_catalog.py`,
 `test_frontend_backend_agent.py`, booking-state helpers). Update plumbing only; preserve intent.
@@ -105,8 +123,36 @@ Unit tests live under `tests/unit/` (`test_service_catalog.py`, `test_prompt_cat
   Classify each failure as source bug (fix source, feed back to gap analysis) vs test plumbing (fix test).
 - Lint (CI parity): `uv run ruff format . && uv run ruff check . --fix && uv run ruff check .`.
 
+Run the smallest complete validation set that proves every Blocker, plus repository-required lint/format checks.
+Update each Blocker row in the compatibility document to `Applied`, `Verified`, or `Deferred` with file paths and
+command results. If evidence shows an item is not a Blocker, reclassify it without implementing it.
+
+## Step 6 — Mandatory human review checkpoint
+
+Stop after all Blockers are applied and validation evidence is recorded. Present:
+
+- both generated document paths;
+- the Blocker diff by component and file;
+- validation commands, results, and anything deferred;
+- the remaining High, Medium, and Low compatibility items;
+- confirmation that no feature-adoption item was implemented.
+
+Ask explicitly whether to continue with the High/Medium/Low compatibility items. Do not continue in the same turn,
+do not infer approval from the original upgrade request, and do not treat silence or approval of the documents as
+approval. If the user requests blocker revisions, make them and repeat this checkpoint.
+
+## Step 7 — Implement approved remaining compatibility work
+
+Only after explicit approval, work through High, then Medium, then Low items using Steps 1–5. The user may narrow
+the approved priorities or items; honor that scope. Update status/evidence in the compatibility document.
+
+Optional feature adoption remains excluded. If the user explicitly asks for one or more feature-adoption items,
+treat that as a separate scoped implementation and do not infer permission for the rest of that document.
+
 ## Deliverable
 
-Summary: server files changed (by example/shared), client files changed, test files changed, server + client
+At the blocker checkpoint, deliver the review package and wait. After approved compatibility work, summarize:
+server files changed (by example/shared), client files changed, test files changed, server + client
 dependency pins, change categories, failures + fixes, RTVI contract changes (server↔client), concerns for
-review. Proceed to Phase 3.
+review, and compatibility-document status. Proceed to Phase 3 only after the mandatory approval. State explicitly
+that the feature-adoption list remains unimplemented unless separately authorized.

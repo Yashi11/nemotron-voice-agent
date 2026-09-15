@@ -1,6 +1,8 @@
 # Phase 3 — Gap Analysis Loop
 
-Validate each example's pipeline against the new API; loop until zero breaking gaps.
+Enter this phase only after the user approves the post-Blocker High/Medium/Low compatibility work. Validate each
+approved example and compatibility item against the new API; loop until zero breaking gaps. Do not inspect the
+feature-adoption document for implementation work unless the user separately authorized named feature items.
 
 ```text
 spawn agents (1/example + cross-cut) → collect/triage → gaps>0 ? fix & loop : done
@@ -44,11 +46,12 @@ Deduplicate; classify BREAKING (import/runtime error, wrong behavior) vs NON-BRE
 
 ## Step 3 — Fix or loop
 
-- Breaking > 0: fix each (read → change → trace propagation across callers/consumers/examples), log, re-run
+- Breaking > 0: fix each in the approved compatibility scope (read → change → trace propagation across
+  callers/consumers/examples), log, re-run
   Step 1 for affected examples + cross-cutting.
 - Breaking == 0: report advisories, generate deliverables.
 
-## Step 4 — Static & test gates
+## Step 4 — Static and Test Gates
 
 ```bash
 # Import smoke (real paths)
@@ -77,8 +80,10 @@ smoke → lint → tests → client build. Max 5 code passes + 3 test cycles, el
 ## Deliverables
 
 1. **Gap report**: passes, gaps found/fixed/advisories, per-example + cross-cutting + client status, advisory list.
-2. **Change log** `docs/pipecat-upgrade-changelog.md`: per change — file:symbol, old→new, why (CHANGELOG/docs
+2. Update the generated compatibility document's status/evidence, or, when the repository also expects it, write
+   **change log** `docs/pipecat-upgrade-changelog.md`: per change — file:symbol, old→new, why (CHANGELOG/docs
    ref), examples affected. Plus: `pipecat-ai` old→new, every server + client dependency decision
    (bumped/renamed/removed + migrated-to-core), extras changes, files changed, removed/renamed APIs,
    server↔client RTVI contract notes,
    advisories.
+3. Confirm that no feature-adoption recommendation was implemented without explicit authorization.
